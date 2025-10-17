@@ -93,8 +93,10 @@ Route::prefix('customer')->group(function () {
 
     Route::get('/icici/initiate-sale/confirmed/{merchantTxnNo}', [AuthController::class, 'iciciInitiateSaleConfirmed']);
 });
-    Route::match(['GET', 'POST'], 'organization/thankyou', [AuthController::class, 'OrganizationPatmentThankyou']);
+    Route::match(['GET', 'POST'], 'organization/thankyou', [AuthController::class, 'OrganizationPaymentThankyou']);
 
     Route::get('organizations', [AuthController::class, 'OrganizationList']);
-    Route::get('/riders/e-signatures', [AuthController::class, 'RiderEsignList']);
+    // Route::middleware(['auth.sanctum.custom'])->group(function () {
+        Route::get('/riders/e-signatures', [AuthController::class, 'RiderEsignList']);
+    // });
     Route::get('/riders/payment-history', [AuthController::class, 'RiderPaymentHistory']);
