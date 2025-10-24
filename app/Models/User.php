@@ -93,6 +93,16 @@ class User extends Authenticatable
     ->whereIn('status', ['assigned','overdue'])
     ->orderBy('id', 'DESC');
   }
+  public function assigned_vehicle(){
+    return $this->hasOne(AsignedVehicle::class)
+    ->where('status', 'assigned')
+    ->orderBy('id', 'DESC');
+  }
+  public function overdue_vehicle(){
+    return $this->hasOne(AsignedVehicle::class)
+    ->where('status', 'overdue')
+    ->orderBy('id', 'DESC');
+  }
   public function doc_logs(){
         return $this->hasMany(UserKycLog::class);
   }

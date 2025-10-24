@@ -158,19 +158,26 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-       // Custom validation rules
+       // ✅ Add this line before validation
+        $userType = $request->input('user_type', 'B2C'); // Default to B2C
+
+        // Custom validation rules
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'mobile' => 'required|digits:10|unique:users',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
             'address' => 'nullable|string|max:255',
-            // 'driving_licence_front' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            // 'aadhar_card_front' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            // 'pan_card_front' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            // 'current_address_proof_front' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-        ]);
 
+            // ✅ Add these new rules
+            'user_type' => 'nullable|in:B2B,B2C',
+            'organization_id' => [
+                Rule::requiredIf(function () use ($userType) {
+                    return $userType === 'B2B';
+                }),
+                Rule::exists('organizations', 'id'),
+            ],
+        ]);
         // Check if validation fails
         if ($validator->fails()) {
             return response()->json([
@@ -198,7 +205,6 @@ class AuthController extends Controller
                 $EsignResponse = $this->EsignVerification($request->name,$request->email,$request->address);
                 $requestId = $EsignResponse['requests'][0]['request_id'] ?? null;
                 $signingUrl = $EsignResponse['requests'][0]['signing_url'] ?? null;
-                // dd($EsignResponse);
                 // if (strpos($signingUrl, "https://esign.zoop.one") !== false) {
                 //     $signingUrl = str_replace("https://esign.zoop.one", "https://esign.zoop.plus", $signingUrl);
                 // }
@@ -251,38 +257,21 @@ class AuthController extends Controller
         DB::beginTransaction();
 
         try {
-            // Initialize paths to null
-            // $drivinglicencePath = null;
-            // $govtIdCardPath = null;
-            // $cancelledChequePath = null;
-            // $currentAddressProofPath = null;
-
-            // // Handle file uploads with custom naming if files are provided
-            // if ($request->hasFile('driving_licence_front')) {
-            //     $drivinglicencePath = storeFileWithCustomName($request->file('driving_licence_front'), 'uploads/driving_licences');
-            // }
-
-            // if ($request->hasFile('aadhar_card_front')) {
-            //     $govtIdCardPath = storeFileWithCustomName($request->file('aadhar_card_front'), 'uploads/aadhar_card');
-            // }
-
-            // if ($request->hasFile('pan_card_front')) {
-            //     $cancelledChequePath = storeFileWithCustomName($request->file('pan_card_front'), 'uploads/cancelled_cheques');
-            // }
-
-            // if ($request->hasFile('current_address_proof_front')) {
-            //     $currentAddressProofPath = storeFileWithCustomName($request->file('current_address_proof_front'), 'uploads/address_proofs');
-            // }
+           
             // Create the user
-            $data = [
+           $data = [
                 'name'        => ucwords($request->name),
                 'customer_id' => MakingCustomerId(),
                 'mobile'      => $request->mobile,
                 'email'       => $request->email,
                 'password'    => Hash::make($request->password),
                 'address'     => $request->address,
+                'user_type'   => $userType, // ✅ Added here
             ];
 
+            if ($userType === 'B2B' && $request->filled('organization_id')) {
+                $data['organization_id'] = $request->organization_id;
+            }
             // Only include fcm_token if present
             if ($request->filled('fcm_token')) {
                 $data['fcm_token'] = $request->fcm_token;
