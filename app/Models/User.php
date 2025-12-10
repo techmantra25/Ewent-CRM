@@ -56,7 +56,7 @@ class User extends Authenticatable
   }
   public function await_order(){
     return $this->hasOne(Order::class)
-    ->whereIn('rent_status', ['active','ready to assign','suspended','returned'])
+    ->whereIn('rent_status', ['active','ready to assign','suspended'])
     ->orderBy('id', 'DESC');
   }
   public function pending_order(){

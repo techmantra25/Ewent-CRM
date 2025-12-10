@@ -6,8 +6,8 @@
       {{-- <span class="app-brand-logo demo me-1">
         @include('_partials.macros',["height"=>20])
       </span> --}}
-      <img src="{{asset('assets/img/new-logo.png')}}" alt="" style="width: 80px; height: auto;">
-      <span class="app-brand-text demo menu-text fw-semibold ms-2">Ewent</span>
+     <img src="{{asset('assets/img/new-logo.png')}}" alt="" style="width: 50px; height: auto;">
+      <span class=" demo menu-text fw-semibold ms-2" style="color:#273688;">Go e-Went</span>
     </a>
 
     <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto">
