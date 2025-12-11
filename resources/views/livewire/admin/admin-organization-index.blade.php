@@ -212,6 +212,53 @@
                                             <input type="text" class="form-control form-control-sm" wire:model.defer="mobile" placeholder="Enter mobile here">
                                             @error('mobile') <small class="text-danger">{{ $message }}</small> @enderror
                                         </div>
+                                       {{-- GST Number --}}
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">GST Number</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.defer="gst_number"
+                                                placeholder="Enter GST number here">
+                                            @error('gst_number') <small class="text-danger">{{ $message }}</small> @enderror
+                                        </div>
+
+                                        {{-- GST File Upload --}}
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Upload GST Document</label>
+                                            <input type="file" class="form-control form-control-sm" wire:model="gst_file">
+                                            @error('gst_file') <small class="text-danger">{{ $message }}</small> @enderror
+
+                                            {{-- Preview (show if uploaded or existing) --}}
+                                            @if ($gst_file_preview ?? false)
+                                                <a href="{{ asset($gst_file_preview) }}" target="_blank"
+                                                class="btn btn-sm btn-outline-primary mt-2">
+                                                    View GST Document
+                                                </a>
+                                            @endif
+                                        </div>
+
+                                        {{-- PAN Number --}}
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">PAN Number</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.defer="pan_number"
+                                                placeholder="Enter PAN number here">
+                                            @error('pan_number') <small class="text-danger">{{ $message }}</small> @enderror
+                                        </div>
+
+                                        {{-- PAN File Upload --}}
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Upload PAN Document</label>
+                                            <input type="file" class="form-control form-control-sm" wire:model="pan_file">
+                                            @error('pan_file') <small class="text-danger">{{ $message }}</small> @enderror
+
+                                            {{-- Preview (show if uploaded or existing) --}}
+                                            @if ($pan_file_preview ?? false)
+                                                <a href="{{ asset($pan_file_preview) }}" target="_blank"
+                                                class="btn btn-sm btn-outline-primary mt-2">
+                                                    View PAN Document
+                                                </a>
+                                            @endif
+                                        </div>
+
+
 
                                          <div class="col-md-12 mb-3">
                                             <label class="form-label">Street Address</label>

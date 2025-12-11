@@ -18,8 +18,11 @@ class AdminOrganizationIndex extends Component
     protected $paginationTheme = 'bootstrap';
     public $search = "";
     public $activeTab = 'list';
-    public $organization_id, $name, $email, $mobile, $password, $image,$discount_percentage;
+    public $organization_id, $name, $email, $mobile, $password, $image,$discount_percentage, $gst_number, $pan_number;
     public $discount_is_positive = false;
+    public $gst_file, $pan_file;
+
+    public $gst_file_preview, $pan_file_preview;
     public $street_address, $city, $state, $pincode,$edit_id = null;
     public $old_image;
     public $subscription_type = 'weekly';
@@ -65,6 +68,42 @@ class AdminOrganizationIndex extends Component
             'subscription_type' => 'required|in:weekly,monthly',
             'discount_percentage' => 'nullable|numeric|min:0|max:99',
         ];
+
+        // 🔥 Fetch existing organization if updating
+        $org = $this->edit_id ? Organization::find($this->edit_id) : null;
+
+        /*
+        |--------------------------------------------------------------------------
+        | GST Validation
+        |--------------------------------------------------------------------------
+        | CREATE: Either GST number or GST file is required.
+        | UPDATE: Required only if BOTH are empty (no number + no saved file).
+        |--------------------------------------------------------------------------
+        */
+        $rules['gst_number'] = 'nullable';
+        $rules['gst_file']   = 'nullable|file|mimes:jpg,png,jpeg,pdf,webp|max:2048';
+
+        if (!$this->edit_id || (!$this->gst_number && !$org?->gst_file)) {
+            // If creating OR both values empty during update → require one
+            $rules['gst_number'] = 'required';
+            $rules['gst_file']   = 'required|file|mimes:jpg,png,jpeg,pdf,webp|max:2048';
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | PAN Validation
+        |--------------------------------------------------------------------------
+        | CREATE: Either PAN number or PAN file required.
+        | UPDATE: Required only if BOTH are empty.
+        |--------------------------------------------------------------------------
+        */
+        $rules['pan_number'] = 'nullable';
+        $rules['pan_file']   = 'nullable|file|mimes:jpg,png,jpeg,pdf|max:2048';
+
+        if (!$this->edit_id || (!$this->pan_number && !$org?->pan_file)) {
+            $rules['pan_number'] = 'required_without:pan_file';
+            $rules['pan_file']   = 'required_without:pan_number|file|mimes:jpg,png,jpeg,pdf|max:2048';
+        }
 
         // Conditional rules
         if ($this->subscription_type === 'weekly') {
@@ -113,9 +152,22 @@ class AdminOrganizationIndex extends Component
 
         $imagePath = $this->old_image ?? 'assets/img/organization.png';
 
-        if ($this->image) {
-            $imagePath = storeFileWithCustomName($this->image, 'uploads/Organization');
+        if ($this->gst_file) {
+            $gstPath = storeFileWithCustomName($this->gst_file, 'uploads/organization');
+            $org->gst_file = $gstPath;
         }
+        if ($this->pan_file) {
+            $panPath = storeFileWithCustomName($this->pan_file, 'uploads/organization');
+            $org->pan_file = $panPath;
+        }
+        if ($this->image) {
+            $imagePath = storeFileWithCustomName($this->image, 'uploads/organization');
+        }
+
+        $org->gst_number = $this->gst_number;
+        $org->pan_number = $this->pan_number;
+       
+     
 
         $org->image = $imagePath;
 
@@ -220,6 +272,13 @@ class AdminOrganizationIndex extends Component
         $this->renewal_day_of_month = $org->renewal_day_of_month;
         $this->old_image = $org->image ?? 'assets/img/organization.png';
         $this->image = null; // reset file input
+        $this->gst_number = $org->gst_number;
+        $this->pan_number = $org->pan_number;
+
+        $this->gst_file_preview = $org->gst_file;
+        $this->gst_file = null;
+        $this->pan_file_preview = $org->pan_file;
+        $this->pan_file = null;
 
         $this->activeTab = 'create'; // switch to form
     }

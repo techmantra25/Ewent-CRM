@@ -1272,6 +1272,10 @@ class AuthController extends Controller
 
     public function HomePage()
     {
+        $user = $this->getAuthenticatedUser();
+        if ($user instanceof \Illuminate\Http\JsonResponse) {
+            return $user; // Return the response if the user is not authenticated
+        }
         // Fetching the banners
         $banners = Banner::where('status', 1)->orderBy('id', 'desc')->get();
         $why_ewent = WhyEwent::where('status', 1)->orderBy('id', 'desc')->get();
@@ -1295,7 +1299,14 @@ class AuthController extends Controller
                 $product->subscription_type = $rental ? ucwords($rental->subscription_type) : 0;
                 $product->deposit_amount = $rental ? $rental->deposit_amount : 0;
                 $product->rental_duration = $rental ? $rental->duration : 0;
-                $product->rental_amount = $rental ? $rental->rental_amount : 0;
+                
+                if ($user->user_type == "B2B" && $user->organization_id && $rental) {
+                    $product->rental_amount = getB2BproductPrice($user->organization_id, $rental->id);
+                } else {
+                    $product->rental_amount = $rental ? $rental->rental_amount : 0;
+                }
+
+                // $product->rental_amount = $rental ? $rental->rental_amount : 0;
             }
         // Check if there are any banners, FAQs, or products
         if ($banners->isEmpty() && $faqs->isEmpty() && $products->isEmpty()) {

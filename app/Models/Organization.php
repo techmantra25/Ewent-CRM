@@ -10,7 +10,7 @@ class Organization extends Authenticatable
     use Notifiable;
     protected $table = 'organizations';
     protected $fillable = [
-       'name', 'organization_id', 'subscription_type', 'renewal_day', 'renewal_day_of_month', 'email', 'mobile', 'password', 'image', 'status', 'discount_percentage', 'street_address', 'city', 'state', 'pincode'
+       'name', 'organization_id', 'subscription_type', 'renewal_day', 'renewal_day_of_month', 'email', 'mobile', 'password', 'image','gst_number','pan_number', 'pan_file', 'gst_file','status', 'discount_percentage', 'street_address', 'city', 'state', 'pincode'
     ];
 
     protected $hidden = [

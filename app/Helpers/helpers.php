@@ -612,28 +612,27 @@ if (!function_exists('getB2BproductPrice')) {
     function getB2BproductPrice($org_id, $subscription_id)
     {
         $org = Organization::find($org_id);
-        $rental = RentalPrice::find($subscription_id); // assuming rentalprice table/model
+        $rental = RentalPrice::find($subscription_id);
 
         if (!$org || !$rental) {
-            return null; // return null if org or rental not found
+            return null;
         }
 
         $discount = $org->discount_percentage ?? 0;
 
-        // Check if discount should be added or subtracted
         if (!isset($org->discount_is_positive)) {
-            $org->discount_is_positive = false; // default to subtract if not set
+            $org->discount_is_positive = false;
         }
 
         if ($org->discount_is_positive) {
-            // Add discount to base rental
             $finalPrice = $rental->rental_amount + ($rental->rental_amount * $discount / 100);
         } else {
-            // Subtract discount from base rental
             $finalPrice = $rental->rental_amount - ($rental->rental_amount * $discount / 100);
         }
-        return round($finalPrice, 2); // rounded to 2 decimals
+
+        return (int) round($finalPrice);
     }
+
 }
 if (!function_exists('createInvoiceForOrganization')) {
     function createInvoiceForOrganization($org_id, $type, $invoice_start_date, $invoice_end_date, $due_date)
