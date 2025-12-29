@@ -18,8 +18,7 @@ class AdminOrganizationIndex extends Component
     protected $paginationTheme = 'bootstrap';
     public $search = "";
     public $activeTab = 'list';
-    public $organization_id, $name, $email, $mobile, $password, $image,$discount_percentage, $gst_number, $pan_number;
-    public $discount_is_positive = false;
+    public $organization_id, $name, $email, $mobile, $password, $image,$discount_percentage, $rider_visibility_percentage, $gst_number, $pan_number;
     public $gst_file, $pan_file;
 
     public $gst_file_preview, $pan_file_preview;
@@ -67,6 +66,7 @@ class AdminOrganizationIndex extends Component
             'mobile' => 'required|string|max:10|unique:organizations,mobile,' . $this->edit_id,
             'subscription_type' => 'required|in:weekly,monthly',
             'discount_percentage' => 'nullable|numeric|min:0|max:99',
+            'rider_visibility_percentage' => 'nullable|numeric|min:0|max:99',
         ];
 
         // 🔥 Fetch existing organization if updating
@@ -145,7 +145,7 @@ class AdminOrganizationIndex extends Component
         $org->state = $this->state;
         $org->pincode = $this->pincode;
         $org->discount_percentage = $this->discount_percentage;
-        $org->discount_is_positive = $this->discount_is_positive;
+        $org->rider_visibility_percentage = $this->rider_visibility_percentage;
         $org->subscription_type = $this->subscription_type;
         $org->renewal_day = $this->subscription_type === 'weekly' ? $this->renewal_day : null;
         $org->renewal_day_of_month = $this->subscription_type === 'monthly' ? $this->renewal_day_of_month : null;
@@ -184,8 +184,7 @@ class AdminOrganizationIndex extends Component
                 ->first();
 
             $isChanged = !$lastDiscount ||
-                        $lastDiscount->discount_percentage != $org->discount_percentage ||
-                        $lastDiscount->discount_is_positive != $org->discount_is_positive;
+                        $lastDiscount->discount_percentage != $org->discount_percentage;
 
             if ($isChanged) {
                 if ($lastDiscount) {
@@ -207,7 +206,6 @@ class AdminOrganizationIndex extends Component
                 OrganizationDiscount::create([
                     'organization_id'      => $org->id,
                     'discount_percentage'  => $org->discount_percentage,
-                    'discount_is_positive' => $org->discount_is_positive,
                     'start_date'           => Carbon::today()->toDateString(),
                     'end_date'             => null,
                 ]);
@@ -231,7 +229,6 @@ class AdminOrganizationIndex extends Component
             OrganizationDiscount::create([
                 'organization_id'      => $org->id,
                 'discount_percentage'  => $org->discount_percentage,
-                'discount_is_positive' => $org->discount_is_positive,
                 'start_date'           => now()->toDateString(),
                 'end_date'             => null, // will be closed later automatically by next create
             ]);
@@ -266,7 +263,7 @@ class AdminOrganizationIndex extends Component
         $this->state = $org->state;
         $this->pincode = $org->pincode;
         $this->discount_percentage = rtrim(rtrim(number_format($org->discount_percentage, 2, '.', ''), '0'), '.');
-        $this->discount_is_positive = $org->discount_is_positive;
+        $this->rider_visibility_percentage = rtrim(rtrim(number_format($org->rider_visibility_percentage, 2, '.', ''), '0'), '.');
         $this->subscription_type = $org->subscription_type;
         $this->renewal_day = $org->renewal_day;
         $this->renewal_day_of_month = $org->renewal_day_of_month;
@@ -287,7 +284,7 @@ class AdminOrganizationIndex extends Component
 
     public function resetForm()
     {
-        $this->reset(['edit_id', 'organization_id', 'name', 'email', 'mobile', 'password', 'street_address', 'city', 'state', 'pincode', 'image','subscription_type','renewal_day','renewal_day_of_month','discount_is_positive','discount_percentage']);
+        $this->reset(['edit_id', 'organization_id', 'name', 'email', 'mobile', 'password', 'street_address', 'city', 'state', 'pincode', 'image','subscription_type','renewal_day','renewal_day_of_month','discount_percentage','rider_visibility_percentage']);
          $this->activeTab = 'list';
     }
 
@@ -297,15 +294,6 @@ class AdminOrganizationIndex extends Component
             $this->renewal_day_of_month = null; // reset
         } elseif ($this->subscription_type === 'monthly') {
             $this->renewal_day = null; // reset
-        }
-    }
-
-    public function toggleDiscountSign($type)
-    {   
-        if ($type == 'Plus') {
-            $this->discount_is_positive = true; // Set discount to positive
-        } else {
-            $this->discount_is_positive = false; // Set discount to negative
         }
     }
     public function render()

@@ -620,15 +620,15 @@ if (!function_exists('getB2BproductPrice')) {
 
         $discount = $org->discount_percentage ?? 0;
 
-        if (!isset($org->discount_is_positive)) {
-            $org->discount_is_positive = false;
-        }
+        // if (!isset($org->discount_is_positive)) {
+        //     $org->discount_is_positive = false;
+        // }
 
-        if ($org->discount_is_positive) {
-            $finalPrice = $rental->rental_amount + ($rental->rental_amount * $discount / 100);
-        } else {
+        // if ($org->discount_is_positive) {
+        //     $finalPrice = $rental->rental_amount + ($rental->rental_amount * $discount / 100);
+        // } else {
             $finalPrice = $rental->rental_amount - ($rental->rental_amount * $discount / 100);
-        }
+        // }
 
         return (int) round($finalPrice);
     }
@@ -718,7 +718,6 @@ if (!function_exists('createInvoiceForOrganization')) {
                             $per_date_amount = $org_discount
                             ? FetchActualDiscountedAmount(
                                 $org_discount->discount_percentage,
-                                $org_discount->discount_is_positive,
                                 $per_date_amount
                             )
                             : round($per_date_amount, 2);
@@ -778,17 +777,17 @@ if (!function_exists('createInvoiceForOrganization')) {
     }
 }
 if (!function_exists('FetchActualDiscountedAmount')) {
-    function FetchActualDiscountedAmount($discountPercentage, $isPositive, $amount)
+    function FetchActualDiscountedAmount($discountPercentage, $amount)
     {
         $discountValue = ($amount * $discountPercentage) / 100;
 
-        if ($isPositive) {
-            // Increase amount by discount
-            $amount += $discountValue;
-        } else {
+        // if ($isPositive) {
+        //     // Increase amount by discount
+        //     $amount += $discountValue;
+        // } else {
             // Decrease amount by discount
             $amount -= $discountValue;
-        }
+        // }
 
         return round($amount, 2);
     }

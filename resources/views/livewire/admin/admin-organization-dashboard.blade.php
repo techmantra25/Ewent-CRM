@@ -181,8 +181,8 @@
                                   class="d-flex justify-content-between align-items-center mb-2 p-2 rounded border bg-light">
                                   <span class="fw-semibold">In App Price Visibility</span>
                                   <span
-                                    class="badge {{ $organization->discount_is_positive ? 'bg-success' : 'bg-danger' }} px-3 py-2">
-                                    {{ $organization->discount_is_positive ? '+' : '-' }}{{ $organization->discount_percentage ?? 0 }}%
+                                    class="badge bg-danger px-3 py-2">
+                                    -{{ $organization->discount_percentage ?? 0 }}%
                                   </span>
                                 </div>
 

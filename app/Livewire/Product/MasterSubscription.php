@@ -15,9 +15,9 @@ class MasterSubscription extends Component
     use WithPagination;
     public $subscriptionId = null;
     public $asset = null;
-    public $model,$models,$subscription_type,$duration,$deposit_amount,$rental_amount;
+    public $customerType = 'B2C';
+    public $model,$models,$subscription_type,$customer_type, $duration,$deposit_amount,$rental_amount;
 
-    
     protected function rules()
     {
         return [
@@ -27,9 +27,10 @@ class MasterSubscription extends Component
                 'string',
                 'max:255',
                 Rule::unique('rental_prices')->where(function ($query) {
-                    return $query->where('product_id', $this->model);
+                    return $query->where('product_id', $this->model)->where('customer_type', $this->customer_type);
                 }),
             ],
+            'customer_type' => 'required|in:B2B,B2C',
             'duration' => 'required|integer|min:1',
             'deposit_amount' => 'required|numeric|min:0',
             'rental_amount' => 'required|numeric|min:0',
@@ -40,6 +41,7 @@ class MasterSubscription extends Component
         'model.required' => 'The model field is mandatory.',
         'model.exists' => 'The selected model is invalid.',
         'subscription_type.required' => 'The subscription type is required.',
+        'customer_type.required' => 'The customer type is required.',
         'duration.required' => 'The duration is required.',
         'deposit_amount.required' => 'The deposit amount is required.',
         'rental_amount.required' => 'The rental amount is required.',
@@ -52,10 +54,22 @@ class MasterSubscription extends Component
     public function filter($value){
         $this->asset = $value;
     }
+    public function filterType($value){
+        $this->customerType = $value;
+    }
 
     public function GetDuration($duration)
     {
         $this->duration = $duration;
+    }
+    public function GetCustomerType($customer_type)
+    {
+        $this->customer_type = $customer_type;
+        if($customer_type == 'B2B'){
+            $this->deposit_amount = 0;
+        }else{
+            $this->deposit_amount = null;
+        }
     }
     public function store(){
         $this->validate();
@@ -63,6 +77,7 @@ class MasterSubscription extends Component
          RentalPrice::create([
             'product_id' => $this->model,
             'subscription_type' => $this->subscription_type,
+            'customer_type' => $this->customer_type,
             'duration' => $this->duration,
             'deposit_amount' => $this->deposit_amount,
             'rental_amount' => $this->rental_amount,
@@ -77,6 +92,7 @@ class MasterSubscription extends Component
         $this->subscriptionId = $subscription->id;
         $this->model = $subscription->product_id;
         $this->subscription_type = $subscription->subscription_type;
+        $this->customer_type = $subscription->customer_type;
         $this->duration = $subscription->duration;
         $this->deposit_amount = $subscription->deposit_amount;
         $this->rental_amount = $subscription->rental_amount;
@@ -91,10 +107,11 @@ class MasterSubscription extends Component
                 'string',
                 'max:255',
                 Rule::unique('rental_prices')->where(function ($query) {
-                    return $query->where('product_id', $this->model);
+                    return $query->where('product_id', $this->model)->where('customer_type', $this->customer_type);
                 })->ignore($this->subscriptionId), // Ignore current record when updating
             ],
             'duration' => 'required|integer|min:1',
+            'customer_type' => 'required|in:B2B,B2C',
             'deposit_amount' => 'required|numeric|min:0',
             'rental_amount' => 'required|numeric|min:0',
         ], [
@@ -133,7 +150,7 @@ class MasterSubscription extends Component
 
     public function refresh()
     {
-        $this->reset(['model', 'subscription_type', 'duration','deposit_amount','rental_amount', 'subscriptionId', 'asset']);
+        $this->reset(['model', 'subscription_type', 'customer_type', 'duration','deposit_amount','rental_amount', 'subscriptionId', 'asset']);
         $this->search = ''; // Reset the search filter
     }
     public function render()
@@ -142,6 +159,9 @@ class MasterSubscription extends Component
 
         if ($this->asset) {
             $query->where('product_id', $this->asset);
+        }
+        if ($this->customerType) {
+            $query->where('customer_type', $this->customerType);
         }
     
         $subscriptions = $query->get();

@@ -310,16 +310,23 @@
                                         @enderror
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Subscription Visibility (%)</label>
+                                        <label class="form-label">Rider Visibility (%)</label>
                                         <div class="input-group">
                                             <span class="input-group-text p-0">
-                                                <button type="button" class="btn btn-{{$discount_is_positive?"success":"inactive"}} btn-sm border-0" wire:click="toggleDiscountSign('Plus')" style="border-radius: 5px 0px 0px 5px;">
+                                                <button type="button" class="btn btn-success btn-sm border-0" style="border-radius: 5px 0px 0px 5px;">
                                                  Plus
                                                 </button>
                                             </span>
+                                            <input type="number" class="form-control form-control-sm text-center" wire:model="rider_visibility_percentage" min="0" max="100" step="0.01" style="min-height:31px !important;padding: 0 12px !important;" placeholder="Enter visibility %">
+                                        </div>
+                                        @error('rider_visibility_percentage') <small class="text-danger">{{ $message }}</small> @enderror
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Organization Discount (%)</label>
+                                        <div class="input-group">
                                             <input type="number" class="form-control form-control-sm text-center" wire:model="discount_percentage" min="0" max="100" step="0.01" style="min-height:31px !important;padding: 0 12px !important;" placeholder="Enter discount %">
                                             <span class="input-group-text p-0">
-                                                <button type="button" class="btn btn-{{$discount_is_positive?"inactive":"danger"}} btn-sm border-0" wire:click="toggleDiscountSign('Minus')" style="border-radius: 0px 5px 5px 0px;">
+                                                <button type="button" class="btn btn-danger btn-sm border-0" style="border-radius: 0px 5px 5px 0px;">
                                                     Minus
                                                 </button>
                                             </span>

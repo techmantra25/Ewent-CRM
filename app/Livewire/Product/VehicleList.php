@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Stock;
 use App\Models\Product;
+use Carbon\Carbon;
 
 class VehicleList extends Component
 {
@@ -26,7 +27,7 @@ class VehicleList extends Component
     }
     public function btn_search()
     {
-
+        $this->resetPage();
     }
 
 
@@ -55,6 +56,7 @@ class VehicleList extends Component
     }
     public function render()
     {
+
         // Fetch all vehicles (with or without assigned vehicles)
         $all_vehicles = Stock::with('product','assignedVehicle','overdueVehicle')
         ->when($this->model, function ($query) {
@@ -108,19 +110,47 @@ class VehicleList extends Component
         ->orderBy('id', 'DESC')
         ->paginate(20,['*'], 'unassigned_vehicles');
 
-
+        $today = Carbon::today();
         $overdue_vehicles = Stock::with('overdueVehicle')
         ->whereHas('overdueVehicle') // Ensures only assigned vehicles are fetched
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
         })
-        ->when($this->search, function ($query) {
-            $searchTerm = '%' . $this->search . '%';
-            $query->where('vehicle_number', 'like', $searchTerm)
-                ->orWhere('imei_number', 'like', $searchTerm)
-                ->orWhere('chassis_number', 'like', $searchTerm)
-                ->orWhere('friendly_name', 'like', $searchTerm);
+         ->when($this->search, function ($query) use ($today) {
+
+            // 🔹 If search is numeric → treat as DAYS
+            if (is_numeric($this->search)) {
+
+                $days = (int) $this->search;
+
+                $query->whereHas('overdueVehicle', function ($q) use ($today, $days) {
+                    $q->whereRaw(
+                        'ABS(DATEDIFF(?, end_date)) = ?',
+                        [$today, $days]
+                    );
+                });
+
+            } 
+            // 🔹 Else normal text search
+            else {
+
+                $searchTerm = '%' . $this->search . '%';
+
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('vehicle_number', 'like', $searchTerm)
+                    ->orWhere('imei_number', 'like', $searchTerm)
+                    ->orWhere('chassis_number', 'like', $searchTerm)
+                    ->orWhere('friendly_name', 'like', $searchTerm);
+                });
+            }
         })
+        // ->when($this->search, function ($query) {
+        //     $searchTerm = '%' . $this->search . '%';
+        //     $query->where('vehicle_number', 'like', $searchTerm)
+        //         ->orWhere('imei_number', 'like', $searchTerm)
+        //         ->orWhere('chassis_number', 'like', $searchTerm)
+        //         ->orWhere('friendly_name', 'like', $searchTerm);
+        // })
         ->orderBy('id', 'DESC')
         ->orderBy('product_id', 'DESC')
         ->paginate(20,['*'], 'overdue_vehicles');
