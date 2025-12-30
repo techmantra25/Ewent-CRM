@@ -613,26 +613,16 @@ if (!function_exists('getB2BproductPrice')) {
     {
         $org = Organization::find($org_id);
         $rental = RentalPrice::find($subscription_id);
-
         if (!$org || !$rental) {
             return null;
         }
 
-        $discount = $org->discount_percentage ?? 0;
+        $rider_visibility_percentage = $org->rider_visibility_percentage ?? 0;
 
-        // if (!isset($org->discount_is_positive)) {
-        //     $org->discount_is_positive = false;
-        // }
-
-        // if ($org->discount_is_positive) {
-        //     $finalPrice = $rental->rental_amount + ($rental->rental_amount * $discount / 100);
-        // } else {
-            $finalPrice = $rental->rental_amount - ($rental->rental_amount * $discount / 100);
-        // }
+        $finalPrice = $rental->rental_amount + ($rental->rental_amount * $rider_visibility_percentage / 100);
 
         return (int) round($finalPrice);
     }
-
 }
 if (!function_exists('createInvoiceForOrganization')) {
     function createInvoiceForOrganization($org_id, $type, $invoice_start_date, $invoice_end_date, $due_date)
@@ -699,13 +689,18 @@ if (!function_exists('createInvoiceForOrganization')) {
                             if($checkexistingData) continue;
                             // Safely get subscription
                             $subscription = $CurrentOrder->subscription;
-
                             // Skip if subscription missing
                             if (!$subscription || $subscription->duration <= 0) continue;
 
                             // Safely calculate per-date amount
-                            $per_date_amount = $subscription->rental_amount / $subscription->duration;
+                            $discountPercentage = $user->organization_details->discount_percentage ?? 0;
 
+                            $discountAmount = ($subscription->rental_amount * $discountPercentage) / 100;
+                            $finalAmount    = $subscription->rental_amount - $discountAmount;
+                            $subscription_rental_amount = $subscription->rental_amount / $subscription->duration;
+
+                            $per_date_amount = $finalAmount / $subscription->duration;
+                           
                             $org_discount = OrganizationDiscount::where('organization_id', $org->id)
                             ->whereDate('start_date', '<=', $date)
                             ->where(function ($q) use ($date) {
@@ -717,11 +712,9 @@ if (!function_exists('createInvoiceForOrganization')) {
                             // Optional: round to 2 decimals
                             $per_date_amount = $org_discount
                             ? FetchActualDiscountedAmount(
-                                $org_discount->discount_percentage,
-                                $per_date_amount
+                                $org_discount->discount_percentage,$subscription_rental_amount
                             )
                             : round($per_date_amount, 2);
-
                             $invoice_item_detail = new  OrganizationInvoiceItemDetail;
                             $invoice_item_detail->invoice_item_id = $invoice_item->id;
                             $invoice_item_detail->order_id = $CurrentOrder->id;
@@ -780,15 +773,7 @@ if (!function_exists('FetchActualDiscountedAmount')) {
     function FetchActualDiscountedAmount($discountPercentage, $amount)
     {
         $discountValue = ($amount * $discountPercentage) / 100;
-
-        // if ($isPositive) {
-        //     // Increase amount by discount
-        //     $amount += $discountValue;
-        // } else {
-            // Decrease amount by discount
-            $amount -= $discountValue;
-        // }
-
+        $amount -= $discountValue;
         return round($amount, 2);
     }
 }

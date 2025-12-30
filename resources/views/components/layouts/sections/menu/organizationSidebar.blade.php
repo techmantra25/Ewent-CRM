@@ -6,7 +6,8 @@
       {{-- <span class="app-brand-logo demo me-1">
         @include('_partials.macros',["height"=>20])
       </span> --}}
-      <img src="{{asset('assets/img/new-logo.png')}}" alt="" style="width: 80px; height: auto;">
+     <img src="{{asset('assets/img/new-logo.png')}}" alt="" style="width: 50px; height: auto;">
+      <span class=" demo menu-text fw-semibold ms-2" style="color: #f3f3f5;">Go e-Went</span>
     </a>
 
     <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto">
@@ -24,13 +25,18 @@
         <div>Dashboards</div>
       </a>
     </li>
+    <li class="menu-item {{ request('type') === 'models' ? 'open' : '' }}">
+        <a href="{{ route('organization.dashboard', ['type' => 'models']) }}" class="menu-link">
+           <i class="menu-icon tf-icons ri-motorbike-line"></i>
+            <div>Models</div>
+        </a>
+    </li>
     <li class="menu-item {{ request('type') === 'riders' ? 'open' : '' }}">
         <a href="{{ route('organization.dashboard', ['type' => 'riders']) }}" class="menu-link">
             <i class="menu-icon tf-icons ri-user-3-line"></i>
             <div>Riders</div>
         </a>
     </li>
-
     <li class="menu-item {{ request('type') === 'invoice' ? 'open' : '' }}">
         <a href="{{ route('organization.dashboard', ['type' => 'invoice']) }}" class="menu-link">
             <i class="menu-icon tf-icons ri-file-list-3-line"></i>

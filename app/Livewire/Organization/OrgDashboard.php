@@ -11,6 +11,7 @@ use App\Models\OrganizationInvoiceItemDetail;
 use App\Models\User;
 use App\Models\OrgInvoiceMerchantNumber;
 use Livewire\WithPagination;
+use App\Models\OrganizationProduct;
 
 use Illuminate\Support\Facades\Auth;
 
@@ -27,11 +28,12 @@ class OrgDashboard extends Component
     public $InvoicePaidAmount = 0;
     public $activeTab = 'overview';
     public $paymentMessage = [];
+    public $OrganizationModels;
 
     public function mount(){
 
         $type = request()->get('type');
-        if ($type && in_array($type, ['invoice', 'payment', 'riders'])) {
+        if ($type && in_array($type, ['invoice', 'models', 'payment', 'riders'])) {
             $this->activeTab = $type;
         }
         $this->organization = Auth::guard('organization')->user();
@@ -208,6 +210,7 @@ class OrgDashboard extends Component
 
     public function render()
     {
+        $this->OrganizationModels = OrganizationProduct::where('organization_id', $this->organization->id)->get();
         $riders = User::with('doc_logs','latest_order','active_vehicle')
             ->when($this->search, function ($query) {
                 $searchTerm = '%' . $this->search . '%';

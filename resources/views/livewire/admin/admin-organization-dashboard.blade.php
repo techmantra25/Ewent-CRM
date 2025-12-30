@@ -137,6 +137,11 @@
                                 <i class="icon-base ri ri-group-line icon-sm me-1_5"></i>Overview
                             </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link waves-effect waves-light {{$activeTab=="models"?"active":""}}" href="javascript:void(0)" wire:click="changeTab('models')">
+                                <i class="ri-motorbike-fill icon-sm me-1_5"></i>Models
+                                </a>
+                            </li>
                             <!-- Riders -->
                             <li class="nav-item">
                                 <a class="nav-link waves-effect waves-light {{ $activeTab=='riders' ? 'active' : '' }}" 
@@ -176,10 +181,21 @@
                                 </div>
                                 {{-- <p class="mt-auto mb-0 text-muted small">Subscription details for this organization.</p> --}}
 
-                                <!-- Subscription Visibility -->
+                                <!-- Rider Visibility -->
                                 <div
                                   class="d-flex justify-content-between align-items-center mb-2 p-2 rounded border bg-light">
-                                  <span class="fw-semibold">In App Price Visibility</span>
+                                  <span class="fw-semibold">In App Rider Visibility</span>
+                                  <span class="badge {{ $organization->rider_visibility_percentage > 0 ? 'bg-success' : 'bg-primary' }} px-3 py-2">
+                                          {{ $organization->rider_visibility_percentage > 0 
+                                              ? '+' . $organization->rider_visibility_percentage . '%' 
+                                              : 'Actual Price' }}
+                                      </span>
+
+                                </div>
+                                <!-- Subscription Discount -->
+                                <div
+                                  class="d-flex justify-content-between align-items-center mb-2 p-2 rounded border bg-light">
+                                  <span class="fw-semibold">Subscription Discount</span>
                                   <span
                                     class="badge bg-danger px-3 py-2">
                                     -{{ $organization->discount_percentage ?? 0 }}%
@@ -487,6 +503,139 @@
                           </div>
                         </div>
                     @endif
+                    {{-- Models Tab --}}
+                    @if($activeTab=="models")
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+
+                                        <div class="d-flex align-items-center justify-content-end flex-wrap gap-2">
+                                            <div>
+                                              @if(session()->has('model_success'))
+                                                  <div class="alert alert-success mb-0 p-2">
+                                                      {{ session('model_success') }}
+                                                  </div>
+                                              @endif
+
+                                              @if(session()->has('model_error'))
+                                                  <div class="alert alert-danger mb-0 p-2">
+                                                      {{ session('model_error') }}
+                                                  </div>
+                                              @endif
+                                            </div>
+                                            <div style="max-width: 350px;" class="text-start text-uppercase">
+                                                <select class="form-control border border-2 p-2" onchange=confirmAssignModel(this.value)>
+                                                    <option value="" hidden>-- Assign Model --</option>
+                                                    @foreach ($models as $model_item)
+                                                        <option value="{{ $model_item->id }}">{{ $model_item->title }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="table-responsive p-0 mt-2">
+                                            <table class="table table-bordered align-middle mb-0">
+                                                <thead class="table-dark">
+                                                    <tr>
+                                                        <th class="text-start text-uppercase" style="font-size:11px;">Model</th>
+                                                        <th class="text-center text-uppercase" style="font-size:11px;">Subscription Type</th>
+                                                        <th class="text-end text-uppercase" style="font-size:11px;">Actual Price</th>
+                                                        <th class="text-center text-uppercase" style="font-size:11px;">Rider Visibility</th>
+                                                        <th class="text-end text-uppercase" style="font-size:11px;">Subscription Price</th>
+                                                        <th class="text-center text-uppercase" style="font-size:11px;">Action</th>
+                                                    </tr>
+                                                </thead>
+
+                                                <tbody>
+                                                    @forelse($OrganizationModels as $org_model)
+
+                                                        @php
+                                                            $prices  = $org_model->product?->rentalpriceB2B ?? collect();
+                                                            $rowspan = $prices->count() ?: 1;
+                                                        @endphp
+
+                                                        @forelse($prices as $index => $sub_item)
+
+                                                            @php
+                                                                $actualPrice = $sub_item->rental_amount;
+
+                                                                $riderVisibilityAmount = ($actualPrice * ($organization->rider_visibility_percentage ?? 0)) / 100;
+                                                                $discountAmount        = ($actualPrice * ($organization->discount_percentage ?? 0)) / 100;
+                                                            @endphp
+
+                                                            <tr wire:key="{{ $org_model->id }}-{{ $sub_item->id }}">
+                                                                {{-- Model --}}
+                                                                @if($index === 0)
+                                                                    <td rowspan="{{ $rowspan }}" class="fw-semibold align-middle">
+                                                                        {{ $org_model->product?->title ?? 'N/A' }}
+                                                                    </td>
+                                                                @endif
+
+                                                                {{-- Subscription Type --}}
+                                                                <td class="text-center">
+                                                                    <span class="bg-label-primary px-2 py-1 rounded">
+                                                                        {{ ucfirst($sub_item->subscription_type) }}
+                                                                    </span>
+                                                                </td>
+
+                                                                {{-- Actual Price --}}
+                                                                <td class="text-end">
+                                                                    {{ env('APP_CURRENCY') }} {{ number_format($actualPrice, 2) }}
+                                                                </td>
+
+                                                                {{-- Rider Visibility --}}
+                                                                <td class="text-center">
+                                                                    {{ env('APP_CURRENCY') }} {{ number_format(round($actualPrice + $riderVisibilityAmount), 2) }}
+                                                                </td>
+
+                                                                {{-- Subscription Price (Calculated) --}}
+                                                                <td class="text-end fw-semibold">
+                                                                    {{ env('APP_CURRENCY') }} {{ number_format(round($actualPrice - $discountAmount), 2) }}
+                                                                </td>
+
+                                                                {{-- Action --}}
+                                                                @if($index === 0)
+                                                                    <td rowspan="{{ $rowspan }}" class="text-center align-middle">
+                                                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteModelItem({{$org_model->id}})">
+                                                                            <i class="ri-delete-bin-line"></i>
+                                                                        </button>
+                                                                    </td>
+                                                                @endif
+                                                            </tr>
+
+                                                        @empty
+                                                            <tr wire:key="{{ $org_model->id }}">
+                                                                <td class="fw-semibold">
+                                                                    {{ $org_model->product?->title ?? 'N/A' }}
+                                                                </td>
+                                                                <td colspan="4" class="text-center text-muted">
+                                                                    No subscription prices found
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteModelItem({{$org_model->id}})">
+                                                                            <i class="ri-delete-bin-line"></i>
+                                                                        </button>
+                                                                </td>
+                                                            </tr>
+                                                        @endforelse
+
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="6" class="text-center text-muted py-4">
+                                                                No models assigned
+                                                            </td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     {{-- Riders Tab --}}
                     @if($activeTab=="riders")
                         <div class="row">
@@ -758,5 +907,40 @@
     </div>
 </div>
 </div>
+@section('page-script')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    function confirmAssignModel(itemId) {
+        Swal.fire({
+            title: "Assign Model?",
+            text: "Are you sure you want to assign this model to the organization?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, assign it!"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('assignModel', itemId); // Livewire method
+            }
+        });
+    }
+    function deleteModelItem(itemId) {
+        Swal.fire({
+            title: "Delete Model?",
+            text: "Are you sure you want to delete this model?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it!"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('deleteModel', itemId); // Livewire method
+            }
+        });
+    }
+  </script>
+@endsection
 
 

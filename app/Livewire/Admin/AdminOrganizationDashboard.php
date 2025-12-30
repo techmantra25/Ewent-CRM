@@ -6,6 +6,9 @@ use Livewire\Component;
 use App\Models\Organization;
 use App\Models\OrganizationInvoice;
 use App\Models\User;
+use App\Models\OrganizationDiscount;
+use App\Models\OrganizationProduct;
+use App\Models\Product;
 use Livewire\WithPagination;
 
 class AdminOrganizationDashboard extends Component
@@ -20,6 +23,8 @@ class AdminOrganizationDashboard extends Component
     public $InvoicePaidAmount = 0;
     public $activeTab = 'overview';
     public $search = '';
+    public $OrganizationModels;
+    public $models;
     public function mount($id){
         $this->organization = Organization::findOrFail($id);
         $this->assignedVehiclesCount = User::where('user_type', 'B2B')
@@ -51,8 +56,43 @@ class AdminOrganizationDashboard extends Component
     public function resetPageField(){
         $this->reset(['search']);
     }
+    public function assignModel($model_id){
+        $existingAssignment = OrganizationProduct::where('organization_id', $this->organization->id)
+            ->where('product_id', $model_id)
+            ->first();
+
+        if (!$existingAssignment) {
+            OrganizationProduct::create([
+                'organization_id' => $this->organization->id,
+                'product_id' => $model_id,
+            ]);
+            session()->flash('model_success', 'Model assigned successfully.');
+        } else {
+            session()->flash('model_error', 'This model is already assigned to the organization.');
+        }
+    }
+    public function deleteModel($org_model_id){
+        $orgModel = OrganizationProduct::find($org_model_id);
+        if ($orgModel) {
+            $usersWithModel = User::where('organization_id', $this->organization->id)
+                ->whereHas('active_vehicle.stock', function ($query) use ($orgModel) {
+                    $query->where('product_id', $orgModel->product_id);
+                })
+                ->count();
+            if($usersWithModel > 0){
+                session()->flash('model_error', 'Cannot unassign model. There are riders currently assigned to this model.');
+                return;
+            }
+            $orgModel->delete();
+            session()->flash('model_success', 'Model unassigned successfully.');
+        } else {
+            session()->flash('model_error', 'Model not found.');
+        }
+    }
     public function render()
     {
+        $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
+        $this->OrganizationModels = OrganizationProduct::where('organization_id', $this->organization->id)->get();
         $riders = User::with('doc_logs','latest_order','active_vehicle')
             ->when($this->search, function ($query) {
                 $searchTerm = '%' . $this->search . '%';

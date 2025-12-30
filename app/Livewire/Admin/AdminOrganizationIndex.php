@@ -28,6 +28,7 @@ class AdminOrganizationIndex extends Component
     public $renewal_day;
     public $renewal_day_of_month;
 
+
      public function boot()
     {
         Paginator::useBootstrap();
@@ -298,6 +299,7 @@ class AdminOrganizationIndex extends Component
     }
     public function render()
     {
+      
         $organizations = Organization::when($this->search, function ($query) {
             $searchTerm = '%' . $this->search . '%';
             $query->where(function ($q) use ($searchTerm) {

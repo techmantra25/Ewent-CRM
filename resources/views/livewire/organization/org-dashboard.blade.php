@@ -19,6 +19,11 @@
     }
     .card h5.card-title {
         font-weight: 600;
+        font-size: 13px;
+    }
+    .invoice-head-item th {
+        font-size: 10px;
+        letter-spacing: 0.5px;
     }
    
   </style>
@@ -57,6 +62,13 @@
                                 <i class="icon-base ri ri-group-line icon-sm me-1_5"></i>Overview
                                 </a>
                             </li>
+                            <!-- Models -->
+                            <li class="nav-item">
+                                <a class="nav-link waves-effect waves-light {{ $activeTab=='models' ? 'active' : '' }}"
+                                href="javascript:void(0)" wire:click="changeTab('models')">
+                                <i class="icon-base ri ri-motorbike-fill icon-sm me-1_5"></i> Models
+                                </a>
+                            </li>
                             <!-- Riders -->
                             <li class="nav-item">
                                 <a class="nav-link waves-effect waves-light {{ $activeTab=='riders' ? 'active' : '' }}"
@@ -89,6 +101,37 @@
                         <div class="col-md-9">
                             <div class="row text-nowrap">
                             <div class="col-md-6 mb-6">
+                                <div class="card mb-2">
+                                    <div class="card-body d-flex align-items-center justify-content-between">
+
+                                        <!-- Left Section -->
+                                        <div class="d-flex align-items-center">
+                                            <div class="card-icon me-3">
+                                                <div class="avatar" style="width: 2.5rem !important; height: 2.5rem !important;">
+                                                    <div class="avatar-initial rounded bg-label-danger">
+                                                        <i class="ri-eye-line ri-24px"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="card-info">
+                                                <h5 class="card-title mb-1">Rider Visibility</h5>
+                                                <p class="mb-0 text-muted">Visibility markup applied</p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Right Section -->
+                                        <div class="text-end">
+                                            <span class="fw-bold display-6 
+                                                {{ ($organization->rider_visibility_percentage ?? 0) > 0 ? 'text-danger' : 'text-secondary' }}">
+                                                {{ ($organization->rider_visibility_percentage ?? 0) > 0 
+                                                    ? '+' . $organization->rider_visibility_percentage . '%' 
+                                                    : '0%' }}
+                                            </span>
+                                        </div>
+
+                                    </div>
+                                </div>
+
                                 <div class="card mb-2">
                                     <div class="card-body d-flex align-items-center justify-content-between">
 
@@ -176,10 +219,39 @@
 
                                     </div>
                                 </div>
-
                             </div>
 
                             <div class="col-md-6 mb-6">
+                                <div class="card mb-2">
+                                    <div class="card-body d-flex align-items-center justify-content-between">
+
+                                        <!-- Left Section -->
+                                        <div class="d-flex align-items-center">
+                                            <div class="card-icon me-3">
+                                                <div class="avatar" style="width: 2.5rem !important; height: 2.5rem !important;">
+                                                    <div class="avatar-initial rounded bg-label-success">
+                                                        <i class="ri-percent-line ri-24px"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="card-info">
+                                                <h5 class="card-title mb-1">Organization Discount</h5>
+                                                <p class="mb-0 text-muted">Discount on subscriptions</p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Right Section -->
+                                        <div class="text-end">
+                                            <span class="fw-bold display-6 
+                                                {{ ($organization->discount_percentage ?? 0) > 0 ? 'text-success' : 'text-secondary' }}">
+                                                {{ ($organization->discount_percentage ?? 0) > 0 
+                                                    ? '-' . $organization->discount_percentage . '%' 
+                                                    : '0%' }}
+                                            </span>
+                                        </div>
+
+                                    </div>
+                                </div>
 
                                 <!-- Riders Count Card -->
                                 <div class="card mb-2">
@@ -458,7 +530,7 @@
                                         @if(!isset($pendingInvoice))
                                             <!-- Organization Address Info -->
                                             <div class="info-container mb-4">
-                                                <h5 class="border-bottom pb-2 mb-3">Organization Information</h5>
+                                                <h5 class="border-bottom pb-2 mb-3">Our Information</h5>
                                                 <ul class="list-unstyled">
                                                     <li class="mb-2 d-flex align-items-center">
                                                         <i class="ri-calendar-line me-2 text-primary"></i>
@@ -521,6 +593,99 @@
                             </div>
 
 
+                    </div>
+                @endif
+                {{-- Model Tab --}}
+                @if($activeTab=="models")
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <div class="table-responsive p-0 mt-2">
+                                        <table class="table table-bordered align-middle mb-0">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th class="text-start text-uppercase" style="font-size:11px;">Model</th>
+                                                    <th class="text-center text-uppercase" style="font-size:11px;">Subscription Type</th>
+                                                    <th class="text-end text-uppercase" style="font-size:11px;">Actual Price</th>
+                                                    <th class="text-center text-uppercase" style="font-size:11px;">Rider Visibility</th>
+                                                    <th class="text-end text-uppercase" style="font-size:11px;">Billing Price</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody>
+                                                @forelse($OrganizationModels as $org_model)
+                                                    @php
+                                                        $prices  = $org_model->product?->rentalpriceB2B ?? collect();
+                                                        $rowspan = $prices->count() ?: 1;
+                                                    @endphp
+
+                                                    @forelse($prices as $index => $sub_item)
+
+                                                        @php
+                                                            $actualPrice = $sub_item->rental_amount;
+
+                                                            $riderVisibilityAmount = ($actualPrice * ($organization->rider_visibility_percentage ?? 0)) / 100;
+                                                            $discountAmount        = ($actualPrice * ($organization->discount_percentage ?? 0)) / 100;
+                                                        @endphp
+
+                                                        <tr wire:key="{{ $org_model->id }}-{{ $sub_item->id }}">
+                                                            {{-- Model --}}
+                                                            @if($index === 0)
+                                                                <td rowspan="{{ $rowspan }}" class="fw-semibold align-middle">
+                                                                    {{ $org_model->product?->title ?? 'N/A' }}
+                                                                </td>
+                                                            @endif
+
+                                                            {{-- Subscription Type --}}
+                                                            <td class="text-center">
+                                                                <span class="bg-label-primary px-2 py-1 rounded">
+                                                                    {{ ucfirst($sub_item->subscription_type) }}
+                                                                </span>
+                                                            </td>
+
+                                                            {{-- Actual Price --}}
+                                                            <td class="text-end">
+                                                                {{ env('APP_CURRENCY') }} {{ number_format($actualPrice, 2) }}
+                                                            </td>
+
+                                                            {{-- Rider Visibility --}}
+                                                            <td class="text-center">
+                                                                {{ env('APP_CURRENCY') }} {{ number_format(round($actualPrice + $riderVisibilityAmount), 2) }}
+                                                            </td>
+
+                                                            {{-- Subscription Price (Calculated) --}}
+                                                            <td class="text-end fw-semibold">
+                                                                {{ env('APP_CURRENCY') }} {{ number_format(round($actualPrice - $discountAmount), 2) }}
+                                                            </td>
+                                                        </tr>
+
+                                                    @empty
+                                                        <tr wire:key="{{ $org_model->id }}">
+                                                            <td class="fw-semibold">
+                                                                {{ $org_model->product?->title ?? 'N/A' }}
+                                                            </td>
+                                                            <td colspan="4" class="text-center text-muted">
+                                                                No subscription prices found
+                                                            </td>
+                                                        </tr>
+                                                    @endforelse
+
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="6" class="text-center text-muted py-4">
+                                                            No models assigned
+                                                        </td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 @endif
                 {{-- Riders Tab --}}

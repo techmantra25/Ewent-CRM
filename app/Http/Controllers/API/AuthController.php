@@ -28,6 +28,7 @@ use App\Models\OrganizationInvoiceItem;
 use App\Models\OrganizationInvoiceItemDetail;
 use App\Models\OrgInvoiceMerchantNumber;
 use App\Models\OrderMerchantNumber;
+use App\Models\OrganizationProducts;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -927,8 +928,19 @@ class AuthController extends Controller
                     ->orWhere('types', 'like', '%' . $search . '%');
             });
         })
+        ->when(
+            $user->user_type === 'B2B' && !empty($user->organization_id),
+            function ($query) use ($user) {
+                $query->whereHas('organizations', function ($q) use ($user) {
+                    $q->where('organizations.id', $user->organization_id);
+                });
+            }
+        )
         ->with([
             'rentalprice' => function ($query) {
+                $query->select('id', 'product_id', 'duration','subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
+            },
+            'rentalpriceB2B' => function ($query) {
                 $query->select('id', 'product_id', 'duration','subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
             },
             'category:id,title',      // Load specific columns for 'category'
@@ -942,19 +954,48 @@ class AuthController extends Controller
         ->get();
 
         // Process each product to set rental price details
-       foreach ($products as $product) {
-            $rental = $product->rentalprice->first();
+        foreach ($products as $product) {
 
-            if ($user->user_type == "B2B" && $user->organization_id && $rental) {
-                $product->rental_amount = getB2BproductPrice($user->organization_id, $rental->id);
-            } else {
-                $product->rental_amount = $rental ? $rental->rental_amount : 0;
+            $isB2B = $user->user_type === 'B2B' && !empty($user->organization_id);
+
+            // Pick correct rental collection
+            $rentalCollection = $isB2B
+                ? $product->rentalpriceB2B
+                : $product->rentalprice;
+
+            // Normalize rentalprice so API key is SAME
+            $product->setRelation('rentalprice', $rentalCollection);
+
+            // Default values
+            $product->rental_amount     = 0;
+            $product->subscription_type = 0;
+            $product->deposit_amount    = 0;
+            $product->rental_duration   = 0;
+
+            // First subscription (default display)
+            $rental = $rentalCollection->first();
+
+            if ($rental) {
+                $product->subscription_type = ucwords($rental->subscription_type);
+                $product->deposit_amount    = $rental->deposit_amount;
+                $product->rental_duration   = $rental->duration;
+
+                $product->rental_amount = $isB2B
+                    ? getB2BproductPrice($user->organization_id, $rental->id)
+                    : $rental->rental_amount;
             }
 
-            $product->subscription_type = $rental ? ucwords($rental->subscription_type) : 0;
-            $product->deposit_amount = $rental ? $rental->deposit_amount : 0;
-            $product->rental_duration = $rental ? $rental->duration : 0;
+            //  Update each rental price (important for list/table view)
+            foreach ($rentalCollection as $item) {
+                if ($isB2B) {
+                    $item->rental_amount = getB2BproductPrice($user->organization_id, $item->id);
+                }
+            }
+
+            // Optional: hide B2B relation from API
+            unset($product->rentalpriceB2B);
         }
+
         // Return the product list as a JSON response
         return response()->json([
             'status' => true,
@@ -1134,6 +1175,14 @@ class AuthController extends Controller
         // Retrieve the product by ID and ensure it's active (status = 1)
         $data = Product::where('id', $id)
             ->where('status', 1)
+            ->when(
+                $user->user_type === 'B2B' && !empty($user->organization_id),
+                function ($query) use ($user) {
+                    $query->whereHas('organizations', function ($q) use ($user) {
+                        $q->where('organizations.id', $user->organization_id);
+                    });
+                }
+            )
             ->with([
                 'rentalprice' => function ($query) {
                     $query->select('id', 'product_id', 'duration', 'subscription_type','deposit_amount', 'rental_amount');
@@ -1179,6 +1228,13 @@ class AuthController extends Controller
             'sub_category_id',
             'status'
         )
+        ->when($user->user_type === 'B2B' && !empty($user->organization_id),
+            function ($query) use ($user) {
+                $query->whereHas('organizations', function ($q) use ($user) {
+                    $q->where('organizations.id', $user->organization_id);
+                });
+            }
+        )
         ->where('id', '!=', $data->id) // Exclude the current product
         ->where('status', 1) // Ensure the product is active
         ->where(function ($query) use ($data) {
@@ -1189,31 +1245,31 @@ class AuthController extends Controller
         ->orderBy('title', 'ASC') // Then order by title
         ->limit(10) // Limit to 10 results
         ->get();
-
-       
-        foreach($data->rentalprice as $price_index=>$price_item){
-            if ($user->user_type == "B2B" && $user->organization_id) {
-                $price_item->rental_amount = getB2BproductPrice($user->organization_id, $price_item->id);
-            } else {
+        
+       if ($user->user_type == "B2B" && $user->organization_id) {
+            if(count($data->rentalpriceB2B)==0){
+                $data->rentalprice = [];
+            }else{
+                unset($data->rentalprice);
+                foreach($data->rentalpriceB2B as $price_index=>$price_item){
+                    $price_item->rental_amount = getB2BproductPrice($user->organization_id, $price_item->id);
+                }
+                $data->rentalprice = $data->rentalpriceB2B;
+            }
+        }else{
+            foreach($data->rentalprice as $price_index=>$price_item){
                 $price_item->rental_amount = $price_item ? $price_item->rental_amount : 0;
             }
         }
+       
         // Prepare product details object
         $product_data = (object) [];
-        // $product_data->stock_qty = $data->stock_qty;
         $product_data->id = $data->id;
         $product_data->title = $data->title;
         $product_data->types = $data->types;
         $product_data->short_desc = $data->short_desc;
-        // $product_data->long_desc = $data->long_desc;
         $product_data->category = $data->category ? $data->category->title : null;
         $product_data->sub_category = $data->subCategory ? $data->subCategory->title : null;
-        // $product_data->is_selling = $data->is_selling;
-        // $product_data->base_price = $data->base_price;
-        // $product_data->display_price = $data->display_price;
-        // $product_data->is_rent = $data->is_rent;
-        // $product_data->rent_duration = $data->rent_duration;
-        // $product_data->per_rent_price = $data->per_rent_price;
         $product_data->status = $data->status;
         $product_data->all_features = $product_features;
         $product_data->all_images = $allImages; // Set combined images array
@@ -1612,14 +1668,31 @@ class AuthController extends Controller
             ], 404);
         }
 
-        $RentalPrice = RentalPrice::where('product_id', $request->product_id)->where('subscription_type', $request->subscription_type)->first();
+        $RentalPrice = RentalPrice::where('product_id', $request->product_id)
+            ->where('subscription_type', $request->subscription_type)
+            ->when(
+                $user->user_type === 'B2B' && !empty($user->organization_id),
+                //  B2B logic
+                function ($query) use ($user) {
+                    $query->where('customer_type', 'B2B')
+                        ->whereHas('product.organizations', function ($q) use ($user) {
+                            $q->where('organizations.id', $user->organization_id);
+                        });
+                },
+                //  B2C fallback
+                function ($query) {
+                    $query->where('customer_type', 'B2C');
+                }
+            )
+            ->where('status', 1)
+            ->first();
+
         if(!$RentalPrice){
             return response()->json([
                 'status' => false,
-                 'message' => "This vehicle is not available for the selected duration."
+                 'message' => "This vehicle is not available now please contact the administrator."
             ], 404);
         }
-
         if ($user->user_type == "B2B" && $user->organization_id && $RentalPrice) {
             $RentalPrice->rental_amount = getB2BproductPrice($user->organization_id, $RentalPrice->id);
         } else {
@@ -1627,7 +1700,6 @@ class AuthController extends Controller
         }
         // dd($RentalPrice);
         $total_amount = $RentalPrice->deposit_amount+$RentalPrice->rental_amount;
-
         if($request->total_amount!=$total_amount){
             return response()->json([
                 'status' => false,
