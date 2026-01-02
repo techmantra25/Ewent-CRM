@@ -29,6 +29,15 @@ class OrgDashboard extends Component
     public $activeTab = 'overview';
     public $paymentMessage = [];
     public $OrganizationModels;
+    public $isModalOpen = false;
+    public $selectedCustomer;
+    public $isPreviewimageModal = false;
+    public $preview_front_image;
+    public $preview_back_image;
+    public $document_type;
+    public $isRejectModal = false;
+    public $field;
+    public $id;
 
     public function mount(){
 
@@ -95,8 +104,8 @@ class OrgDashboard extends Component
             "customerEmailID"=> optional($invoice->organization)->email ?? "testmail123@gmail.com",
             "transactionType"=> "SALE",
             "txnDate"=> date('YmdHis'),
-            "returnURL"=> 'http://127.0.0.1:8000/api/organization/thankyou',
-            // "returnURL"=> secure_url('api/organization/thankyou'),
+            // "returnURL"=> 'http://127.0.0.1:8000/api/organization/thankyou',
+            "returnURL"=> secure_url('api/organization/thankyou'),
             "customerMobileNo"=> "91".optional($invoice->organization)->mobile ?? "9876543210",
             "customerName"=> optional($invoice->organization)->name ?? "N/A",
         ];
@@ -205,6 +214,85 @@ class OrgDashboard extends Component
                 'response'     => 'Payment initiation failed: ' . ($responseData['responseMessage'] ?? 'Please contact administration'),
                 'redirect_url' => null,
             ];
+        }
+    }
+
+
+    public function showCustomerDetails($customerId)
+    {
+        $this->selectedCustomer = User::with('doc_logs')->find($customerId);
+        $this->isModalOpen = true;
+    }
+    public function closeModal()
+    {
+        $this->isModalOpen = false;
+    }
+    public function OpenPreviewImage($front_image, $back_image,$document_type)
+    {
+        $this->preview_front_image = $front_image;
+        $this->preview_back_image = $back_image;
+        $this->document_type = $document_type;
+        $this->isPreviewimageModal = true;
+    }
+       public function OpenRejectForm($field, $document_type, $id)
+    {
+        $this->field = $field;
+        $this->document_type = $document_type;
+        $this->id = $id; // Changed from $this->id to avoid conflicts
+        $this->isRejectModal = true;
+    }
+     public function closePreviewImage()
+    {
+        $this->isPreviewimageModal = false;
+        $this->reset(['preview_front_image', 'preview_back_image','document_type']);
+    }
+
+     public function VerifyKyc($status, $id){
+        $user = User::find($id);
+        if($user){
+            if($status=="verified"){
+                if($user->aadhar_card_status!=2){
+                    session()->flash('error_kyc_message', 'Aadhar card is not verified. Please verify the Aadhar card.');
+                    return false;
+                }
+                if($user->pan_card_status!=2){
+                    session()->flash('error_kyc_message', 'Pan card is not verified. Please verify the Pan card.');
+                    return false;
+                }
+                if($user->current_address_proof_status!=2){
+                    session()->flash('error_kyc_message', 'Address proof is not verified. Please verify the current address proof.');
+                    return false;
+                }
+                if($user->passbook_status!=2){
+                    session()->flash('error_kyc_message', 'Passbook/Cancelled cheque is not verified. Please verify the passbook/cancelled cheque.');
+                    return false;
+                }
+                if($user->profile_image_status!=2){
+                    session()->flash('error_kyc_message', 'Rider image is not verified. Please verify the rider image.');
+                    return false;
+                }
+
+                $user->org_kyc_verified_at = now()->toDateTimeString();
+                $user->org_kyc_verified_by = $this->organization->id;
+                $user->org_is_verified = "verified";
+                $user->org_date_of_rejection = NULL;
+                $user->org_rejected_by = NULL;
+
+            }elseif($status=="rejected"){
+                $user->org_date_of_rejection = now()->toDateTimeString();
+                $user->org_rejected_by = $this->organization->id;
+                $user->org_is_verified = "rejected";
+            }else{
+                $user->org_kyc_verified_at = now()->toDateTimeString();
+                $user->org_kyc_verified_by = $this->organization->id;
+                $user->org_is_verified = "unverified";
+                $user->org_date_of_rejection = NULL;
+                $user->org_rejected_by = NULL;
+            }
+            $user->save();
+            $this->showCustomerDetails($id);
+            // Optionally, show a confirmation message
+            session()->flash('modal_message', 'KYC status updated successfully.');
         }
     }
 

@@ -1340,30 +1340,100 @@ class AuthController extends Controller
         $faqs = Faq::orderBy('id', 'ASC')->get();
 
         // Fetching the products with eager loading
-        $products = Product::select('id', 'title', 'position', 'types', 'short_desc', 'image', 'status', 'is_driving_licence_required')->where('status', 1)
-            ->with([
-                'rentalprice' => function ($query) {
-                    $query->select('id', 'product_id', 'duration', 'subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
-                }     // Load specific columns for 'features'
-            ])
-            ->orderBy('position', 'ASC')
-            ->orderBy('title', 'ASC') // Order products by title
-            ->limit(10)
-            ->get();
-            foreach ($products as $product) {
-                $rental = $product->rentalprice->first();
-                $product->subscription_type = $rental ? ucwords($rental->subscription_type) : 0;
-                $product->deposit_amount = $rental ? $rental->deposit_amount : 0;
-                $product->rental_duration = $rental ? $rental->duration : 0;
+        // $products = Product::select('id', 'title', 'position', 'types', 'short_desc', 'image', 'status', 'is_driving_licence_required')->where('status', 1)
+        //     ->with([
+        //         'rentalprice' => function ($query) {
+        //             $query->select('id', 'product_id', 'duration', 'subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
+        //         }     // Load specific columns for 'features'
+        //     ])
+        //     ->orderBy('position', 'ASC')
+        //     ->orderBy('title', 'ASC') // Order products by title
+        //     ->limit(10)
+        //     ->get();
+        //     foreach ($products as $product) {
+        //         $rental = $product->rentalprice->first();
+        //         $product->subscription_type = $rental ? ucwords($rental->subscription_type) : 0;
+        //         $product->deposit_amount = $rental ? $rental->deposit_amount : 0;
+        //         $product->rental_duration = $rental ? $rental->duration : 0;
                 
-                if ($user->user_type == "B2B" && $user->organization_id && $rental) {
-                    $product->rental_amount = getB2BproductPrice($user->organization_id, $rental->id);
-                } else {
-                    $product->rental_amount = $rental ? $rental->rental_amount : 0;
-                }
+        //         if ($user->user_type == "B2B" && $user->organization_id && $rental) {
+        //             $product->rental_amount = getB2BproductPrice($user->organization_id, $rental->id);
+        //         } else {
+        //             $product->rental_amount = $rental ? $rental->rental_amount : 0;
+        //         }
 
-                // $product->rental_amount = $rental ? $rental->rental_amount : 0;
+        //         // $product->rental_amount = $rental ? $rental->rental_amount : 0;
+        //     }
+
+        // Retrieve products based on the search criteria
+        $products = Product::query()
+        ->select(
+            'id', 'title', 'position', 'types', 'short_desc', 'image', 'status', 'is_driving_licence_required'
+        )
+        ->when(
+            $user->user_type === 'B2B' && !empty($user->organization_id),
+            function ($query) use ($user) {
+                $query->whereHas('organizations', function ($q) use ($user) {
+                    $q->where('organizations.id', $user->organization_id);
+                });
             }
+        )
+        ->with([
+            'rentalprice' => function ($query) {
+                $query->select('id', 'product_id', 'duration','subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
+            },
+            'rentalpriceB2B' => function ($query) {
+                $query->select('id', 'product_id', 'duration','subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
+            }      // Load specific columns for 'features'
+        ])
+        ->where('status', 1) // Filter active products
+        ->where('is_rent', 1) // Filter active products
+        ->orderBy('position', 'ASC') // First order by position
+        ->orderBy('title', 'ASC') // Then order by title
+        ->get();
+
+        // Process each product to set rental price details
+        foreach ($products as $product) {
+
+            $isB2B = $user->user_type === 'B2B' && !empty($user->organization_id);
+
+            // Pick correct rental collection
+            $rentalCollection = $isB2B
+                ? $product->rentalpriceB2B
+                : $product->rentalprice;
+
+            // Normalize rentalprice so API key is SAME
+            $product->setRelation('rentalprice', $rentalCollection);
+
+            // Default values
+            $product->rental_amount     = 0;
+            $product->subscription_type = 0;
+            $product->deposit_amount    = 0;
+            $product->rental_duration   = 0;
+
+            // First subscription (default display)
+            $rental = $rentalCollection->first();
+
+            if ($rental) {
+                $product->subscription_type = ucwords($rental->subscription_type);
+                $product->deposit_amount    = $rental->deposit_amount;
+                $product->rental_duration   = $rental->duration;
+
+                $product->rental_amount = $isB2B
+                    ? getB2BproductPrice($user->organization_id, $rental->id)
+                    : $rental->rental_amount;
+            }
+
+            //  Update each rental price (important for list/table view)
+            foreach ($rentalCollection as $item) {
+                if ($isB2B) {
+                    $item->rental_amount = getB2BproductPrice($user->organization_id, $item->id);
+                }
+            }
+
+            // Optional: hide B2B relation from API
+            unset($product->rentalpriceB2B);
+        }
         // Check if there are any banners, FAQs, or products
         if ($banners->isEmpty() && $faqs->isEmpty() && $products->isEmpty()) {
             // Return a response if no data is found
@@ -1686,7 +1756,6 @@ class AuthController extends Controller
             )
             ->where('status', 1)
             ->first();
-
         if(!$RentalPrice){
             return response()->json([
                 'status' => false,

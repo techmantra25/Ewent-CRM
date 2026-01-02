@@ -164,6 +164,14 @@ class RiderEngagement extends Component
                 session()->flash('assign_error', 'Sorry! Rent duration not found. Please set the rent duration before proceeding.');
                 return false;
             }
+            $rider = User::find($this->targetRiderId);
+            if($rider->org_is_verified != "verified" && $rider->user_type =="B2B"){
+               session()->flash(
+                    'assign_error',
+                    'Rider KYC is not verified by the organization. Please wait or contact the organization for verification.'
+                );
+                return false;
+            }
             DB::beginTransaction();
 
                 $startDate = Carbon::now();

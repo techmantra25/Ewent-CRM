@@ -25,6 +25,57 @@
         font-size: 10px;
         letter-spacing: 0.5px;
     }
+     .side-modal {
+        position: fixed;
+        top: 0;
+        right: -400px; /* Initially hidden */
+        width: 500px;
+        height: 690px;
+        background: #fff;
+        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        transition: right 0.3s ease-in-out;
+        z-index: 10000;
+    }
+
+    .side-modal.open {
+        right: 0;
+    }
+
+    .side-modal-content {
+        display: flex;
+        flex-direction: column;
+        max-height: -webkit-fill-available;
+        overflow-y: auto;
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 20px;
+        border: none;
+        background: none;
+        cursor: pointer;
+    }
+
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+
+    /* 17-03-2025 */
+    .side-modal {
+        height: 100vh;
+    }
+    .side-modal-content {
+        height: calc(100vh - 110px);
+    }
    
   </style>
     <div class="col-lg-12 col-md-6 mb-md-0 mb-4">
@@ -723,7 +774,11 @@
                                     Status</th>
                                     <th
                                     class="text-center text-uppercase  text-xxs font-weight-bolder opacity-7 align-middle">
-                                    Action</th>
+                                    KYC Status</th>
+                                    <th
+                                    class="text-center text-uppercase  text-xxs font-weight-bolder opacity-7 align-middle">
+                                    Dashboard</th>
+                                    <th class="text-center text-uppercase  text-xxs font-weight-bolder opacity-7 align-middle">Documents</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -737,7 +792,7 @@
                                 <tr>
                                     <td class="align-middle text-center">{{ $riders->firstItem()+$k }}</td>
                                     <td class="sorting_1">
-                                    <div class="d-flex justify-content-start align-items-center customer-name">
+                                        <div class="d-flex justify-content-start align-items-center customer-name">
                                         <div class="avatar-wrapper me-3">
                                         <div class="avatar avatar-sm">
                                             @if ($v_user->image)
@@ -769,25 +824,40 @@
                                     @endif
                                     </td>
                                     <td class="align-middle text-sm text-center">
-                                    @if($v_user->active_vehicle)
-                                    <span class="badge bg-label-success mb-0 cursor-pointer">Assigned</span>
-                                    @else
-                                    <span class="badge bg-label-danger mb-0 cursor-pointer">Unassigned</span>
-                                    @endif
+                                        @if($v_user->active_vehicle)
+                                        <span class="badge bg-label-success mb-0 cursor-pointer">Assigned</span>
+                                        @else
+                                        <span class="badge bg-label-danger mb-0 cursor-pointer">Unassigned</span>
+                                        @endif
                                     </td>
                                     <td class="align-middle text-sm text-center">
-                                    <div class="dropdown cursor-pointer">
-                                        <span class="badge px-2 rounded-pill bg-label-secondary dropdown-toggle"
-                                        id="exploreDropdown_await_{{$v_user->id}}" data-bs-toggle="dropdown"
-                                        aria-expanded="false">Explore</span>
-                                        <ul class="dropdown-menu" aria-labelledby="exploreDropdown_await_{{$v_user->id}}">
-                                        <li><a class="dropdown-item"
-                                            href="{{ route('organization.rider.details', $v_user->id) }}">Rider Details</a></li>
-                                            @if($v_user->active_vehicle)
-                                                <li><a class="dropdown-item" href="{{ route('organization.vehicle.detail', optional($v_user->active_vehicle->stock)->vehicle_track_id) }}">Vehicle Details</a></li>
-                                            @endif
-                                        </ul>
-                                    </div>
+                                        @if($v_user->org_is_verified=="verified")
+                                            <span class="badge bg-label-success mb-0 cursor-pointer">Verified</span>
+                                        @elseif($v_user->org_is_verified=="unverified")
+                                            <span class="badge bg-label-warning mb-0 cursor-pointer">Unverified</span>
+                                        @else
+                                            <span class="badge bg-label-danger mb-0 cursor-pointer">Rejected</span>
+                                        @endif
+                                    </td>
+                                    <td class="align-middle text-sm text-center">
+                                        <div class="dropdown cursor-pointer">
+                                            <span class="badge px-2 rounded-pill bg-label-secondary dropdown-toggle"
+                                            id="exploreDropdown_await_{{$v_user->id}}" data-bs-toggle="dropdown"
+                                            aria-expanded="false">Explore</span>
+                                            <ul class="dropdown-menu" aria-labelledby="exploreDropdown_await_{{$v_user->id}}">
+                                            <li><a class="dropdown-item"
+                                                href="{{ route('organization.rider.details', $v_user->id) }}">Rider Details</a></li>
+                                                @if($v_user->active_vehicle)
+                                                    <li><a class="dropdown-item" href="{{ route('organization.vehicle.detail', optional($v_user->active_vehicle->stock)->vehicle_track_id) }}">Vehicle Details</a></li>
+                                                @endif
+                                            </ul>
+                                        </div>
+                                    </td>
+                                    <td class="align-middle text-sm text-center">
+                                        <button class="btn btn-outline-success waves-effect mb-0 custom-input-sm ms-2"
+                                                wire:click="showCustomerDetails({{ $v_user->id}})">
+                                            View
+                                        </button>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -1072,6 +1142,524 @@
     <div class="loader-container" wire:loading>
       <div class="loader"></div>
     </div>
+
+    @if($isModalOpen)
+        <div class="side-modal {{ $isModalOpen ? 'open' : '' }}">
+            @if($selectedCustomer)
+                <div class="m-0 lh-1 border-bottom template-customizer-header position-relative py-4">
+                    <div class="d-flex justify-content-start align-items-center customer-name">
+                        <div class="avatar-wrapper me-3">
+                            <div class="avatar avatar-sm">
+                            @if ($selectedCustomer->image)
+                            <img src="{{ asset($selectedCustomer->image) }}" alt="Avatar" class="rounded-circle">
+                            @else
+                            <div class="avatar-initial rounded-circle {{$colorClass}}">
+                                {{ strtoupper(substr($selectedCustomer->name, 0, 1)) }}{{ strtoupper(substr(strrchr($selectedCustomer->name, ' '), 1, 1)) }}
+                            </div>
+                            @endif
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column">
+                            <a href="javascript:vid(0)" class="text-heading"><span
+                                class="fw-medium text-truncate">{{ ucwords($selectedCustomer->name) }}</span>
+                            </a>
+                            <small class="text-truncate">{{ $selectedCustomer->email }} | {{$selectedCustomer->country_code}}
+                            {{ $selectedCustomer->mobile }}</small>
+                            <div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 position-absolute end-0 top-0 mt-6 me-5">
+                            <a href="javascript:void(0)" wire:click="closeModal"
+                                class="template-customizer-close-btn fw-light text-body" tabindex="-1">
+                                <i class="ri-close-line ri-24px"></i>
+                            </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="side-modal-content">
+                    
+                    <div class="nav-align-top">
+                        <ul class="nav nav-tabs nav-fill" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link waves-effect modal-nav active" role="tab" data-bs-toggle="tab"
+                            data-bs-target="#navs-justified-overview" aria-controls="navs-justified-overview" aria-selected="false"
+                            tabindex="-1">
+                            <span class="d-none d-sm-block">Overview
+                                </span>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link waves-effect" role="tab" data-bs-toggle="tab"
+                            data-bs-target="#navs-justified-history" aria-controls="navs-justified-history" aria-selected="false"
+                            tabindex="-1">
+                            <span class="d-none d-sm-block">
+                                History
+                                </span>
+                            </button>
+                        </li>
+                        </ul>
+                    </div>
+                    <div class="tab-content p-0 mt-6">
+                        <div class="tab-pane fade active show" id="navs-justified-overview" role="tabpanel">
+
+                            {{-- Driving Licence --}}
+                            <div style="border-bottom: 1px solid #8d58ff;" class="mb-3">
+                                <div class="d-flex align-items-center mb-3">
+                                    <!-- Icon -->
+                                    <div class="avatar me-3" style=" width:1.5rem; height: 1.5rem;">
+                                    <div class="avatar-initial rounded
+                                            bg-label-dark document_type">
+                                        <i class="ri-roadster-line ri-15px"></i>
+                                    </div>
+                                    </div>
+                                    <!-- Document Name -->
+                                    <div>
+                                        <span class="fw-medium text-truncate text-dark">Driving Licence</span>
+                                    </div>
+                                </div>
+                                @if($selectedCustomer->driving_licence_status>0)
+                                    <div class="d-flex">
+                                    <div class="col-6">
+                                        <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                            <div class="p-2">
+                                            <div class="cursor-pointer">
+                                            <img src="{{asset($selectedCustomer->driving_licence_front)}}" alt="" style="max-width: 150px;max-height: 130px; width: 100%;">
+                                            </div>
+                                            <div class="text-center fw-medium text-truncate">Front</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                        <div class="col-6">
+                                            <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                                <div class="p-2">
+                                                <div class="cursor-pointer">
+                                                <img src="{{asset($selectedCustomer->driving_licence_back)}}" alt="" style="max-width: 150px;max-height: 130px; width: 100%;">
+                                                </div>
+                                                <div class="text-center fw-medium text-truncate">Back</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex my-4">
+                                        <div class="col-6 text-center cursor-pointer">
+                                            <span class="badge rounded-pill bg-label-secondary" wire:click="OpenPreviewImage('{{asset($selectedCustomer->driving_licence_front)}}','{{asset($selectedCustomer->driving_licence_back)}}','Driving Licence')">Preview</span>
+                                        </div>
+                                        <div class="col-6 text-center cursor-pointer">
+                                            @if($selectedCustomer->driving_licence_status==2)
+                                                <span class="badge rounded-pill bg-label-success">
+                                                    <i class="ri-check-line"></i> Approved
+                                                </span>
+                                            @elseif($selectedCustomer->driving_licence_status==3)
+                                                <span class="badge rounded-pill bg-label-danger"><i class="ri-close-line"></i> Rejected</span>
+                                            @else
+                                                <span class="badge rounded-pill bg-label-warning">
+                                                    Pending
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="alert alert-danger">
+                                        Driving licence not uploaded
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- Aadhar Card --}}
+                            <div style="border-bottom: 1px solid #8d58ff;" class="mb-3">
+                                @if($selectedCustomer->aadhar_card_status>0)
+                                    <div class="d-flex align-items-center mb-3">
+                                        <!-- Icon -->
+                                        <div class="avatar me-3" style=" width:1.5rem; height: 1.5rem;">
+                                        <div class="avatar-initial rounded
+                                                bg-label-dark document_type">
+                                            <i class="ri-passport-line ri-15px"></i>
+                                        </div>
+                                        </div>
+                                        <!-- Document Name -->
+                                        <div>
+                                            <span class="fw-medium text-truncate text-dark">Aadhar Card</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex">
+                                        <div class="col-6">
+                                            <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                                <div class="p-2">
+                                                    <div class="cursor-pointer">
+                                                        {{$selectedCustomer->aadhar_number?$selectedCustomer->aadhar_number:"N/A"}}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex my-4">
+                                        <div class="col-12 text-center cursor-pointer">
+                                            @if($selectedCustomer->aadhar_card_status==2)
+                                                <span class="badge rounded-pill bg-label-success">
+                                                    <i class="ri-check-line"></i> Approved
+                                                </span>
+                                            @else
+                                                <span class="badge rounded-pill bg-label-warning">
+                                                    Pending
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <div class="col-6 text-center cursor-pointer">
+                                            @if($selectedCustomer->aadhar_card_status==2)
+                                                <a href="{{route('digilocker.aadhar.download',$selectedCustomer->id)}}" target="_blank">
+                                                    <span class="badge rounded-pill bg-label-success">
+                                                        <i class="ri-check-line"></i> Download PDF
+                                                    </span>
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="alert alert-danger">
+                                        Aadhar card not verified.
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- Pan Card --}}
+                            <div style="border-bottom: 1px solid #8d58ff;" class="mb-3">
+                                @if($selectedCustomer->pan_card_status>0)
+                                    <div class="d-flex align-items-center mb-3">
+                                        <!-- Icon -->
+                                        <div class="avatar me-3" style=" width:1.5rem; height: 1.5rem;">
+                                        <div class="avatar-initial rounded
+                                                bg-label-dark document_type">
+                                            <i class="ri-passport-line ri-15px"></i>
+                                        </div>
+                                        </div>
+                                        <!-- Document Name -->
+                                        <div>
+                                            <span class="fw-medium text-truncate text-dark">Pan Card</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex">
+                                        <div class="col-6">
+                                            <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                                <div class="p-2">
+                                                <div class="cursor-pointer">
+                                                <img src="{{asset($selectedCustomer->pan_card_front)}}" alt="" style="max-width: 150px;max-height: 130px; width: 100%;">
+                                                </div>
+                                                <div class="text-center fw-medium text-truncate">Front</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                                <div class="p-2">
+                                                    <div class="cursor-pointer">
+                                                    <img src="{{asset($selectedCustomer->pan_card_back)}}" alt="" style="max-width: 150px;max-height: 130px; width: 100%;">
+                                                    </div>
+                                                    <div class="text-center fw-medium text-truncate">Back</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex my-4">
+                                        <div class="col-6 text-center cursor-pointer">
+                                            <span class="badge rounded-pill bg-label-secondary" wire:click="OpenPreviewImage('{{asset($selectedCustomer->pan_card_front)}}','{{asset($selectedCustomer->pan_card_back)}}','Pan Card')"> Preview</span>
+                                        </div>
+                                        <div class="col-6 text-center cursor-pointer">
+                                            @if($selectedCustomer->pan_card_status==2)
+                                                <span class="badge rounded-pill bg-label-success">
+                                                    <i class="ri-check-line"></i> Approved
+                                                </span>
+                                            @elseif($selectedCustomer->pan_card_status==3)
+                                                <span class="badge rounded-pill bg-label-danger"><i class="ri-close-line"></i> Rejected</span>
+                                            @else
+                                                <span class="badge rounded-pill bg-label-warning">
+                                                    Pending
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="alert alert-danger">
+                                        Pan card not uploaded
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- Address Proff --}}
+                            <div style="border-bottom: 1px solid #8d58ff;" class="mb-3">
+                                @if($selectedCustomer->current_address_proof_status>0)
+                                    <div class="d-flex align-items-center mb-3">
+                                    <!-- Icon -->
+                                    <!-- Icon -->
+                                    <div class="avatar me-3" style=" width:1.5rem; height: 1.5rem;">
+                                        <div class="avatar-initial rounded
+                                                bg-label-dark document_type">
+                                        <i class="ri-bank-line ri-15px"></i>
+                                        </div>
+                                    </div>
+                                    <!-- Document Name -->
+                                    <div>
+                                        <span class="fw-medium text-truncate text-dark">Current Address Proof</span>
+                                    </div>
+                                    </div>
+                                    <div class="d-flex">
+                                    <div class="col-6">
+                                        <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                        <div class="p-2">
+                                            <div class="cursor-pointer">
+                                            <img src="{{asset($selectedCustomer->current_address_proof_front)}}" alt=""
+                                                style="max-width: 150px;max-height: 130px; width: 100%;">
+                                            </div>
+                                            <div class="text-center fw-medium text-truncate">Front</div>
+                                        </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                        <div class="p-2">
+                                            <div class="cursor-pointer">
+                                            <img src="{{asset($selectedCustomer->current_address_proof_back)}}" alt=""
+                                                style="max-width: 150px;max-height: 130px; width: 100%;">
+                                            </div>
+                                            <div class="text-center fw-medium text-truncate">Back</div>
+                                        </div>
+                                        </div>
+                                    </div>
+                                    </div>
+                                    <div class="d-flex my-4">
+                                        <div class="col-6 text-center cursor-pointer">
+                                            <span class="badge rounded-pill bg-label-secondary" wire:click="OpenPreviewImage('{{asset($selectedCustomer->current_address_proof_front)}}','{{asset($selectedCustomer->current_address_proof_back)}}','Current Address Proof')"> Preview</span>
+                                        </div>
+                                        <div class="col-6 text-center cursor-pointer">
+                                            @if($selectedCustomer->current_address_proof_status==2)
+                                                <span class="badge rounded-pill bg-label-success">
+                                                    <i class="ri-check-line"></i> Approved
+                                                </span>
+                                            @elseif($selectedCustomer->current_address_proof_status==3)
+                                                <span class="badge rounded-pill bg-label-danger"><i class="ri-close-line"></i>
+                                                Rejected</span>
+                                            @else
+                                                <span class="badge rounded-pill bg-label-warning">
+                                                    Pending
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="alert alert-danger">
+                                        Current address proof not uploaded
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- Passbook --}}
+                            <div style="border-bottom: 1px solid #8d58ff;" class="mb-3">
+                                @if($selectedCustomer->passbook_status>0)
+                                    <div class="d-flex align-items-center mb-3">
+                                    <div class="avatar me-3" style=" width:1.5rem; height: 1.5rem;">
+                                            <div class="avatar-initial rounded
+                                                    bg-label-dark document_type">
+                                            <i class="ri-home-line ri-15px"></i>
+                                            </div>
+                                        </div>
+                                    <!-- Document Name -->
+                                    <div>
+                                        <span class="fw-medium text-truncate text-dark">Passbook/Cancelled Cheque</span>
+                                    </div>
+                                    </div>
+                                    <div class="d-flex">
+                                        <div class="col-12">
+                                            <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                            <div class="p-2">
+                                                <div class="cursor-pointer">
+                                                <img src="{{asset($selectedCustomer->passbook_front)}}" alt=""
+                                                    style="max-width: 150px;max-height: 130px; width: 100%;">
+                                                </div>
+                                            </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex my-4">
+                                        <div class="col-6 text-center cursor-pointer">
+                                            <span class="badge rounded-pill bg-label-secondary" wire:click="OpenPreviewImage('{{asset($selectedCustomer->passbook_front)}}','','Passbook')"> Preview</span>
+                                        </div>
+                                        <div class="col-6 text-center cursor-pointer">
+                                            @if($selectedCustomer->passbook_status==2)
+                                                <span class="badge rounded-pill bg-label-success">
+                                                <i class="ri-check-line"></i> Approved
+                                                </span>
+                                            @elseif($selectedCustomer->passbook_status==3)
+                                                <span class="badge rounded-pill bg-label-danger"><i class="ri-close-line"></i>
+                                                Rejected</span>
+                                            @else
+                                                <span class="badge rounded-pill bg-label-warning">
+                                                Pending
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="alert alert-danger">
+                                        Passbook/Cancelled cheque not uploaded
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- Rider Profile --}}
+                            <div style="border-bottom: 1px solid #8d58ff;" class="mb-3">
+                                @if($selectedCustomer->profile_image_status>0)
+                                    <div class="d-flex align-items-center mb-3">
+                                    <!-- Icon -->
+                                    <div class="avatar me-3" style=" width:1.5rem; height: 1.5rem;">
+                                        <div class="avatar-initial rounded
+                                                bg-label-dark document_type">
+                                        <i class="ri-user-line ri-16px text-dark"></i>
+                                        </div>
+                                    </div>
+                                    <!-- Document Name -->
+                                    <div>
+                                        <span class="fw-medium text-truncate text-dark">Rider Profle Image</span>
+                                    </div>
+                                    </div>
+                                    <div class="d-flex">
+                                        <div class="col-12">
+                                            <div class="card academy-content shadow-none border mx-2" style="width:150px">
+                                                <div class="p-2">
+                                                    <div class="cursor-pointer">
+                                                    <img src="{{asset($selectedCustomer->profile_image)}}" alt=""
+                                                        style="max-width: 150px;max-height: 130px; width: 100%;">
+                                                    </div>
+                                                    {{-- <div class="text-center fw-medium text-truncate">Front</div> --}}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex my-4">
+                                        <div class="col-6 text-center cursor-pointer">
+                                            <span class="badge rounded-pill bg-label-secondary" wire:click="OpenPreviewImage('{{asset($selectedCustomer->profile_image)}}','','Profile Image')"> Preview</span>
+                                        </div>
+                                        <div class="col-6 text-center cursor-pointer">
+                                            @if($selectedCustomer->profile_image_status==2)
+                                                <span class="badge rounded-pill bg-label-success">
+                                                <i class="ri-check-line"></i> Approved
+                                                </span>
+                                            @elseif($selectedCustomer->profile_image_status==3)
+                                                <span class="badge rounded-pill bg-label-danger"><i class="ri-close-line"></i>
+                                                Rejected</span>
+                                            @else
+                                                <span class="badge rounded-pill bg-label-warning">
+                                                Pending
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="alert alert-danger">
+                                        Profile Image not uploaded
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="text-center">
+                                @if($selectedCustomer->org_is_verified=="verified")
+                                <button type="button" class="btn btn-success text-white mb-0 custom-input-sm ms-2">
+                                    KYC VERIFIED
+                                </button>
+                                @endif
+                                @if($selectedCustomer->org_is_verified=="unverified")
+                                    <button type="button" class="btn btn-warning text-white mb-0 custom-input-sm ms-2">
+                                    KYC UNVERIFIED
+                                    </button>
+                                @endif
+                                @if($selectedCustomer->org_is_verified=="rejected")
+                                    <button type="button" class="btn btn-danger text-white mb-0 custom-input-sm ms-2">
+                                        KYC REJECTED
+                                    </button>
+                                @endif
+                            </div>
+                            @if(session()->has('modal_message'))
+                                <div class="alert alert-success" id="modalflashMessage">
+                                    {{ session('modal_message') }}
+                                </div>
+                            @endif
+                            @if(session()->has('error_kyc_message'))
+                                <div class="alert alert-danger">
+                                    {{ session('error_kyc_message') }}
+                                </div>
+                            @endif
+                            <div style="margin-bottom: 20px;" class="text-start text-uppercase">
+                                    <label for="startDate" class="form-label small mb-1">Update KYC Status</label>
+                                <select
+                                    class="form-select border border-2 p-2 custom-input-sm" wire:model="model" wire:change="VerifyKyc($event.target.value, {{$selectedCustomer->id}})">
+                                    <option value="" selected hidden>Select one</option>
+                                    <option value="verified" {{$selectedCustomer->org_is_verified=="verified"?"selected":""}}>KYC Verified</option>
+                                    <option value="unverified" {{$selectedCustomer->org_is_verified=="unverified"?"selected":""}}>KYC Unverified</option>
+                                    <option value="rejected" {{$selectedCustomer->org_is_verified=="rejected"?"selected":""}}>KYC Rejected</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="navs-justified-history" role="tabpanel">
+                            <ul class="timeline pb-0 mb-0">
+                                @if(count($selectedCustomer->doc_logs)>0)
+                                    @foreach ($selectedCustomer->doc_logs->sortByDesc('id') as $logs)
+                                    <li class="timeline-item timeline-item-transparent border-primary">
+                                        <span class="timeline-point timeline-point-primary"></span>
+                                        <div class="timeline-event">
+                                            <div class="timeline-header mb-1">
+                                            <h6 class="mb-0">{{ucwords($logs->document_type)}} | {{ucwords($logs->status)}}</h6>
+                                            <small class="text-muted">{{ date('d M y h:i A', strtotime($logs->created_at)) }}</small>
+                                            </div>
+                                            @if($logs->remarks)
+                                                <code>Remarks</code>
+                                                <p class="mt-1 mb-3"><small>{{$logs->remarks}}</small></p>
+                                            @endif
+                                        </div>
+                                        </li>
+                                    @endforeach
+                                @else
+                                    <div class="alert alert-danger">
+                                    Sorry! data not found!
+                                    </div>
+                                @endif
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    @endif
+     <!-- Overlay -->
+    @if($isModalOpen)
+        <div class="overlay" wire:click="closeModal"></div>
+    @endif
+     @if ($isPreviewimageModal)
+        <div class="modal fade show d-block" tabindex="-1" role="dialog" style="background: rgba(0, 0, 0, 0.5);z-index: 99999;">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ $document_type }}</h5>
+                        <button type="button" class="btn-close" wire:click="closePreviewImage"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <div class="card academy-content shadow-none border mx-2">
+                                <div class="p-2">
+                                    <div class="cursor-pointer">
+                                        <img src="{{$preview_front_image}}" alt="" width="100%">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card academy-content shadow-none border mx-2 my-2">
+                                <div class="p-2">
+                                    <div class="cursor-pointer">
+                                        <img src="{{$preview_back_image}}" alt="" width="100%">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 </div>
