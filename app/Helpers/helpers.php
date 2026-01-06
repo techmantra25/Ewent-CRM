@@ -9,6 +9,7 @@ use App\Models\Stock;
 use App\Models\AsignedVehicle;
 use App\Models\Permission;
 use App\Models\Organization;
+use App\Models\OrganizationDepositInvoice;
 use App\Models\RentalPrice;
 use App\Models\DesignationPermission;
 use Illuminate\Support\Facades\Auth;
@@ -585,25 +586,62 @@ if (!function_exists('makeOrganizationID')) {
 if (!function_exists('makeOrganizationInvoiceID')) {
     function makeOrganizationInvoiceID()
     {
+        $year = Carbon::now()->year;
+
         do {
-            // Get last organization
-            $lastOrganizationInvoice = OrganizationInvoice::latest('id')->first();
+            // Get last invoice of current year
+            $lastInvoice = OrganizationInvoice::whereYear('created_at', $year)
+                ->latest('id')
+                ->first();
 
-            if (!$lastOrganizationInvoice || !$lastOrganizationInvoice->invoice_number) {
-                $newId = 'ORG-INV-000001';
+            if (!$lastInvoice || !$lastInvoice->invoice_number) {
+                $newNumber = 1;
             } else {
-                // Extract numeric part from invoice_number (e.g., ORG0005 → 5)
-                $lastNumber = (int) str_replace('ORG-INV-', '', $lastOrganizationInvoice->invoice_number);
-
-                // Increment the number
+                // Extract last 6 digits
+                $lastNumber = (int) substr($lastInvoice->invoice_number, -6);
                 $newNumber = $lastNumber + 1;
-
-                // Format with leading zeros
-                $newId = 'ORG-INV-' . str_pad($newNumber, 5, '0', STR_PAD_LEFT);
             }
 
-            // Keep looping if ID already exists in DB
+            // Build invoice number
+            $newId = sprintf(
+                'ORG-INV-%s-%06d',
+                $year,
+                $newNumber
+            );
+
         } while (OrganizationInvoice::where('invoice_number', $newId)->exists());
+
+        return $newId;
+    }
+}
+if (!function_exists('makeOrganizationDepositInvoiceID')) {
+    function makeOrganizationDepositInvoiceID()
+    {
+        $year = Carbon::now()->year;
+
+        do {
+            // Get last Deposit invoice for current year
+            $lastInvoice = OrganizationDepositInvoice::where('type', 'Deposit')
+                ->whereYear('created_at', $year)
+                ->latest('id')
+                ->first();
+
+            if (!$lastInvoice || !$lastInvoice->invoice_number) {
+                $newNumber = 1;
+            } else {
+                // Extract last 6 digits
+                $lastNumber = (int) substr($lastInvoice->invoice_number, -6);
+                $newNumber = $lastNumber + 1;
+            }
+
+            // Build invoice number
+            $newId = sprintf(
+                'ORG-DEP-INV-%s-%06d',
+                $year,
+                $newNumber
+            );
+
+        } while (OrganizationDepositInvoice::where('invoice_number', $newId)->exists());
 
         return $newId;
     }

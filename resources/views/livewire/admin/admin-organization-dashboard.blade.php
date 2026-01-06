@@ -151,6 +151,16 @@
                                 </a>
                             </li>
 
+                           <!-- Deposit History -->
+                            <li class="nav-item">
+                                <a class="nav-link waves-effect waves-light {{ $activeTab=='deposit_history' ? 'active' : '' }}" 
+                                href="javascript:void(0)" 
+                                wire:click="changeTab('deposit_history')">
+                                    <i class="icon-base ri ri-arrow-down-circle-line icon-sm me-1_5"></i>
+                                    Deposit History
+                                </a>
+                            </li>
+
                             <!-- Payment History -->
                             <li class="nav-item">
                                 <a class="nav-link waves-effect waves-light {{ $activeTab=='payment' ? 'active' : '' }}" 
@@ -735,6 +745,206 @@
                         </div>
                     @endif
 
+                    {{-- Deposit History Tab --}}
+                    @if($activeTab=="deposit_history")
+                        <div class="row">
+                            <div class="col-12">
+                                {{-- Add / Edit Deposit Invoice --}}
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h5 class="mb-3">
+                                            {{ $isEdit ? 'Edit Deposit Invoice' : 'Add Deposit Invoice' }}
+                                        </h5>
+
+                                       <form wire:submit.prevent="{{ $isEdit ? 'update' : 'store' }}">
+                                            <div class="row g-3">
+
+                                                {{-- Invoice Number --}}
+                                                <div class="col-md-4">
+                                                    <div class="form-floating form-floating-outline">
+                                                        <input type="text"
+                                                            class="form-control border border-2 p-2"
+                                                            wire:model.defer="invoice_number"
+                                                            placeholder="Invoice Number"
+                                                            disabled>
+                                                        <label>Invoice Number</label>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Vehicles --}}
+                                                <div class="col-md-2">
+                                                    <div class="form-floating form-floating-outline">
+                                                        <input type="number"
+                                                            class="form-control border border-2 p-2 @error('number_of_vehicle') is-invalid @enderror"
+                                                            wire:model.defer="number_of_vehicle"
+                                                            wire:keyup="CalculateAmount"
+                                                            placeholder="Vehicles">
+                                                        <label>Vehicles <span class="text-danger">*</span></label>
+                                                    </div>
+                                                    @error('number_of_vehicle')
+                                                        <p class="text-danger inputerror">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+
+                                                {{-- Price Per Vehicle --}}
+                                                <div class="col-md-3">
+                                                    <div class="form-floating form-floating-outline">
+                                                        <input type="number"
+                                                            step="0.01"
+                                                            class="form-control border border-2 p-2 @error('vehicle_price_per_piece') is-invalid @enderror"
+                                                            wire:model.defer="vehicle_price_per_piece"
+                                                            wire:keyup="CalculateAmount"
+                                                            placeholder="Price / Vehicle">
+                                                        <label>Price / Vehicle <span class="text-danger">*</span></label>
+                                                    </div>
+                                                    @error('vehicle_price_per_piece')
+                                                        <p class="text-danger inputerror">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+
+                                                {{-- Total Amount --}}
+                                                <div class="col-md-2">
+                                                    <div class="form-floating form-floating-outline">
+                                                        <input type="number"
+                                                            class="form-control border border-2 p-2"
+                                                            wire:model.defer="total_amount"
+                                                            placeholder="Total Amount"
+                                                            readonly>
+                                                        <label>Total Amount</label>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Submit Button --}}
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button type="submit" class="btn btn-success w-100">
+                                                        {{ $isEdit ? 'Update' : 'Add' }}
+                                                    </button>
+                                                </div>
+
+                                            </div>
+                                        </form>
+
+                                    </div>
+                                </div>
+
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+                                      <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
+                                          <div style="max-width: 350px;" class="text-start text-uppercase">
+                                              <input type="text" wire:model="search" class="form-control border border-2 p-2 custom-input-sm"
+                                                  placeholder="search here.." wire:keyup="FilterRider($event.target.value)">
+                                          </div>
+                                          <!-- Reset Button -->
+                                          <a href="javascript:void(0)" class="btn btn-danger text-white custom-input-sm" wire:click="resetPageField">
+                                              <i class="ri-restart-line"></i>
+                                          </a>
+                                      </div>
+                                        <div class="table-responsive">
+                                          <table class="table align-middle">
+                                              <thead class="table-dark">
+                                                  <tr class="invoice-head-item">
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Invoice No</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Type</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Status</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Vehicles</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Amount</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Invoice Date</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Payment Date</th>
+                                                      <th class="text-center text-uppercase" style="font-size:11px;">Actions</th>
+                                                  </tr>
+                                              </thead>
+                                              <tbody>
+                                                    @forelse($deposit_invoices as $index => $deposit_invoice)
+                                                        <tr>
+                                                            {{-- Invoice Number --}}
+                                                            <td class="fw-semibold">
+                                                                {{ $deposit_invoice->invoice_number }}
+                                                            </td>
+
+                                                            {{-- Type --}}
+                                                            <td>
+                                                                <span class="badge bg-info">
+                                                                    {{ $deposit_invoice->type ?? 'Deposit' }}
+                                                                </span>
+                                                            </td>
+
+                                                            {{-- Status --}}
+                                                            <td>
+                                                                @php
+                                                                    $statusClass = match($deposit_invoice->status) {
+                                                                        'paid' => 'bg-success',
+                                                                        'overdue' => 'bg-danger',
+                                                                        default => 'bg-warning'
+                                                                    };
+                                                                @endphp
+
+                                                                <span class="badge {{ $statusClass }}">
+                                                                    {{ ucfirst($deposit_invoice->status) }}
+                                                                </span>
+                                                            </td>
+
+                                                            {{-- Vehicles --}}
+                                                            <td class="fw-bold">
+                                                                {{$deposit_invoice->number_of_vehicle}}
+                                                            </td>
+                                                            {{-- Amount --}}
+                                                            <td class="fw-bold">
+                                                                {{ENV('APP_CURRENCY')}}{{ number_format($deposit_invoice->total_amount, 2) }}
+                                                            </td>
+
+                                                            {{-- Invoice Date --}}
+                                                            <td>
+                                                                {{ $deposit_invoice->created_at->format('d M Y') }}
+                                                            </td>
+
+                                                            {{-- Payment Date --}}
+                                                            <td>
+                                                                {{ $deposit_invoice->payment_date
+                                                                    ? \Carbon\Carbon::parse($deposit_invoice->payment_date)->format('d M Y')
+                                                                    : '-' }}
+                                                            </td>
+
+                                                            {{-- Actions --}}
+                                                            <td>
+                                                                <div class="d-flex gap-1">
+                                                                    {{-- Edit --}}
+                                                                    @if($deposit_invoice->status=="pending")
+                                                                        <button type="button"
+                                                                                class="btn btn-sm btn-icon edit-record btn-text-secondary rounded-pill waves-effect btn-sm"
+                                                                                wire:click="edit({{ $deposit_invoice->id }})"
+                                                                                title="Edit">
+                                                                            <i class="ri-edit-box-line ri-20px text-info"></i>
+                                                                        </button>
+
+                                                                    {{-- Delete --}}
+                                                                        <button type="button"
+                                                                                class="btn btn-sm btn-icon edit-record btn-text-danger rounded-pill waves-effect btn-sm"
+                                                                                wire:click="DepositInvoiceDelete({{ $deposit_invoice->id }})"
+                                                                                title="Delete">
+                                                                            <i class="ri-delete-bin-6-line text-danger"></i>
+                                                                        </button>
+                                                                    @endif
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        @empty
+                                                        <tr>
+                                                            <td colspan="8" class="text-center text-muted">
+                                                                No invoices found
+                                                            </td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                          </table>
+                                          <div class="mt-2">
+                                              {{ $deposit_invoices->links() }}
+                                          </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     {{-- Payment History Tab --}}
                     @if($activeTab=="payment")
                         <div class="row">

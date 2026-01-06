@@ -12,6 +12,9 @@ use App\Models\User;
 use App\Models\OrgInvoiceMerchantNumber;
 use Livewire\WithPagination;
 use App\Models\OrganizationProduct;
+use App\Models\OrganizationDepositInvoice;
+use App\Models\OrgDepositInvoiceMerchantNumber;
+use App\Models\OrganizationDepositPayment;
 
 use Illuminate\Support\Facades\Auth;
 
@@ -28,6 +31,7 @@ class OrgDashboard extends Component
     public $InvoicePaidAmount = 0;
     public $activeTab = 'overview';
     public $paymentMessage = [];
+    public $depositPaymentMessage = [];
     public $OrganizationModels;
     public $isModalOpen = false;
     public $selectedCustomer;
@@ -42,7 +46,7 @@ class OrgDashboard extends Component
     public function mount(){
 
         $type = request()->get('type');
-        if ($type && in_array($type, ['invoice', 'models', 'payment', 'riders'])) {
+        if ($type && in_array($type, ['invoice', 'models', 'deposit_history', 'payment', 'riders'])) {
             $this->activeTab = $type;
         }
         $this->organization = Auth::guard('organization')->user();
@@ -88,7 +92,7 @@ class OrgDashboard extends Component
         if($invoice->status=="paid"){
             $this->paymentMessage = [
                 'status'       => false,
-                'response'     => 'This invice has already beed paid. No further payment is required',
+                'response'     => 'This invoice has already beed paid. No further payment is required',
                 'redirect_url' => null,
             ];
         }
@@ -104,8 +108,8 @@ class OrgDashboard extends Component
             "customerEmailID"=> optional($invoice->organization)->email ?? "testmail123@gmail.com",
             "transactionType"=> "SALE",
             "txnDate"=> date('YmdHis'),
-            // "returnURL"=> 'http://127.0.0.1:8000/api/organization/thankyou',
-            "returnURL"=> secure_url('api/organization/thankyou'),
+            "returnURL"=> 'http://127.0.0.1:8000/api/organization/thankyou',
+            // "returnURL"=> secure_url('api/organization/thankyou'),
             "customerMobileNo"=> "91".optional($invoice->organization)->mobile ?? "9876543210",
             "customerName"=> optional($invoice->organization)->name ?? "N/A",
         ];
@@ -210,6 +214,140 @@ class OrgDashboard extends Component
             }
         } else {
             $this->paymentMessage = [
+                'status'       => false,
+                'response'     => 'Payment initiation failed: ' . ($responseData['responseMessage'] ?? 'Please contact administration'),
+                'redirect_url' => null,
+            ];
+        }
+    }
+    public function DepositInvoiceInitiatePayment($invoice_id)
+    {
+        $invoice = OrganizationDepositInvoice::find($invoice_id);
+        if($invoice->status=="paid"){
+            $this->depositPaymentMessage[$invoice_id] = [
+                'status'       => false,
+                'response'     => 'This invoice has already beed paid. No further payment is required',
+                'redirect_url' => null,
+            ];
+        }
+        
+        $formattedAmount = number_format((float)$invoice->total_amount, 2, '.', '');
+
+        $data = [
+            "merchantId"=> env('ICICI_MARCHANT_ID'),
+            "merchantTxnNo"=> $invoice->invoice_number.'-'.rand(1000, 9999),
+            "amount"=> $formattedAmount,
+            "currencyCode"=> "356",
+            "payType"=> "0",
+            "customerEmailID"=> optional($invoice->organization)->email ?? "testmail123@gmail.com",
+            "transactionType"=> "SALE",
+            "txnDate"=> date('YmdHis'),
+            "returnURL"=> 'http://127.0.0.1:8000/api/organization/deposit/thankyou',
+            // "returnURL"=> secure_url('api/organization/deposit/thankyou'),
+            "customerMobileNo"=> "91".optional($invoice->organization)->mobile ?? "9876543210",
+            "customerName"=> optional($invoice->organization)->name ?? "N/A",
+        ];
+
+        $hashKey = implode('', [
+            $data["amount"],
+            $data["currencyCode"],
+            $data["customerEmailID"],
+            $data["customerMobileNo"],
+            $data["customerName"],
+            $data["merchantId"],
+            $data["merchantTxnNo"],
+            $data["payType"],
+            $data["returnURL"],
+            $data["transactionType"],
+            $data["txnDate"]
+        ]);
+
+        $data['secureHash'] = hash_hmac('sha256', $hashKey, env('ICICI_MARCHANT_SECRET_KEY'));
+
+        $ch = curl_init(env('ICICI_PAYMENT_INITIATE_BASH_URL'));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+        // For UAT self-signed certificate
+        if (app()->environment('local', 'uat')) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        }
+
+        $response = curl_exec($ch);
+
+        if (curl_errno($ch)) {
+            $this->depositPaymentMessage[$invoice_id] = [
+                'status'       => false,
+                'response'     => 'Payment request failed: ' . curl_error($ch),
+                'redirect_url' => null,
+            ];
+            curl_close($ch);
+            return;
+        }
+
+
+        curl_close($ch);
+        $responseData = json_decode($response, true);
+        if (isset($responseData['responseCode']) && $responseData['responseCode'] === 'R1000') {
+            // Save merchant number
+            OrgDepositInvoiceMerchantNumber::updateOrCreate(
+                ['deposit_invoice_id' => $invoice->id],
+                [
+                    'organization_id' => $this->organization->id,
+                    'merchantTxnNo'    => $responseData['merchantTxnNo'] ?? null,
+                    'redirect_url'    => $responseData['redirectURI'] ?? null,
+                    'secureHash'      => $responseData['secureHash'] ?? null,
+                    'tranCtx'         => $responseData['tranCtx'] ?? null,
+                    'amount'          => $formattedAmount,
+                ]
+            );
+
+            // Update or create Payment record
+            $payment = OrganizationDepositPayment::where('deposit_invoice_id', $invoice->id)
+                ->where('payment_status', 'initiated')
+                ->first();
+
+            if ($payment) {
+                $payment->update([
+                    'icici_merchantTxnNo' => $responseData['merchantTxnNo'],
+                    'payment_status' => 'initiated',
+                    'amount' => $formattedAmount,
+                ]);
+            } else {
+                OrganizationDepositPayment::create([
+                    'organization_id' => $this->organization->id,
+                    'deposit_invoice_id' => $invoice->id,
+                    'invoice_type' => $invoice->type,
+                    'icici_merchantTxnNo' => $responseData['merchantTxnNo'],
+                    'amount' => $formattedAmount,
+                ]);
+            }
+
+            $redirectURI = isset($responseData['redirectURI'], $responseData['tranCtx'])
+                ? $responseData['redirectURI'] . '?tranCtx=' . $responseData['tranCtx']
+                : null;
+
+            if ($redirectURI) {
+                $this->dispatch('payment_redirect_url', [
+                    'redirect_url' => $redirectURI
+                ]);
+                $this->depositPaymentMessage[$invoice_id] = [
+                    'status'       => true,
+                    'response'     => "Payment initiated successfully. You will be redirected to the payment page in 3 seconds...",
+                    'redirect_url' => $redirectURI,
+                ];
+            } else {
+                $this->depositPaymentMessage[$invoice_id] = [
+                    'status'       => false,
+                    'response'     => "Failed to initiate payment. Please try again.",
+                    'redirect_url' => null,
+                ];
+            }
+        } else {
+            $this->depositPaymentMessage[$invoice_id] = [
                 'status'       => false,
                 'response'     => 'Payment initiation failed: ' . ($responseData['responseMessage'] ?? 'Please contact administration'),
                 'redirect_url' => null,
@@ -348,6 +486,21 @@ class OrgDashboard extends Component
         ->orderByDesc('id')
         ->paginate(10, ['*'], 'invoices');
 
+        $deposit_invoices = OrganizationDepositInvoice::where('organization_id', $this->organization->id)
+        ->when($this->search, function ($query) {
+            $searchTerm = '%' . $this->search . '%';
+
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('invoice_number', 'like', $searchTerm)
+                ->orWhere('type', 'like', $searchTerm)
+                ->orWhere('status', 'like', $searchTerm)
+                ->orWhere('total_amount', 'like', $searchTerm)
+                ->orWhere('payment_date', 'like', $searchTerm);
+            });
+        })
+        ->orderByDesc('id')
+        ->paginate(10, ['*'], 'deposit_invoices');
+
 
         $this->allRidersCount = $riders->total();
 
@@ -388,6 +541,7 @@ class OrgDashboard extends Component
         return view('livewire.organization.org-dashboard', [
             'riders' => $riders,
             'invoices' => $invoices,
+            'deposit_invoices' => $deposit_invoices,
             'payments' => $payments,
         ]);
     }

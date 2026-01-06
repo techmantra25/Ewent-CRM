@@ -37,6 +37,12 @@
             <div>Riders</div>
         </a>
     </li>
+    <li class="menu-item {{ request('type') === 'deposit_history' ? 'open' : '' }}">
+        <a href="{{ route('organization.dashboard', ['type' => 'deposit_history']) }}" class="menu-link">
+            <i class="menu-icon tf-icons ri-arrow-down-circle-line"></i>
+            <div>Deposit History</div>
+        </a>
+    </li>
     <li class="menu-item {{ request('type') === 'invoice' ? 'open' : '' }}">
         <a href="{{ route('organization.dashboard', ['type' => 'invoice']) }}" class="menu-link">
             <i class="menu-icon tf-icons ri-file-list-3-line"></i>

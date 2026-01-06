@@ -130,6 +130,13 @@
 
                            <!-- Invoice History -->
                             <li class="nav-item">
+                                <a class="nav-link waves-effect waves-light {{ $activeTab=='deposit_history' ? 'active' : '' }}"
+                                href="javascript:void(0)" wire:click="changeTab('deposit_history')">
+                                     <i class="icon-base ri ri-arrow-down-circle-line icon-sm me-1_5"></i> Deposit History
+                                </a>
+                            </li>
+                           <!-- Invoice History -->
+                            <li class="nav-item">
                                 <a class="nav-link waves-effect waves-light {{ $activeTab=='invoice' ? 'active' : '' }}"
                                 href="javascript:void(0)" wire:click="changeTab('invoice')">
                                     <i class="icon-base ri ri-file-list-3-line icon-sm me-1_5"></i> Invoice History
@@ -874,6 +881,143 @@
                     </div>
                 @endif
 
+                {{-- Payment History Tab --}}
+                @if($activeTab=="deposit_history")
+                    <div class="row">
+                    <div class="col-12">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
+                                    <div style="max-width: 350px;" class="text-start text-uppercase">
+                                        <input type="text" wire:model="search" class="form-control border border-2 p-2 custom-input-sm"
+                                            placeholder="search here.." wire:keyup="FilterRider($event.target.value)">
+                                    </div>
+                                    <!-- Reset Button -->
+                                    <a href="javascript:void(0)" class="btn btn-danger text-white custom-input-sm" wire:click="resetPageField">
+                                        <i class="ri-restart-line"></i>
+                                    </a>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table align-middle">
+                                       <thead class="table-dark">
+                                            <tr class="invoice-head-item">
+                                                <th>#</th>
+                                                <th>Invoice No</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                                <th>Vehicles</th>
+                                                <th>Amount</th>
+                                                <th>Invoice Date</th>
+                                                <th>Payment Date</th>
+                                                <th width="20%">Actions</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            @forelse($deposit_invoices as $index => $deposit_invoice)
+                                            <tr>
+                                                {{-- Serial --}}
+                                                <td>{{ $deposit_invoices->firstItem() + $index }}</td>
+
+                                                {{-- Invoice No --}}
+                                                <td class="fw-semibold">
+                                                    {{ $deposit_invoice->invoice_number }}
+                                                </td>
+
+                                                {{-- Type --}}
+                                                <td>
+                                                    <span class="badge bg-info">
+                                                        {{ $deposit_invoice->type ?? 'Deposit' }}
+                                                    </span>
+                                                </td>
+
+                                                {{-- Status --}}
+                                                <td>
+                                                    @php
+                                                        $statusClass = match($deposit_invoice->status) {
+                                                            'paid' => 'bg-success',
+                                                            'overdue' => 'bg-danger',
+                                                            default => 'bg-warning'
+                                                        };
+                                                    @endphp
+                                                    <span class="badge {{ $statusClass }}">
+                                                        {{ ucfirst($deposit_invoice->status) }}
+                                                    </span>
+                                                </td>
+
+                                                {{-- Vehicles --}}
+                                                <td class="fw-bold">
+                                                    {{$deposit_invoice->number_of_vehicle}}
+                                                </td>
+                                                {{-- Amount --}}
+                                                <td class="fw-bold">
+                                                    {{ number_format($deposit_invoice->total_amount, 2) }}
+                                                </td>
+
+                                                {{-- Invoice Date --}}
+                                                <td>
+                                                    {{ $deposit_invoice->created_at->format('d M Y') }}
+                                                </td>
+
+                                                {{-- Payment Date --}}
+                                                <td>
+                                                    {{ $deposit_invoice->payment_date
+                                                        ? \Carbon\Carbon::parse($deposit_invoice->payment_date)->format('d M Y')
+                                                        : '-' }}
+                                                </td>
+
+                                                {{-- Actions --}}
+                                                <td>
+                                                    <div class="d-flex gap-1">
+
+                                                        {{-- PAY NOW (Only Pending) --}}
+                                                        @if($deposit_invoice->status === 'pending')
+                                                           @if(isset($depositPaymentMessage[$deposit_invoice->id]))
+                                                                <div class="mt-2 alert 
+                                                                    {{ $depositPaymentMessage[$deposit_invoice->id]['status'] ? 'alert-success' : 'alert-danger' }}">
+                                                                    {{ $depositPaymentMessage[$deposit_invoice->id]['response'] }}
+                                                                </div>
+                                                            @else
+                                                                <span class="badge bg-danger d-inline-flex align-items-center gap-1"
+                                                                    wire:click="DepositInvoiceInitiatePayment({{ $deposit_invoice->id }})"
+                                                                    title="Pay Now"
+                                                                    style="cursor: pointer;">
+                                                                    Pay Now
+                                                                    <i class="ri-arrow-right-line"></i>
+                                                                </span>
+                                                            @endif
+
+
+                                                        @else
+                                                            <span class="badge bg-success">
+                                                                <i class="ri-check-line"></i>
+                                                                Paid
+                                                            </span>
+                                                        @endif
+
+
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            @empty
+                                            <tr>
+                                                <td colspan="10" class="text-center text-muted">
+                                                    No invoices found
+                                                </td>
+                                            </tr>
+                                            @endforelse
+                                            </tbody>
+
+                                    </table>
+                                    <div class="mt-2">
+                                        {{ $deposit_invoices->links() }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                @endif
                 {{-- Payment History Tab --}}
                 @if($activeTab=="invoice")
                     <div class="row">

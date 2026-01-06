@@ -42,6 +42,9 @@ use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use App\Models\OrganizationDepositInvoice;
+use App\Models\OrgDepositInvoiceMerchantNumber;
+use App\Models\OrganizationDepositPayment;
 class AuthController extends Controller
 {
     /**
@@ -3745,6 +3748,112 @@ class AuthController extends Controller
             Log::error('OrganizationPaymentThankyou error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             $message = 'An error occurred while processing your payment. Please contact support.';
             return view('icici.organization_thanks', compact('message'));
+        }
+    }
+    public function OrganizationDepositPaymentThankyou(Request $request)
+    {
+        try {
+            $response = $request->all();
+
+            if (empty($response)) {
+                $message = "Invalid or empty payment response received.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            // Log all responses (for traceability)
+            PaymentLog::create([
+                'gateway'          => 'ICICI',
+                'transaction_id'   => $response['txnID'] ?? null,
+                'merchant_txn_no'  => $response['merchantTxnNo'] ?? null,
+                'response_payload' => json_encode($response),
+                'status'           => $response['responseCode'] ?? null,
+                'message'          => $response['respDescription'] ?? 'No description received',
+            ]);
+
+            $merchantTxnNo = $response['merchantTxnNo'] ?? null;
+
+            if (!$merchantTxnNo) {
+                $message = "Missing merchant transaction number.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            // Securely fetch payment and invoice records
+            $payment = OrganizationDepositPayment::where('icici_merchantTxnNo', $merchantTxnNo)->first();
+            $orderMerchantNumber = OrgDepositInvoiceMerchantNumber::where('merchantTxnNo', $merchantTxnNo)->first();
+
+            if (!$payment) {
+                $message = "No payment record found for this transaction.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            // Prevent double-processing
+            if ($payment->payment_status === "success") {
+                $message = "This transaction has already been processed.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            if (!$orderMerchantNumber) {
+                $message = "No matching order found for this transaction.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            // Verify payment success
+           if (
+                isset($response['respDescription'], $response['responseCode']) &&
+                strtolower($response['respDescription']) === 'transaction successful' &&
+                $response['responseCode'] === '0000'
+            ) {
+                DB::beginTransaction();
+                // ✅ Update payment record
+                $payment->update([
+                    'payment_method'  => $response['paymentMode'] ?? 'ICICI',
+                    'icici_txnID'     => $response['txnID'] ?? null,
+                    'transaction_id'  => $response['txnID'] ?? null,
+                    'payment_status'  => 'success',
+                ]);
+
+                // ✅ Update invoice (mark as paid)
+                $organizationInvoice = OrganizationDepositInvoice::find($payment->deposit_invoice_id);
+                if ($organizationInvoice) {
+                    $organizationInvoice->update([
+                        'status'       => 'paid',
+                        'payment_date' => now()->toDateTimeString(),
+                    ]);
+                }
+
+                // ✅ Log success
+                PaymentLog::create([
+                    'gateway'          => 'ICICI',
+                    'transaction_id'   => $response['txnID'] ?? null,
+                    'merchant_txn_no'  => $response['merchantTxnNo'] ?? null,
+                    'response_payload' => json_encode($response),
+                    'status'           => $response['responseCode'] ?? null,
+                    'message'          => ($response['respDescription'] ?? '') . ' (completed)',
+                ]);
+
+                Log::info('Organization payment successful', [
+                    'merchantTxnNo'   => $merchantTxnNo,
+                    'txnID'           => $response['txnID'] ?? null,
+                    'paymentMode'     => $response['paymentMode'] ?? null,
+                    'paymentDateTime' => $response['paymentDateTime'] ?? null,
+                ]);
+
+                DB::commit();
+
+                $success_message = 'Payment processed successfully.';
+                $message = '';
+                return view('icici.organization_deposit_thanks', compact('response', 'success_message', 'message'));
+            } else {
+                // Payment failed or pending
+                $message = $response['respDescription'] ?? 'Payment failed or not completed.';
+                $success_message = '';
+                return view('icici.organization_deposit_thanks', compact('response', 'success_message', 'message'));
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('OrganizationPaymentThankyou error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            $message = 'An error occurred while processing your payment. Please contact support.';
+            return view('icici.organization_deposit_thanks', compact('message'));
         }
     }
 
