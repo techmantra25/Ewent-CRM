@@ -19,7 +19,7 @@ class User extends Authenticatable
    * @var array<int, string>
    */
   protected $fillable = [
-    'customer_id', 'user_type', 'organization_id', 'name', 'country_code', 'mobile', 'email', 'email_verified_at', 'password', 'address', 'city', 'pincode', 'vehicle_assign_status', 'driving_licence_front', 'driving_licence_back', 'driving_licence_status', 'aadhar_card_front', 'aadhar_card_back', 'aadhar_number', 'aadhar_card_status', 'pan_card_front', 'pan_card_back', 'pan_card_status', 'current_address_proof_front', 'current_address_proof_back', 'current_address_proof_status', 'passbook_front', 'passbook_status', 'status', 'profile_image', 'profile_image_status', 'suspended_by', 'kyc_uploaded_at', 'kyc_verified_by', 'is_verified', 'kyc_verified_at', 'date_of_rejection', 'rejected_by', 'remember_token', 'fcm_token', 'device_type'
+    'customer_id', 'user_type', 'organization_id', 'name', 'country_code', 'mobile', 'email', 'email_verified_at', 'password', 'address', 'city', 'pincode', 'vehicle_assign_status', 'driving_licence_front', 'driving_licence_back', 'driving_licence_status', 'aadhar_card_front', 'aadhar_card_back', 'aadhar_number', 'aadhar_card_status', 'pan_card_front', 'pan_card_back', 'pan_card_status', 'current_address_proof_front', 'current_address_proof_back', 'current_address_proof_status', 'passbook_front', 'passbook_status', 'status', 'profile_image', 'profile_image_status', 'suspended_by', 'kyc_uploaded_at', 'kyc_verified_by', 'is_verified', 'kyc_verified_at', 'date_of_rejection', 'rejected_by', 'org_kyc_verified_at', 'org_kyc_verified_by', 'org_is_verified', 'org_date_of_rejection', 'org_rejected_by', 'remember_token', 'fcm_token', 'device_type'
   ];
 
   /**
@@ -56,7 +56,7 @@ class User extends Authenticatable
   }
   public function await_order(){
     return $this->hasOne(Order::class)
-    ->whereIn('rent_status', ['active','ready to assign','suspended','returned'])
+    ->whereIn('rent_status', ['active','ready to assign','suspended'])
     ->orderBy('id', 'DESC');
   }
   public function pending_order(){

@@ -137,12 +137,27 @@
                                 <i class="icon-base ri ri-group-line icon-sm me-1_5"></i>Overview
                             </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link waves-effect waves-light {{$activeTab=="models"?"active":""}}" href="javascript:void(0)" wire:click="changeTab('models')">
+                                <i class="ri-motorbike-fill icon-sm me-1_5"></i>Models
+                                </a>
+                            </li>
                             <!-- Riders -->
                             <li class="nav-item">
                                 <a class="nav-link waves-effect waves-light {{ $activeTab=='riders' ? 'active' : '' }}" 
                                 href="javascript:void(0)" 
                                 wire:click="changeTab('riders')">
                                     <i class="icon-base ri ri-user-line icon-sm me-1_5"></i> Riders
+                                </a>
+                            </li>
+
+                           <!-- Deposit History -->
+                            <li class="nav-item">
+                                <a class="nav-link waves-effect waves-light {{ $activeTab=='deposit_history' ? 'active' : '' }}" 
+                                href="javascript:void(0)" 
+                                wire:click="changeTab('deposit_history')">
+                                    <i class="icon-base ri ri-arrow-down-circle-line icon-sm me-1_5"></i>
+                                    Deposit History
                                 </a>
                             </li>
 
@@ -176,13 +191,24 @@
                                 </div>
                                 {{-- <p class="mt-auto mb-0 text-muted small">Subscription details for this organization.</p> --}}
 
-                                <!-- Subscription Visibility -->
+                                <!-- Rider Visibility -->
                                 <div
                                   class="d-flex justify-content-between align-items-center mb-2 p-2 rounded border bg-light">
-                                  <span class="fw-semibold">In App Price Visibility</span>
+                                  <span class="fw-semibold">In App Rider Visibility</span>
+                                  <span class="badge {{ $organization->rider_visibility_percentage > 0 ? 'bg-success' : 'bg-primary' }} px-3 py-2">
+                                          {{ $organization->rider_visibility_percentage > 0 
+                                              ? '+' . $organization->rider_visibility_percentage . '%' 
+                                              : 'Actual Price' }}
+                                      </span>
+
+                                </div>
+                                <!-- Subscription Discount -->
+                                <div
+                                  class="d-flex justify-content-between align-items-center mb-2 p-2 rounded border bg-light">
+                                  <span class="fw-semibold">Subscription Discount</span>
                                   <span
-                                    class="badge {{ $organization->discount_is_positive ? 'bg-success' : 'bg-danger' }} px-3 py-2">
-                                    {{ $organization->discount_is_positive ? '+' : '-' }}{{ $organization->discount_percentage ?? 0 }}%
+                                    class="badge bg-danger px-3 py-2">
+                                    -{{ $organization->discount_percentage ?? 0 }}%
                                   </span>
                                 </div>
 
@@ -487,6 +513,139 @@
                           </div>
                         </div>
                     @endif
+                    {{-- Models Tab --}}
+                    @if($activeTab=="models")
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+
+                                        <div class="d-flex align-items-center justify-content-end flex-wrap gap-2">
+                                            <div>
+                                              @if(session()->has('model_success'))
+                                                  <div class="alert alert-success mb-0 p-2">
+                                                      {{ session('model_success') }}
+                                                  </div>
+                                              @endif
+
+                                              @if(session()->has('model_error'))
+                                                  <div class="alert alert-danger mb-0 p-2">
+                                                      {{ session('model_error') }}
+                                                  </div>
+                                              @endif
+                                            </div>
+                                            <div style="max-width: 350px;" class="text-start text-uppercase">
+                                                <select class="form-control border border-2 p-2" onchange=confirmAssignModel(this.value)>
+                                                    <option value="" hidden>-- Assign Model --</option>
+                                                    @foreach ($models as $model_item)
+                                                        <option value="{{ $model_item->id }}">{{ $model_item->title }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="table-responsive p-0 mt-2">
+                                            <table class="table table-bordered align-middle mb-0">
+                                                <thead class="table-dark">
+                                                    <tr>
+                                                        <th class="text-start text-uppercase" style="font-size:11px;">Model</th>
+                                                        <th class="text-center text-uppercase" style="font-size:11px;">Subscription Type</th>
+                                                        <th class="text-end text-uppercase" style="font-size:11px;">Actual Price</th>
+                                                        <th class="text-center text-uppercase" style="font-size:11px;">Rider Visibility</th>
+                                                        <th class="text-end text-uppercase" style="font-size:11px;">Subscription Price</th>
+                                                        <th class="text-center text-uppercase" style="font-size:11px;">Action</th>
+                                                    </tr>
+                                                </thead>
+
+                                                <tbody>
+                                                    @forelse($OrganizationModels as $org_model)
+
+                                                        @php
+                                                            $prices  = $org_model->product?->rentalpriceB2B ?? collect();
+                                                            $rowspan = $prices->count() ?: 1;
+                                                        @endphp
+
+                                                        @forelse($prices as $index => $sub_item)
+
+                                                            @php
+                                                                $actualPrice = $sub_item->rental_amount;
+
+                                                                $riderVisibilityAmount = ($actualPrice * ($organization->rider_visibility_percentage ?? 0)) / 100;
+                                                                $discountAmount        = ($actualPrice * ($organization->discount_percentage ?? 0)) / 100;
+                                                            @endphp
+
+                                                            <tr wire:key="{{ $org_model->id }}-{{ $sub_item->id }}">
+                                                                {{-- Model --}}
+                                                                @if($index === 0)
+                                                                    <td rowspan="{{ $rowspan }}" class="fw-semibold align-middle">
+                                                                        {{ $org_model->product?->title ?? 'N/A' }}
+                                                                    </td>
+                                                                @endif
+
+                                                                {{-- Subscription Type --}}
+                                                                <td class="text-center">
+                                                                    <span class="bg-label-primary px-2 py-1 rounded">
+                                                                        {{ ucfirst($sub_item->subscription_type) }}
+                                                                    </span>
+                                                                </td>
+
+                                                                {{-- Actual Price --}}
+                                                                <td class="text-end">
+                                                                    {{ env('APP_CURRENCY') }} {{ number_format($actualPrice, 2) }}
+                                                                </td>
+
+                                                                {{-- Rider Visibility --}}
+                                                                <td class="text-center">
+                                                                    {{ env('APP_CURRENCY') }} {{ number_format(round($actualPrice + $riderVisibilityAmount), 2) }}
+                                                                </td>
+
+                                                                {{-- Subscription Price (Calculated) --}}
+                                                                <td class="text-end fw-semibold">
+                                                                    {{ env('APP_CURRENCY') }} {{ number_format(round($actualPrice - $discountAmount), 2) }}
+                                                                </td>
+
+                                                                {{-- Action --}}
+                                                                @if($index === 0)
+                                                                    <td rowspan="{{ $rowspan }}" class="text-center align-middle">
+                                                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteModelItem({{$org_model->id}})">
+                                                                            <i class="ri-delete-bin-line"></i>
+                                                                        </button>
+                                                                    </td>
+                                                                @endif
+                                                            </tr>
+
+                                                        @empty
+                                                            <tr wire:key="{{ $org_model->id }}">
+                                                                <td class="fw-semibold">
+                                                                    {{ $org_model->product?->title ?? 'N/A' }}
+                                                                </td>
+                                                                <td colspan="4" class="text-center text-muted">
+                                                                    No subscription prices found
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteModelItem({{$org_model->id}})">
+                                                                            <i class="ri-delete-bin-line"></i>
+                                                                        </button>
+                                                                </td>
+                                                            </tr>
+                                                        @endforelse
+
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="6" class="text-center text-muted py-4">
+                                                                No models assigned
+                                                            </td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     {{-- Riders Tab --}}
                     @if($activeTab=="riders")
                         <div class="row">
@@ -586,6 +745,206 @@
                         </div>
                     @endif
 
+                    {{-- Deposit History Tab --}}
+                    @if($activeTab=="deposit_history")
+                        <div class="row">
+                            <div class="col-12">
+                                {{-- Add / Edit Deposit Invoice --}}
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h5 class="mb-3">
+                                            {{ $isEdit ? 'Edit Deposit Invoice' : 'Add Deposit Invoice' }}
+                                        </h5>
+
+                                       <form wire:submit.prevent="{{ $isEdit ? 'update' : 'store' }}">
+                                            <div class="row g-3">
+
+                                                {{-- Invoice Number --}}
+                                                <div class="col-md-4">
+                                                    <div class="form-floating form-floating-outline">
+                                                        <input type="text"
+                                                            class="form-control border border-2 p-2"
+                                                            wire:model.defer="invoice_number"
+                                                            placeholder="Invoice Number"
+                                                            disabled>
+                                                        <label>Invoice Number</label>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Vehicles --}}
+                                                <div class="col-md-2">
+                                                    <div class="form-floating form-floating-outline">
+                                                        <input type="number"
+                                                            class="form-control border border-2 p-2 @error('number_of_vehicle') is-invalid @enderror"
+                                                            wire:model.defer="number_of_vehicle"
+                                                            wire:keyup="CalculateAmount"
+                                                            placeholder="Vehicles">
+                                                        <label>Vehicles <span class="text-danger">*</span></label>
+                                                    </div>
+                                                    @error('number_of_vehicle')
+                                                        <p class="text-danger inputerror">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+
+                                                {{-- Price Per Vehicle --}}
+                                                <div class="col-md-3">
+                                                    <div class="form-floating form-floating-outline">
+                                                        <input type="number"
+                                                            step="0.01"
+                                                            class="form-control border border-2 p-2 @error('vehicle_price_per_piece') is-invalid @enderror"
+                                                            wire:model.defer="vehicle_price_per_piece"
+                                                            wire:keyup="CalculateAmount"
+                                                            placeholder="Price / Vehicle">
+                                                        <label>Price / Vehicle <span class="text-danger">*</span></label>
+                                                    </div>
+                                                    @error('vehicle_price_per_piece')
+                                                        <p class="text-danger inputerror">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+
+                                                {{-- Total Amount --}}
+                                                <div class="col-md-2">
+                                                    <div class="form-floating form-floating-outline">
+                                                        <input type="number"
+                                                            class="form-control border border-2 p-2"
+                                                            wire:model.defer="total_amount"
+                                                            placeholder="Total Amount"
+                                                            readonly>
+                                                        <label>Total Amount</label>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Submit Button --}}
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button type="submit" class="btn btn-success w-100">
+                                                        {{ $isEdit ? 'Update' : 'Add' }}
+                                                    </button>
+                                                </div>
+
+                                            </div>
+                                        </form>
+
+                                    </div>
+                                </div>
+
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+                                      <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
+                                          <div style="max-width: 350px;" class="text-start text-uppercase">
+                                              <input type="text" wire:model="search" class="form-control border border-2 p-2 custom-input-sm"
+                                                  placeholder="search here.." wire:keyup="FilterRider($event.target.value)">
+                                          </div>
+                                          <!-- Reset Button -->
+                                          <a href="javascript:void(0)" class="btn btn-danger text-white custom-input-sm" wire:click="resetPageField">
+                                              <i class="ri-restart-line"></i>
+                                          </a>
+                                      </div>
+                                        <div class="table-responsive">
+                                          <table class="table align-middle">
+                                              <thead class="table-dark">
+                                                  <tr class="invoice-head-item">
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Invoice No</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Type</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Status</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Vehicles</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Amount</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Invoice Date</th>
+                                                      <th class="text-start text-uppercase" style="font-size:11px;">Payment Date</th>
+                                                      <th class="text-center text-uppercase" style="font-size:11px;">Actions</th>
+                                                  </tr>
+                                              </thead>
+                                              <tbody>
+                                                    @forelse($deposit_invoices as $index => $deposit_invoice)
+                                                        <tr>
+                                                            {{-- Invoice Number --}}
+                                                            <td class="fw-semibold">
+                                                                {{ $deposit_invoice->invoice_number }}
+                                                            </td>
+
+                                                            {{-- Type --}}
+                                                            <td>
+                                                                <span class="badge bg-info">
+                                                                    {{ $deposit_invoice->type ?? 'Deposit' }}
+                                                                </span>
+                                                            </td>
+
+                                                            {{-- Status --}}
+                                                            <td>
+                                                                @php
+                                                                    $statusClass = match($deposit_invoice->status) {
+                                                                        'paid' => 'bg-success',
+                                                                        'overdue' => 'bg-danger',
+                                                                        default => 'bg-warning'
+                                                                    };
+                                                                @endphp
+
+                                                                <span class="badge {{ $statusClass }}">
+                                                                    {{ ucfirst($deposit_invoice->status) }}
+                                                                </span>
+                                                            </td>
+
+                                                            {{-- Vehicles --}}
+                                                            <td class="fw-bold">
+                                                                {{$deposit_invoice->number_of_vehicle}}
+                                                            </td>
+                                                            {{-- Amount --}}
+                                                            <td class="fw-bold">
+                                                                {{ENV('APP_CURRENCY')}}{{ number_format($deposit_invoice->total_amount, 2) }}
+                                                            </td>
+
+                                                            {{-- Invoice Date --}}
+                                                            <td>
+                                                                {{ $deposit_invoice->created_at->format('d M Y') }}
+                                                            </td>
+
+                                                            {{-- Payment Date --}}
+                                                            <td>
+                                                                {{ $deposit_invoice->payment_date
+                                                                    ? \Carbon\Carbon::parse($deposit_invoice->payment_date)->format('d M Y')
+                                                                    : '-' }}
+                                                            </td>
+
+                                                            {{-- Actions --}}
+                                                            <td>
+                                                                <div class="d-flex gap-1">
+                                                                    {{-- Edit --}}
+                                                                    @if($deposit_invoice->status=="pending")
+                                                                        <button type="button"
+                                                                                class="btn btn-sm btn-icon edit-record btn-text-secondary rounded-pill waves-effect btn-sm"
+                                                                                wire:click="edit({{ $deposit_invoice->id }})"
+                                                                                title="Edit">
+                                                                            <i class="ri-edit-box-line ri-20px text-info"></i>
+                                                                        </button>
+
+                                                                    {{-- Delete --}}
+                                                                        <button type="button"
+                                                                                class="btn btn-sm btn-icon edit-record btn-text-danger rounded-pill waves-effect btn-sm"
+                                                                                wire:click="DepositInvoiceDelete({{ $deposit_invoice->id }})"
+                                                                                title="Delete">
+                                                                            <i class="ri-delete-bin-6-line text-danger"></i>
+                                                                        </button>
+                                                                    @endif
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        @empty
+                                                        <tr>
+                                                            <td colspan="8" class="text-center text-muted">
+                                                                No invoices found
+                                                            </td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                          </table>
+                                          <div class="mt-2">
+                                              {{ $deposit_invoices->links() }}
+                                          </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     {{-- Payment History Tab --}}
                     @if($activeTab=="payment")
                         <div class="row">
@@ -758,5 +1117,40 @@
     </div>
 </div>
 </div>
+@section('page-script')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    function confirmAssignModel(itemId) {
+        Swal.fire({
+            title: "Assign Model?",
+            text: "Are you sure you want to assign this model to the organization?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, assign it!"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('assignModel', itemId); // Livewire method
+            }
+        });
+    }
+    function deleteModelItem(itemId) {
+        Swal.fire({
+            title: "Delete Model?",
+            text: "Are you sure you want to delete this model?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it!"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('deleteModel', itemId); // Livewire method
+            }
+        });
+    }
+  </script>
+@endsection
 
 

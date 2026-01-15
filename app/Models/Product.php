@@ -58,7 +58,11 @@ class Product extends Model
     }
     public function rentalprice()
     {
-        return $this->hasMany(RentalPrice::class)->orderBy('duration', 'ASC')->where('status',1);
+        return $this->hasMany(RentalPrice::class)->orderBy('duration', 'ASC')->where('customer_type', 'B2C')->where('status',1);
+    }
+    public function rentalpriceB2B()
+    {
+        return $this->hasMany(RentalPrice::class)->orderBy('duration', 'ASC')->where('customer_type', 'B2B')->where('status',1);
     }
     public function stock_item(){
         return $this->hasMany(Stock::class, 'product_id', 'id');
@@ -70,6 +74,18 @@ class Product extends Model
     {
         return $this->hasMany(ProductImage::class);
     }
+
+    // App\Models\Product.php
+    public function organizations()
+    {
+        return $this->belongsToMany(
+            Organization::class,
+            'organization_products',
+            'product_id',
+            'organization_id'
+        );
+    }
+
     
     // public function types()
     // {

@@ -212,6 +212,53 @@
                                             <input type="text" class="form-control form-control-sm" wire:model.defer="mobile" placeholder="Enter mobile here">
                                             @error('mobile') <small class="text-danger">{{ $message }}</small> @enderror
                                         </div>
+                                       {{-- GST Number --}}
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">GST Number</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.defer="gst_number"
+                                                placeholder="Enter GST number here">
+                                            @error('gst_number') <small class="text-danger">{{ $message }}</small> @enderror
+                                        </div>
+
+                                        {{-- GST File Upload --}}
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Upload GST Document</label>
+                                            <input type="file" class="form-control form-control-sm" wire:model="gst_file">
+                                            @error('gst_file') <small class="text-danger">{{ $message }}</small> @enderror
+
+                                            {{-- Preview (show if uploaded or existing) --}}
+                                            @if ($gst_file_preview ?? false)
+                                                <a href="{{ asset($gst_file_preview) }}" target="_blank"
+                                                class="btn btn-sm btn-outline-primary mt-2">
+                                                    View GST Document
+                                                </a>
+                                            @endif
+                                        </div>
+
+                                        {{-- PAN Number --}}
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">PAN Number</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.defer="pan_number"
+                                                placeholder="Enter PAN number here">
+                                            @error('pan_number') <small class="text-danger">{{ $message }}</small> @enderror
+                                        </div>
+
+                                        {{-- PAN File Upload --}}
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Upload PAN Document</label>
+                                            <input type="file" class="form-control form-control-sm" wire:model="pan_file">
+                                            @error('pan_file') <small class="text-danger">{{ $message }}</small> @enderror
+
+                                            {{-- Preview (show if uploaded or existing) --}}
+                                            @if ($pan_file_preview ?? false)
+                                                <a href="{{ asset($pan_file_preview) }}" target="_blank"
+                                                class="btn btn-sm btn-outline-primary mt-2">
+                                                    View PAN Document
+                                                </a>
+                                            @endif
+                                        </div>
+
+
 
                                          <div class="col-md-12 mb-3">
                                             <label class="form-label">Street Address</label>
@@ -263,16 +310,23 @@
                                         @enderror
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Subscription Visibility (%)</label>
+                                        <label class="form-label">Rider Visibility (%)</label>
                                         <div class="input-group">
                                             <span class="input-group-text p-0">
-                                                <button type="button" class="btn btn-{{$discount_is_positive?"success":"inactive"}} btn-sm border-0" wire:click="toggleDiscountSign('Plus')" style="border-radius: 5px 0px 0px 5px;">
+                                                <button type="button" class="btn btn-success btn-sm border-0" style="border-radius: 5px 0px 0px 5px;">
                                                  Plus
                                                 </button>
                                             </span>
+                                            <input type="number" class="form-control form-control-sm text-center" wire:model="rider_visibility_percentage" min="0" max="100" step="0.01" style="min-height:31px !important;padding: 0 12px !important;" placeholder="Enter visibility %">
+                                        </div>
+                                        @error('rider_visibility_percentage') <small class="text-danger">{{ $message }}</small> @enderror
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Organization Discount (%)</label>
+                                        <div class="input-group">
                                             <input type="number" class="form-control form-control-sm text-center" wire:model="discount_percentage" min="0" max="100" step="0.01" style="min-height:31px !important;padding: 0 12px !important;" placeholder="Enter discount %">
                                             <span class="input-group-text p-0">
-                                                <button type="button" class="btn btn-{{$discount_is_positive?"inactive":"danger"}} btn-sm border-0" wire:click="toggleDiscountSign('Minus')" style="border-radius: 0px 5px 5px 0px;">
+                                                <button type="button" class="btn btn-danger btn-sm border-0" style="border-radius: 0px 5px 5px 0px;">
                                                     Minus
                                                 </button>
                                             </span>

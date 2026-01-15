@@ -9,6 +9,7 @@ use App\Models\Stock;
 use App\Models\AsignedVehicle;
 use App\Models\Permission;
 use App\Models\Organization;
+use App\Models\OrganizationDepositInvoice;
 use App\Models\RentalPrice;
 use App\Models\DesignationPermission;
 use Illuminate\Support\Facades\Auth;
@@ -585,25 +586,62 @@ if (!function_exists('makeOrganizationID')) {
 if (!function_exists('makeOrganizationInvoiceID')) {
     function makeOrganizationInvoiceID()
     {
+        $year = Carbon::now()->year;
+
         do {
-            // Get last organization
-            $lastOrganizationInvoice = OrganizationInvoice::latest('id')->first();
+            // Get last invoice of current year
+            $lastInvoice = OrganizationInvoice::whereYear('created_at', $year)
+                ->latest('id')
+                ->first();
 
-            if (!$lastOrganizationInvoice || !$lastOrganizationInvoice->invoice_number) {
-                $newId = 'ORG-INV-000001';
+            if (!$lastInvoice || !$lastInvoice->invoice_number) {
+                $newNumber = 1;
             } else {
-                // Extract numeric part from invoice_number (e.g., ORG0005 → 5)
-                $lastNumber = (int) str_replace('ORG-INV-', '', $lastOrganizationInvoice->invoice_number);
-
-                // Increment the number
+                // Extract last 6 digits
+                $lastNumber = (int) substr($lastInvoice->invoice_number, -6);
                 $newNumber = $lastNumber + 1;
-
-                // Format with leading zeros
-                $newId = 'ORG-INV-' . str_pad($newNumber, 5, '0', STR_PAD_LEFT);
             }
 
-            // Keep looping if ID already exists in DB
+            // Build invoice number
+            $newId = sprintf(
+                'ORG-INV-%s-%06d',
+                $year,
+                $newNumber
+            );
+
         } while (OrganizationInvoice::where('invoice_number', $newId)->exists());
+
+        return $newId;
+    }
+}
+if (!function_exists('makeOrganizationDepositInvoiceID')) {
+    function makeOrganizationDepositInvoiceID()
+    {
+        $year = Carbon::now()->year;
+
+        do {
+            // Get last Deposit invoice for current year
+            $lastInvoice = OrganizationDepositInvoice::where('type', 'Deposit')
+                ->whereYear('created_at', $year)
+                ->latest('id')
+                ->first();
+
+            if (!$lastInvoice || !$lastInvoice->invoice_number) {
+                $newNumber = 1;
+            } else {
+                // Extract last 6 digits
+                $lastNumber = (int) substr($lastInvoice->invoice_number, -6);
+                $newNumber = $lastNumber + 1;
+            }
+
+            // Build invoice number
+            $newId = sprintf(
+                'ORG-DEP-INV-%s-%06d',
+                $year,
+                $newNumber
+            );
+
+        } while (OrganizationDepositInvoice::where('invoice_number', $newId)->exists());
 
         return $newId;
     }
@@ -612,27 +650,16 @@ if (!function_exists('getB2BproductPrice')) {
     function getB2BproductPrice($org_id, $subscription_id)
     {
         $org = Organization::find($org_id);
-        $rental = RentalPrice::find($subscription_id); // assuming rentalprice table/model
-
+        $rental = RentalPrice::find($subscription_id);
         if (!$org || !$rental) {
-            return null; // return null if org or rental not found
+            return null;
         }
 
-        $discount = $org->discount_percentage ?? 0;
+        $rider_visibility_percentage = $org->rider_visibility_percentage ?? 0;
 
-        // Check if discount should be added or subtracted
-        if (!isset($org->discount_is_positive)) {
-            $org->discount_is_positive = false; // default to subtract if not set
-        }
+        $finalPrice = $rental->rental_amount + ($rental->rental_amount * $rider_visibility_percentage / 100);
 
-        if ($org->discount_is_positive) {
-            // Add discount to base rental
-            $finalPrice = $rental->rental_amount + ($rental->rental_amount * $discount / 100);
-        } else {
-            // Subtract discount from base rental
-            $finalPrice = $rental->rental_amount - ($rental->rental_amount * $discount / 100);
-        }
-        return round($finalPrice, 2); // rounded to 2 decimals
+        return (int) round($finalPrice);
     }
 }
 if (!function_exists('createInvoiceForOrganization')) {
@@ -700,13 +727,18 @@ if (!function_exists('createInvoiceForOrganization')) {
                             if($checkexistingData) continue;
                             // Safely get subscription
                             $subscription = $CurrentOrder->subscription;
-
                             // Skip if subscription missing
                             if (!$subscription || $subscription->duration <= 0) continue;
 
                             // Safely calculate per-date amount
-                            $per_date_amount = $subscription->rental_amount / $subscription->duration;
+                            $discountPercentage = $user->organization_details->discount_percentage ?? 0;
 
+                            $discountAmount = ($subscription->rental_amount * $discountPercentage) / 100;
+                            $finalAmount    = $subscription->rental_amount - $discountAmount;
+                            $subscription_rental_amount = $subscription->rental_amount / $subscription->duration;
+
+                            $per_date_amount = $finalAmount / $subscription->duration;
+                           
                             $org_discount = OrganizationDiscount::where('organization_id', $org->id)
                             ->whereDate('start_date', '<=', $date)
                             ->where(function ($q) use ($date) {
@@ -718,12 +750,9 @@ if (!function_exists('createInvoiceForOrganization')) {
                             // Optional: round to 2 decimals
                             $per_date_amount = $org_discount
                             ? FetchActualDiscountedAmount(
-                                $org_discount->discount_percentage,
-                                $org_discount->discount_is_positive,
-                                $per_date_amount
+                                $org_discount->discount_percentage,$subscription_rental_amount
                             )
                             : round($per_date_amount, 2);
-
                             $invoice_item_detail = new  OrganizationInvoiceItemDetail;
                             $invoice_item_detail->invoice_item_id = $invoice_item->id;
                             $invoice_item_detail->order_id = $CurrentOrder->id;
@@ -779,18 +808,10 @@ if (!function_exists('createInvoiceForOrganization')) {
     }
 }
 if (!function_exists('FetchActualDiscountedAmount')) {
-    function FetchActualDiscountedAmount($discountPercentage, $isPositive, $amount)
+    function FetchActualDiscountedAmount($discountPercentage, $amount)
     {
         $discountValue = ($amount * $discountPercentage) / 100;
-
-        if ($isPositive) {
-            // Increase amount by discount
-            $amount += $discountValue;
-        } else {
-            // Decrease amount by discount
-            $amount -= $discountValue;
-        }
-
+        $amount -= $discountValue;
         return round($amount, 2);
     }
 }

@@ -18,13 +18,16 @@ class AdminOrganizationIndex extends Component
     protected $paginationTheme = 'bootstrap';
     public $search = "";
     public $activeTab = 'list';
-    public $organization_id, $name, $email, $mobile, $password, $image,$discount_percentage;
-    public $discount_is_positive = false;
+    public $organization_id, $name, $email, $mobile, $password, $image,$discount_percentage, $rider_visibility_percentage, $gst_number, $pan_number;
+    public $gst_file, $pan_file;
+
+    public $gst_file_preview, $pan_file_preview;
     public $street_address, $city, $state, $pincode,$edit_id = null;
     public $old_image;
     public $subscription_type = 'weekly';
     public $renewal_day;
     public $renewal_day_of_month;
+
 
      public function boot()
     {
@@ -64,7 +67,44 @@ class AdminOrganizationIndex extends Component
             'mobile' => 'required|string|max:10|unique:organizations,mobile,' . $this->edit_id,
             'subscription_type' => 'required|in:weekly,monthly',
             'discount_percentage' => 'nullable|numeric|min:0|max:99',
+            'rider_visibility_percentage' => 'nullable|numeric|min:0|max:99',
         ];
+
+        // 🔥 Fetch existing organization if updating
+        $org = $this->edit_id ? Organization::find($this->edit_id) : null;
+
+        /*
+        |--------------------------------------------------------------------------
+        | GST Validation
+        |--------------------------------------------------------------------------
+        | CREATE: Either GST number or GST file is required.
+        | UPDATE: Required only if BOTH are empty (no number + no saved file).
+        |--------------------------------------------------------------------------
+        */
+        $rules['gst_number'] = 'nullable';
+        $rules['gst_file']   = 'nullable|file|mimes:jpg,png,jpeg,pdf,webp|max:2048';
+
+        if (!$this->edit_id || (!$this->gst_number && !$org?->gst_file)) {
+            // If creating OR both values empty during update → require one
+            $rules['gst_number'] = 'required';
+            $rules['gst_file']   = 'required|file|mimes:jpg,png,jpeg,pdf,webp|max:2048';
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | PAN Validation
+        |--------------------------------------------------------------------------
+        | CREATE: Either PAN number or PAN file required.
+        | UPDATE: Required only if BOTH are empty.
+        |--------------------------------------------------------------------------
+        */
+        $rules['pan_number'] = 'nullable';
+        $rules['pan_file']   = 'nullable|file|mimes:jpg,png,jpeg,pdf|max:2048';
+
+        if (!$this->edit_id || (!$this->pan_number && !$org?->pan_file)) {
+            $rules['pan_number'] = 'required_without:pan_file';
+            $rules['pan_file']   = 'required_without:pan_number|file|mimes:jpg,png,jpeg,pdf|max:2048';
+        }
 
         // Conditional rules
         if ($this->subscription_type === 'weekly') {
@@ -106,16 +146,29 @@ class AdminOrganizationIndex extends Component
         $org->state = $this->state;
         $org->pincode = $this->pincode;
         $org->discount_percentage = $this->discount_percentage;
-        $org->discount_is_positive = $this->discount_is_positive;
+        $org->rider_visibility_percentage = $this->rider_visibility_percentage;
         $org->subscription_type = $this->subscription_type;
         $org->renewal_day = $this->subscription_type === 'weekly' ? $this->renewal_day : null;
         $org->renewal_day_of_month = $this->subscription_type === 'monthly' ? $this->renewal_day_of_month : null;
 
         $imagePath = $this->old_image ?? 'assets/img/organization.png';
 
-        if ($this->image) {
-            $imagePath = storeFileWithCustomName($this->image, 'uploads/Organization');
+        if ($this->gst_file) {
+            $gstPath = storeFileWithCustomName($this->gst_file, 'uploads/organization');
+            $org->gst_file = $gstPath;
         }
+        if ($this->pan_file) {
+            $panPath = storeFileWithCustomName($this->pan_file, 'uploads/organization');
+            $org->pan_file = $panPath;
+        }
+        if ($this->image) {
+            $imagePath = storeFileWithCustomName($this->image, 'uploads/organization');
+        }
+
+        $org->gst_number = $this->gst_number;
+        $org->pan_number = $this->pan_number;
+       
+     
 
         $org->image = $imagePath;
 
@@ -132,8 +185,7 @@ class AdminOrganizationIndex extends Component
                 ->first();
 
             $isChanged = !$lastDiscount ||
-                        $lastDiscount->discount_percentage != $org->discount_percentage ||
-                        $lastDiscount->discount_is_positive != $org->discount_is_positive;
+                        $lastDiscount->discount_percentage != $org->discount_percentage;
 
             if ($isChanged) {
                 if ($lastDiscount) {
@@ -155,7 +207,6 @@ class AdminOrganizationIndex extends Component
                 OrganizationDiscount::create([
                     'organization_id'      => $org->id,
                     'discount_percentage'  => $org->discount_percentage,
-                    'discount_is_positive' => $org->discount_is_positive,
                     'start_date'           => Carbon::today()->toDateString(),
                     'end_date'             => null,
                 ]);
@@ -179,7 +230,6 @@ class AdminOrganizationIndex extends Component
             OrganizationDiscount::create([
                 'organization_id'      => $org->id,
                 'discount_percentage'  => $org->discount_percentage,
-                'discount_is_positive' => $org->discount_is_positive,
                 'start_date'           => now()->toDateString(),
                 'end_date'             => null, // will be closed later automatically by next create
             ]);
@@ -214,12 +264,19 @@ class AdminOrganizationIndex extends Component
         $this->state = $org->state;
         $this->pincode = $org->pincode;
         $this->discount_percentage = rtrim(rtrim(number_format($org->discount_percentage, 2, '.', ''), '0'), '.');
-        $this->discount_is_positive = $org->discount_is_positive;
+        $this->rider_visibility_percentage = rtrim(rtrim(number_format($org->rider_visibility_percentage, 2, '.', ''), '0'), '.');
         $this->subscription_type = $org->subscription_type;
         $this->renewal_day = $org->renewal_day;
         $this->renewal_day_of_month = $org->renewal_day_of_month;
         $this->old_image = $org->image ?? 'assets/img/organization.png';
         $this->image = null; // reset file input
+        $this->gst_number = $org->gst_number;
+        $this->pan_number = $org->pan_number;
+
+        $this->gst_file_preview = $org->gst_file;
+        $this->gst_file = null;
+        $this->pan_file_preview = $org->pan_file;
+        $this->pan_file = null;
 
         $this->activeTab = 'create'; // switch to form
     }
@@ -228,7 +285,7 @@ class AdminOrganizationIndex extends Component
 
     public function resetForm()
     {
-        $this->reset(['edit_id', 'organization_id', 'name', 'email', 'mobile', 'password', 'street_address', 'city', 'state', 'pincode', 'image','subscription_type','renewal_day','renewal_day_of_month','discount_is_positive','discount_percentage']);
+        $this->reset(['edit_id', 'organization_id', 'name', 'email', 'mobile', 'password', 'street_address', 'city', 'state', 'pincode', 'image','subscription_type','renewal_day','renewal_day_of_month','discount_percentage','rider_visibility_percentage']);
          $this->activeTab = 'list';
     }
 
@@ -240,17 +297,9 @@ class AdminOrganizationIndex extends Component
             $this->renewal_day = null; // reset
         }
     }
-
-    public function toggleDiscountSign($type)
-    {   
-        if ($type == 'Plus') {
-            $this->discount_is_positive = true; // Set discount to positive
-        } else {
-            $this->discount_is_positive = false; // Set discount to negative
-        }
-    }
     public function render()
     {
+      
         $organizations = Organization::when($this->search, function ($query) {
             $searchTerm = '%' . $this->search . '%';
             $query->where(function ($q) use ($searchTerm) {

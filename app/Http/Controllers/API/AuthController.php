@@ -28,6 +28,7 @@ use App\Models\OrganizationInvoiceItem;
 use App\Models\OrganizationInvoiceItemDetail;
 use App\Models\OrgInvoiceMerchantNumber;
 use App\Models\OrderMerchantNumber;
+use App\Models\OrganizationProducts;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -41,6 +42,9 @@ use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use App\Models\OrganizationDepositInvoice;
+use App\Models\OrgDepositInvoiceMerchantNumber;
+use App\Models\OrganizationDepositPayment;
 class AuthController extends Controller
 {
     /**
@@ -927,8 +931,19 @@ class AuthController extends Controller
                     ->orWhere('types', 'like', '%' . $search . '%');
             });
         })
+        ->when(
+            $user->user_type === 'B2B' && !empty($user->organization_id),
+            function ($query) use ($user) {
+                $query->whereHas('organizations', function ($q) use ($user) {
+                    $q->where('organizations.id', $user->organization_id);
+                });
+            }
+        )
         ->with([
             'rentalprice' => function ($query) {
+                $query->select('id', 'product_id', 'duration','subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
+            },
+            'rentalpriceB2B' => function ($query) {
                 $query->select('id', 'product_id', 'duration','subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
             },
             'category:id,title',      // Load specific columns for 'category'
@@ -942,19 +957,48 @@ class AuthController extends Controller
         ->get();
 
         // Process each product to set rental price details
-       foreach ($products as $product) {
-            $rental = $product->rentalprice->first();
+        foreach ($products as $product) {
 
-            if ($user->user_type == "B2B" && $user->organization_id && $rental) {
-                $product->rental_amount = getB2BproductPrice($user->organization_id, $rental->id);
-            } else {
-                $product->rental_amount = $rental ? $rental->rental_amount : 0;
+            $isB2B = $user->user_type === 'B2B' && !empty($user->organization_id);
+
+            // Pick correct rental collection
+            $rentalCollection = $isB2B
+                ? $product->rentalpriceB2B
+                : $product->rentalprice;
+
+            // Normalize rentalprice so API key is SAME
+            $product->setRelation('rentalprice', $rentalCollection);
+
+            // Default values
+            $product->rental_amount     = 0;
+            $product->subscription_type = 0;
+            $product->deposit_amount    = 0;
+            $product->rental_duration   = 0;
+
+            // First subscription (default display)
+            $rental = $rentalCollection->first();
+
+            if ($rental) {
+                $product->subscription_type = ucwords($rental->subscription_type);
+                $product->deposit_amount    = $rental->deposit_amount;
+                $product->rental_duration   = $rental->duration;
+
+                $product->rental_amount = $isB2B
+                    ? getB2BproductPrice($user->organization_id, $rental->id)
+                    : $rental->rental_amount;
             }
 
-            $product->subscription_type = $rental ? ucwords($rental->subscription_type) : 0;
-            $product->deposit_amount = $rental ? $rental->deposit_amount : 0;
-            $product->rental_duration = $rental ? $rental->duration : 0;
+            //  Update each rental price (important for list/table view)
+            foreach ($rentalCollection as $item) {
+                if ($isB2B) {
+                    $item->rental_amount = getB2BproductPrice($user->organization_id, $item->id);
+                }
+            }
+
+            // Optional: hide B2B relation from API
+            unset($product->rentalpriceB2B);
         }
+
         // Return the product list as a JSON response
         return response()->json([
             'status' => true,
@@ -1134,6 +1178,14 @@ class AuthController extends Controller
         // Retrieve the product by ID and ensure it's active (status = 1)
         $data = Product::where('id', $id)
             ->where('status', 1)
+            ->when(
+                $user->user_type === 'B2B' && !empty($user->organization_id),
+                function ($query) use ($user) {
+                    $query->whereHas('organizations', function ($q) use ($user) {
+                        $q->where('organizations.id', $user->organization_id);
+                    });
+                }
+            )
             ->with([
                 'rentalprice' => function ($query) {
                     $query->select('id', 'product_id', 'duration', 'subscription_type','deposit_amount', 'rental_amount');
@@ -1179,6 +1231,13 @@ class AuthController extends Controller
             'sub_category_id',
             'status'
         )
+        ->when($user->user_type === 'B2B' && !empty($user->organization_id),
+            function ($query) use ($user) {
+                $query->whereHas('organizations', function ($q) use ($user) {
+                    $q->where('organizations.id', $user->organization_id);
+                });
+            }
+        )
         ->where('id', '!=', $data->id) // Exclude the current product
         ->where('status', 1) // Ensure the product is active
         ->where(function ($query) use ($data) {
@@ -1189,31 +1248,31 @@ class AuthController extends Controller
         ->orderBy('title', 'ASC') // Then order by title
         ->limit(10) // Limit to 10 results
         ->get();
-
-       
-        foreach($data->rentalprice as $price_index=>$price_item){
-            if ($user->user_type == "B2B" && $user->organization_id) {
-                $price_item->rental_amount = getB2BproductPrice($user->organization_id, $price_item->id);
-            } else {
+        
+       if ($user->user_type == "B2B" && $user->organization_id) {
+            if(count($data->rentalpriceB2B)==0){
+                $data->rentalprice = [];
+            }else{
+                unset($data->rentalprice);
+                foreach($data->rentalpriceB2B as $price_index=>$price_item){
+                    $price_item->rental_amount = getB2BproductPrice($user->organization_id, $price_item->id);
+                }
+                $data->rentalprice = $data->rentalpriceB2B;
+            }
+        }else{
+            foreach($data->rentalprice as $price_index=>$price_item){
                 $price_item->rental_amount = $price_item ? $price_item->rental_amount : 0;
             }
         }
+       
         // Prepare product details object
         $product_data = (object) [];
-        // $product_data->stock_qty = $data->stock_qty;
         $product_data->id = $data->id;
         $product_data->title = $data->title;
         $product_data->types = $data->types;
         $product_data->short_desc = $data->short_desc;
-        // $product_data->long_desc = $data->long_desc;
         $product_data->category = $data->category ? $data->category->title : null;
         $product_data->sub_category = $data->subCategory ? $data->subCategory->title : null;
-        // $product_data->is_selling = $data->is_selling;
-        // $product_data->base_price = $data->base_price;
-        // $product_data->display_price = $data->display_price;
-        // $product_data->is_rent = $data->is_rent;
-        // $product_data->rent_duration = $data->rent_duration;
-        // $product_data->per_rent_price = $data->per_rent_price;
         $product_data->status = $data->status;
         $product_data->all_features = $product_features;
         $product_data->all_images = $allImages; // Set combined images array
@@ -1272,6 +1331,10 @@ class AuthController extends Controller
 
     public function HomePage()
     {
+        $user = $this->getAuthenticatedUser();
+        if ($user instanceof \Illuminate\Http\JsonResponse) {
+            return $user; // Return the response if the user is not authenticated
+        }
         // Fetching the banners
         $banners = Banner::where('status', 1)->orderBy('id', 'desc')->get();
         $why_ewent = WhyEwent::where('status', 1)->orderBy('id', 'desc')->get();
@@ -1280,23 +1343,100 @@ class AuthController extends Controller
         $faqs = Faq::orderBy('id', 'ASC')->get();
 
         // Fetching the products with eager loading
-        $products = Product::select('id', 'title', 'position', 'types', 'short_desc', 'image', 'status', 'is_driving_licence_required')->where('status', 1)
-            ->with([
-                'rentalprice' => function ($query) {
-                    $query->select('id', 'product_id', 'duration', 'subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
-                }     // Load specific columns for 'features'
-            ])
-            ->orderBy('position', 'ASC')
-            ->orderBy('title', 'ASC') // Order products by title
-            ->limit(10)
-            ->get();
-            foreach ($products as $product) {
-                $rental = $product->rentalprice->first();
-                $product->subscription_type = $rental ? ucwords($rental->subscription_type) : 0;
-                $product->deposit_amount = $rental ? $rental->deposit_amount : 0;
-                $product->rental_duration = $rental ? $rental->duration : 0;
-                $product->rental_amount = $rental ? $rental->rental_amount : 0;
+        // $products = Product::select('id', 'title', 'position', 'types', 'short_desc', 'image', 'status', 'is_driving_licence_required')->where('status', 1)
+        //     ->with([
+        //         'rentalprice' => function ($query) {
+        //             $query->select('id', 'product_id', 'duration', 'subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
+        //         }     // Load specific columns for 'features'
+        //     ])
+        //     ->orderBy('position', 'ASC')
+        //     ->orderBy('title', 'ASC') // Order products by title
+        //     ->limit(10)
+        //     ->get();
+        //     foreach ($products as $product) {
+        //         $rental = $product->rentalprice->first();
+        //         $product->subscription_type = $rental ? ucwords($rental->subscription_type) : 0;
+        //         $product->deposit_amount = $rental ? $rental->deposit_amount : 0;
+        //         $product->rental_duration = $rental ? $rental->duration : 0;
+                
+        //         if ($user->user_type == "B2B" && $user->organization_id && $rental) {
+        //             $product->rental_amount = getB2BproductPrice($user->organization_id, $rental->id);
+        //         } else {
+        //             $product->rental_amount = $rental ? $rental->rental_amount : 0;
+        //         }
+
+        //         // $product->rental_amount = $rental ? $rental->rental_amount : 0;
+        //     }
+
+        // Retrieve products based on the search criteria
+        $products = Product::query()
+        ->select(
+            'id', 'title', 'position', 'types', 'short_desc', 'image', 'status', 'is_driving_licence_required'
+        )
+        ->when(
+            $user->user_type === 'B2B' && !empty($user->organization_id),
+            function ($query) use ($user) {
+                $query->whereHas('organizations', function ($q) use ($user) {
+                    $q->where('organizations.id', $user->organization_id);
+                });
             }
+        )
+        ->with([
+            'rentalprice' => function ($query) {
+                $query->select('id', 'product_id', 'duration','subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
+            },
+            'rentalpriceB2B' => function ($query) {
+                $query->select('id', 'product_id', 'duration','subscription_type', 'deposit_amount', 'rental_amount'); // Select only necessary columns
+            }      // Load specific columns for 'features'
+        ])
+        ->where('status', 1) // Filter active products
+        ->where('is_rent', 1) // Filter active products
+        ->orderBy('position', 'ASC') // First order by position
+        ->orderBy('title', 'ASC') // Then order by title
+        ->get();
+
+        // Process each product to set rental price details
+        foreach ($products as $product) {
+
+            $isB2B = $user->user_type === 'B2B' && !empty($user->organization_id);
+
+            // Pick correct rental collection
+            $rentalCollection = $isB2B
+                ? $product->rentalpriceB2B
+                : $product->rentalprice;
+
+            // Normalize rentalprice so API key is SAME
+            $product->setRelation('rentalprice', $rentalCollection);
+
+            // Default values
+            $product->rental_amount     = 0;
+            $product->subscription_type = 0;
+            $product->deposit_amount    = 0;
+            $product->rental_duration   = 0;
+
+            // First subscription (default display)
+            $rental = $rentalCollection->first();
+
+            if ($rental) {
+                $product->subscription_type = ucwords($rental->subscription_type);
+                $product->deposit_amount    = $rental->deposit_amount;
+                $product->rental_duration   = $rental->duration;
+
+                $product->rental_amount = $isB2B
+                    ? getB2BproductPrice($user->organization_id, $rental->id)
+                    : $rental->rental_amount;
+            }
+
+            //  Update each rental price (important for list/table view)
+            foreach ($rentalCollection as $item) {
+                if ($isB2B) {
+                    $item->rental_amount = getB2BproductPrice($user->organization_id, $item->id);
+                }
+            }
+
+            // Optional: hide B2B relation from API
+            unset($product->rentalpriceB2B);
+        }
         // Check if there are any banners, FAQs, or products
         if ($banners->isEmpty() && $faqs->isEmpty() && $products->isEmpty()) {
             // Return a response if no data is found
@@ -1601,14 +1741,30 @@ class AuthController extends Controller
             ], 404);
         }
 
-        $RentalPrice = RentalPrice::where('product_id', $request->product_id)->where('subscription_type', $request->subscription_type)->first();
+        $RentalPrice = RentalPrice::where('product_id', $request->product_id)
+            ->where('subscription_type', $request->subscription_type)
+            ->when(
+                $user->user_type === 'B2B' && !empty($user->organization_id),
+                //  B2B logic
+                function ($query) use ($user) {
+                    $query->where('customer_type', 'B2B')
+                        ->whereHas('product.organizations', function ($q) use ($user) {
+                            $q->where('organizations.id', $user->organization_id);
+                        });
+                },
+                //  B2C fallback
+                function ($query) {
+                    $query->where('customer_type', 'B2C');
+                }
+            )
+            ->where('status', 1)
+            ->first();
         if(!$RentalPrice){
             return response()->json([
                 'status' => false,
-                 'message' => "This vehicle is not available for the selected duration."
+                 'message' => "This vehicle is not available now please contact the administrator."
             ], 404);
         }
-
         if ($user->user_type == "B2B" && $user->organization_id && $RentalPrice) {
             $RentalPrice->rental_amount = getB2BproductPrice($user->organization_id, $RentalPrice->id);
         } else {
@@ -1616,7 +1772,6 @@ class AuthController extends Controller
         }
         // dd($RentalPrice);
         $total_amount = $RentalPrice->deposit_amount+$RentalPrice->rental_amount;
-
         if($request->total_amount!=$total_amount){
             return response()->json([
                 'status' => false,
@@ -3593,6 +3748,112 @@ class AuthController extends Controller
             Log::error('OrganizationPaymentThankyou error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             $message = 'An error occurred while processing your payment. Please contact support.';
             return view('icici.organization_thanks', compact('message'));
+        }
+    }
+    public function OrganizationDepositPaymentThankyou(Request $request)
+    {
+        try {
+            $response = $request->all();
+
+            if (empty($response)) {
+                $message = "Invalid or empty payment response received.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            // Log all responses (for traceability)
+            PaymentLog::create([
+                'gateway'          => 'ICICI',
+                'transaction_id'   => $response['txnID'] ?? null,
+                'merchant_txn_no'  => $response['merchantTxnNo'] ?? null,
+                'response_payload' => json_encode($response),
+                'status'           => $response['responseCode'] ?? null,
+                'message'          => $response['respDescription'] ?? 'No description received',
+            ]);
+
+            $merchantTxnNo = $response['merchantTxnNo'] ?? null;
+
+            if (!$merchantTxnNo) {
+                $message = "Missing merchant transaction number.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            // Securely fetch payment and invoice records
+            $payment = OrganizationDepositPayment::where('icici_merchantTxnNo', $merchantTxnNo)->first();
+            $orderMerchantNumber = OrgDepositInvoiceMerchantNumber::where('merchantTxnNo', $merchantTxnNo)->first();
+
+            if (!$payment) {
+                $message = "No payment record found for this transaction.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            // Prevent double-processing
+            if ($payment->payment_status === "success") {
+                $message = "This transaction has already been processed.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            if (!$orderMerchantNumber) {
+                $message = "No matching order found for this transaction.";
+                return view('icici.organization_deposit_thanks', compact('message'));
+            }
+
+            // Verify payment success
+           if (
+                isset($response['respDescription'], $response['responseCode']) &&
+                strtolower($response['respDescription']) === 'transaction successful' &&
+                $response['responseCode'] === '0000'
+            ) {
+                DB::beginTransaction();
+                // ✅ Update payment record
+                $payment->update([
+                    'payment_method'  => $response['paymentMode'] ?? 'ICICI',
+                    'icici_txnID'     => $response['txnID'] ?? null,
+                    'transaction_id'  => $response['txnID'] ?? null,
+                    'payment_status'  => 'success',
+                ]);
+
+                // ✅ Update invoice (mark as paid)
+                $organizationInvoice = OrganizationDepositInvoice::find($payment->deposit_invoice_id);
+                if ($organizationInvoice) {
+                    $organizationInvoice->update([
+                        'status'       => 'paid',
+                        'payment_date' => now()->toDateTimeString(),
+                    ]);
+                }
+
+                // ✅ Log success
+                PaymentLog::create([
+                    'gateway'          => 'ICICI',
+                    'transaction_id'   => $response['txnID'] ?? null,
+                    'merchant_txn_no'  => $response['merchantTxnNo'] ?? null,
+                    'response_payload' => json_encode($response),
+                    'status'           => $response['responseCode'] ?? null,
+                    'message'          => ($response['respDescription'] ?? '') . ' (completed)',
+                ]);
+
+                Log::info('Organization payment successful', [
+                    'merchantTxnNo'   => $merchantTxnNo,
+                    'txnID'           => $response['txnID'] ?? null,
+                    'paymentMode'     => $response['paymentMode'] ?? null,
+                    'paymentDateTime' => $response['paymentDateTime'] ?? null,
+                ]);
+
+                DB::commit();
+
+                $success_message = 'Payment processed successfully.';
+                $message = '';
+                return view('icici.organization_deposit_thanks', compact('response', 'success_message', 'message'));
+            } else {
+                // Payment failed or pending
+                $message = $response['respDescription'] ?? 'Payment failed or not completed.';
+                $success_message = '';
+                return view('icici.organization_deposit_thanks', compact('response', 'success_message', 'message'));
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('OrganizationPaymentThankyou error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            $message = 'An error occurred while processing your payment. Please contact support.';
+            return view('icici.organization_deposit_thanks', compact('message'));
         }
     }
 

@@ -6,16 +6,21 @@ use App\Models\AsignedVehicle;
 use App\Models\ExchangeVehicle;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Carbon\Carbon;
 
 class VehicleSummaryExport implements FromArray, WithHeadings
 {
     protected $vehicle_id;
     protected $model_id;
+    protected $start_date;
+    protected $end_date;
 
-    public function __construct($vehicle_id = null, $model_id = null)
+    public function __construct($vehicle_id = null, $model_id = null, $start_date = null, $end_date = null)
     {
         $this->vehicle_id = $vehicle_id;
         $this->model_id   = $model_id;
+        $this->start_date = $start_date;
+        $this->end_date   = $end_date;
     }
 
     public function array(): array
@@ -25,6 +30,10 @@ class VehicleSummaryExport implements FromArray, WithHeadings
         ->with(['stock.product', 'order', 'user.organization_details'])
         ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
         ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
+        ->whereBetween('start_date', [
+            Carbon::parse($this->start_date)->startOfDay(), // 00:00:00
+            Carbon::parse($this->end_date)->endOfDay(),     // 23:59:59
+        ])
         ->get();
 
         // --- 2. Fetch exchange vehicles ---
@@ -39,6 +48,10 @@ class VehicleSummaryExport implements FromArray, WithHeadings
                     ->whereRaw("TIMESTAMPDIFF(HOUR, start_date, end_date) > 24");
                 });
             })
+            ->whereBetween('start_date', [
+                Carbon::parse($this->start_date)->startOfDay(), // 00:00:00
+                Carbon::parse($this->end_date)->endOfDay(),     // 23:59:59
+            ])
             ->orderBy('id', 'DESC')
             ->get();
 
@@ -75,12 +88,22 @@ class VehicleSummaryExport implements FromArray, WithHeadings
                 // Safe handling: check if order exists and duration > 0
                 if ($item->order && $item->order->rent_duration > 0) {
                     $item_per_day_price = $item->order->rental_amount / $item->order->rent_duration;
-
+                   
                     $start = \Carbon\Carbon::parse($item->start_date);
-                    $today =  \Carbon\Carbon::now()->toDateTimeString();
-                    $end = ($item->status=="assigned")?\Carbon\Carbon::parse($today):\Carbon\Carbon::parse($item->end_date);
+                    $today =  \Carbon\Carbon::parse($this->end_date)->format('Y-m-d H:i:s');
                     
-                    $item_duration = round($start->diffInDays($end));
+                    $end = ($item->status=="assigned")?\Carbon\Carbon::parse($today):
+                     ($this->end_date < \Carbon\Carbon::parse($item->end_date) ? \Carbon\Carbon::parse($this->end_date)->endOfDay() : \Carbon\Carbon::parse($item->end_date));
+                   
+                    if ($start->isSameDay($end)) {
+                        $item_duration = 1;
+                    }else{
+                        if($start->diffInDays($end)<1){
+                            $item_duration = 1;
+                        }else{
+                            $item_duration = round($start->diffInDays($end));
+                        }
+                    }
                     // Final price
                     if($item_duration > $item->order->rent_duration){
                         $item_duration = $item->order->rent_duration;
@@ -106,6 +129,14 @@ class VehicleSummaryExport implements FromArray, WithHeadings
                     $unassignedValue ='';
                 }
 
+                $endDate = $item->end_date
+                    ? (
+                        Carbon::parse($this->end_date)->lessThan(Carbon::parse($item->end_date))
+                            ? Carbon::parse($this->end_date)
+                            : Carbon::parse($item->end_date)
+                    )
+                    : null;
+
                 $rows[] = [
                     // Vehicle No
                     $item->stock?->vehicle_number ?? 'N/A',
@@ -125,11 +156,11 @@ class VehicleSummaryExport implements FromArray, WithHeadings
                     $item->start_date ? \Carbon\Carbon::parse($item->start_date)->format('d M y h:i A') : '----',
 
                     // End Date
-                    $item->end_date
-                        ? \Carbon\Carbon::parse($item->end_date)->format('d M y h:i A') .
-                        ($item->status === "assigned" ? ' (Running)' : '')
+                   
+                    $endDate
+                        ? $endDate->format('d M y h:i A') . ($item->status === "assigned" ? ' (Running)' : '')
                         : '----',
-                
+
                     // Duration
                     $item_duration,
 
@@ -166,6 +197,10 @@ class VehicleSummaryExport implements FromArray, WithHeadings
         }
         return $rows;
     }
+    // protected function ($startDate, $endDate)
+    // {
+        
+    // }
 
     public function headings(): array
     {

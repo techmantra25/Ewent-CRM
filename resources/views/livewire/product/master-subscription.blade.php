@@ -21,10 +21,20 @@
                             @endif
                         </div>
                         <div class="row">
-                            <div class="col-lg-6 col-7">
+                            <div class="col-lg-6 col-6">
                                 {{-- <h6>All Subscription Plans</h6> --}}
                             </div>
-                            <div class="col-lg-6 col-5 my-auto text-end">
+                            <div class="col-lg-2 col-2 my-auto text-end">
+                                <div class="form-floating form-floating-outline mb-5 fv-plugins-icon-container mt-4">
+                                    <select wire:model="customerType" class="form-control border border-2 p-2" wire:change="filterType($event.target.value)">
+                                        <option value="" selected>Select type</option>
+                                        <option value="B2B">B2B</option>
+                                        <option value="B2C">B2C</option>
+                                    </select>
+                                    <label>Type </label>
+                                </div>
+                            </div>
+                            <div class="col-lg-4 col-4 my-auto text-end">
                                 <div class="form-floating form-floating-outline mb-5 fv-plugins-icon-container mt-4">
                                     <select wire:model="asset" class="form-control border border-2 p-2" wire:change="filter($event.target.value)">
                                         <option value="" selected>Select asset</option>
@@ -66,6 +76,7 @@
                                                             class="fw-medium text-truncate">{{ ucwords($sub_item->subscription_type) }}</span>
                                                     </a>
                                                     <small class="text-truncate">{{optional($sub_item->product)->title}}</small>
+                                                    <span class="badge rounded-pill badge-center w-px-40 bg-label-{{ $sub_item->customer_type == 'B2B' ? 'primary' : 'danger' }} ">{{$sub_item->customer_type}}</span>
                                                 </div>
                                             </td>
                                             <td class="align-middle text-center">{{ $sub_item->duration }} Days</td>
@@ -127,6 +138,16 @@
                                 @error('subscription_type') <span class="text-danger">{{ $message }}</span> @enderror
                             </div>
                             <div class="form-floating form-floating-outline mb-5 fv-plugins-icon-container mt-4">
+                                <select wire:model="customer_type" class="form-control border border-2 p-2" 
+                                   wire:change="GetCustomerType($event.target.value)">
+                                    <option value="">Customer Type</option>
+                                    <option value="B2B">B2B</option>
+                                    <option value="B2C">B2C</option>
+                                </select>
+                                <label>Customer Type </label>
+                                @error('customer_type') <span class="text-danger">{{ $message }}</span> @enderror
+                            </div>
+                            <div class="form-floating form-floating-outline mb-5 fv-plugins-icon-container mt-4">
                                 <select wire:model="model" class="form-control border border-2 p-2">
                                     <option value="" selected hidden>Select model</option>
                                     @foreach($models as $item)
@@ -137,7 +158,7 @@
                                 @error('model') <span class="text-danger">{{ $message }}</span> @enderror
                             </div>
                             <div class="form-floating form-floating-outline mb-5 fv-plugins-icon-container mt-4">
-                                <input type="number" wire:model="deposit_amount" class="form-control border border-2 p-2" placeholder="{{env('APP_CURRENCY')}}1000.00">
+                                <input type="number" wire:model="deposit_amount" class="form-control border border-2 p-2" placeholder="{{env('APP_CURRENCY')}}1000.00" {{ $customer_type=="B2C" ? '' : 'disabled' }}>
                                 <label>Deposit Amount</label>
                                 @error('deposit_amount') <span class="text-danger">{{ $message }}</span> @enderror
                             </div>

@@ -98,18 +98,18 @@
                                   @endforeach
                               </select>
                           </div>
-                          {{-- <!-- Start Date -->
+                          <!-- Start Date -->
                           <div style="max-width: 250px;
                               margin-bottom: 20px;" class="text-start text-uppercase">
                               <label for="startDate" class="form-label small mb-1">Start Date</label>
-                              <input type="date" id="startDate" class="form-control border-2 p-2 custom-input-sm">
+                              <input type="date" wire:model="start_date" id="startDate" wire:change="updateStartDate($event.target.value)" class="form-control border-2 p-2 custom-input-sm">
                           </div>
                               
                           <div style="max-width: 250px;
                               margin-bottom: 20px;" class="text-start text-uppercase">
                               <label for="endDate" class="form-label small mb-1">End Date</label>
-                              <input type="date" id="endDate" class="form-control border-2 p-2 custom-input-sm">
-                          </div> --}}
+                              <input type="date" wire:model="end_date" id="endDate" wire:change="updateEndDate($event.target.value)" class="form-control border-2 p-2 custom-input-sm">
+                          </div>
                           <!-- Search Button -->
                           {{-- <button type="button" wire:click="searchButtonClicked"
                               class="btn btn-dark text-white custom-input-sm">

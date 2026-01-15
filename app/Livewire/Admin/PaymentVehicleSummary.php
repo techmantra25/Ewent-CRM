@@ -13,6 +13,8 @@ use Livewire\WithPagination;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\VehicleSummaryExport;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Carbon\Carbon;
+
 
 class PaymentVehicleSummary extends Component
 {
@@ -22,7 +24,9 @@ class PaymentVehicleSummary extends Component
     public $page = 1;
     protected string $pageName = 'page';
 
-    public $model,$vehicle,$model_id,$vehicle_id,$start_date,$end_date,$vehicle_number;
+    public $model,$vehicle,$model_id,$vehicle_id,$vehicle_number;
+    public $start_date = null;
+    public $end_date = null;
     public function mount($model_id = null,$vehicle_id = null){
         
         if($model_id){
@@ -40,6 +44,8 @@ class PaymentVehicleSummary extends Component
             } 
         }
         
+        $this->start_date = date('Y-m-01'); // start of current month
+        $this->end_date   = date('Y-m-d');  // today
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
     }
 
@@ -69,9 +75,27 @@ class PaymentVehicleSummary extends Component
     public function resetPageField(){
         $this->reset(['vehicle_id','model_id','model','vehicle', 'vehicle_number']);
     }
+    public function updateStartDate($value){
+        $this->resetPage();
+        $this->page = 1;
+        $this->start_date = $value;
+    }
+    public function updateEndDate($value){
+        $this->resetPage();
+        $this->page = 1;
+        $this->end_date = $value;
+    }
     public function exportAll()
     {
-        return Excel::download(new VehicleSummaryExport($this->vehicle_id, $this->model_id), 'vehicle_summary.xlsx');
+        return Excel::download(
+            new VehicleSummaryExport(
+                $this->vehicle_id,
+                $this->model_id,
+                $this->start_date,
+                $this->end_date
+            ),
+            "vehicle_summary_between_{$this->start_date}_{$this->end_date}.xlsx"
+        );
     }
     public function render()
     {
@@ -80,6 +104,10 @@ class PaymentVehicleSummary extends Component
         ->with(['stock.product', 'order', 'user.organization_details'])
         ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
         ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
+        ->whereBetween('start_date', [
+            Carbon::parse($this->start_date)->startOfDay(), // 00:00:00
+            Carbon::parse($this->end_date)->endOfDay(),     // 23:59:59
+        ])
         ->get();
         // --- 2. Fetch exchange vehicles ---
         $exchangeVehicles = ExchangeVehicle::with(['stock'])
@@ -93,8 +121,13 @@ class PaymentVehicleSummary extends Component
                     ->whereRaw("TIMESTAMPDIFF(HOUR, start_date, end_date) > 24");
                 });
             })
+           ->whereBetween('start_date', [
+                Carbon::parse($this->start_date)->startOfDay(), // 00:00:00
+                Carbon::parse($this->end_date)->endOfDay(),     // 23:59:59
+            ])
             ->orderBy('id', 'DESC')
             ->get(); // using get() because we regroup manually
+            // dd($exchangeVehicles);
         // --- 3. Group exchangeVehicles by vehicle_id ---
         $grouped = $exchangeVehicles->groupBy('vehicle_id');
 
@@ -113,7 +146,7 @@ class PaymentVehicleSummary extends Component
             }
         }
 
-        // ✅ Add any remaining assignedVehicles that didn't match any vehicle_id in grouped exchangeVehicles
+        // Add any remaining assignedVehicles that didn't match any vehicle_id in grouped exchangeVehicles
         $remainingAssigned = $assignedVehicles->filter(fn($a) => !$finalCollection->contains(fn($item) => $item->vehicle_id == $a->vehicle_id));
         foreach ($remainingAssigned as $aVehicle) {
             $aVehicle->exchanged_by = $aVehicle->assigned_by;
