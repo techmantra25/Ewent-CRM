@@ -838,10 +838,9 @@ if(!function_exists('FetchUserVehicleStatus')){
 if (!function_exists('esign_pdf_generate')) {
     function esign_pdf_generate($email)
     {
-         $data = \App\Models\UserTermsConditions::where('email', $email)
+        $data = \App\Models\UserTermsConditions::where('email', $email)
             ->whereNull('signed_url')
             ->first();
-
         // If no record found, exit early
         if (!$data) {
             return [
@@ -875,7 +874,6 @@ if (!function_exists('esign_pdf_generate')) {
         }
 
         $responseData = json_decode($response, true);
-
         if (
             isset($responseData['transaction_status']) &&
             $responseData['transaction_status'] === 'SUCCESS' &&

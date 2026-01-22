@@ -2780,9 +2780,9 @@ class AuthController extends Controller
                 'subscription_type'=>$order->subscription->subscription_type,
                 'order_type' =>$order->order_type,
                 'order_number'=>$order->order_number,
-                'deposit_amount'=>$order->deposit_amount,
-                'rental_amount'=>$order->rental_amount,
-                'final_amount'=>$order->final_amount,
+                'deposit_amount' => (float) number_format($order->deposit_amount, 2, '.', ''),
+                'rental_amount'  => (float) number_format($order->rental_amount, 2, '.', ''),
+                'final_amount'   => (float) number_format($order->final_amount, 2, '.', ''),
                 'payment_mode'=>$order->payment_mode,
 
                 'payment_status'=>$order->payment_status,
