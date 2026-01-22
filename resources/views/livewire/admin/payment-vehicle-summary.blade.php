@@ -166,7 +166,7 @@
                                   <td class="">
                                       @if($item->order && $item->order->user_type === "B2C")
                                           <small class="text-primary fw-bold">
-                                              {{ env('APP_CURRENCY', '₹') }}{{ number_format($item->order->rental_amount, 2) }}
+                                              {{ env('APP_CURRENCY', '₹') }}{{ number_format($item->rental_amount, 2) }}
                                           </small>
                                       @else
                                         <span class="text-muted">B2B</span>

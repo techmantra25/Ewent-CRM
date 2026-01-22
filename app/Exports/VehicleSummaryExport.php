@@ -87,7 +87,7 @@ class VehicleSummaryExport implements FromArray, WithHeadings
             if($item->order->user_type === 'B2C'){
                 // Safe handling: check if order exists and duration > 0
                 if ($item->order && $item->order->rent_duration > 0) {
-                    $item_per_day_price = $item->order->rental_amount / $item->order->rent_duration;
+                    $item_per_day_price = $item->rental_amount / $item->order->rent_duration;
                    
                     $start = \Carbon\Carbon::parse($item->start_date);
                     $today =  \Carbon\Carbon::parse($this->end_date)->format('Y-m-d H:i:s');

@@ -8,6 +8,7 @@ use App\Models\Stock;
 use App\Models\CronLog;
 use App\Models\VehicleTimeline;
 use App\Models\AsignedVehicle;
+use App\Models\ExchangeVehicle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,9 @@ use App\Models\OrganizationInvoice;
 use App\Models\OrganizationInvoiceItem;
 use App\Models\OrganizationInvoiceItemDetail;
 use App\Models\PaymentLog;
+use App\Models\Payment;
 use App\Models\UserLocationLog;
+use Illuminate\Support\Facades\Log;
 
 class CronController extends Controller
 {
@@ -621,6 +624,166 @@ class CronController extends Controller
             'executed_at'     => Carbon::now(),
         ]);
     }
+
+
+    // For just Testing
+
+    // public function paymentAmountUpdate()
+    // {
+    //     try {
+
+    //         // -------------------------------
+    //         // 1️⃣ Renewal orders: rental = amount, deposit = 0
+    //         // -------------------------------
+    //         $renewalUpdated = Payment::where('order_type', 'like', 'renewal_%')
+    //             ->update([
+    //                 'deposit_amount' => 0.00,
+    //                 'rental_amount'  => DB::raw('amount'),
+    //             ]);
+
+    //         // -------------------------------
+    //         // 2️⃣ New subscriptions: split deposit + rental
+    //         // -------------------------------
+    //         $processed = 0;
+    //         $skipped   = 0;
+
+    //         DB::transaction(function () use (&$processed, &$skipped) {
+
+    //             Payment::with(['order.subscription'])
+    //                 ->where('order_type', 'like', 'new_subscription%')
+    //                 ->where(function ($q) {
+    //                     $q->whereNull('deposit_amount')
+    //                     ->orWhere('deposit_amount', 0)
+    //                     ->orWhereNull('rental_amount')
+    //                     ->orWhere('rental_amount', 0);
+    //                 })
+    //                 ->chunkById(200, function ($payments) use (&$processed, &$skipped) {
+
+    //                     Log::info('Chunk fetched', ['count' => $payments->count()]);
+
+    //                     foreach ($payments as $item) {
+
+    //                         // ---- Safety checks ----
+    //                         if (
+    //                             !$item->order ||
+    //                             !$item->order->subscription ||
+    //                             $item->amount === null
+    //                         ) {
+    //                             Log::warning('Skipped payment ID '.$item->id.' due to missing relations or amount.');
+    //                             $skipped++;
+    //                             continue;
+    //                         }
+
+    //                         $subscriptionDeposit = (float) $item->order->subscription->deposit_amount;
+    //                         $amount              = (float) $item->amount;
+
+    //                         // Prevent negative rental values
+    //                         $rentalAmount  = max(0, $amount - $subscriptionDeposit);
+    //                         $depositAmount = $subscriptionDeposit;
+
+    //                         $item->deposit_amount = $depositAmount;
+    //                         $item->rental_amount  = $rentalAmount;
+    //                         $item->save();
+
+    //                         $processed++;
+    //                     }
+    //                 });
+    //         });
+
+    //         // -------------------------------
+    //         // ✅ Success response
+    //         // -------------------------------
+    //         return response()->json([
+    //             'status'            => true,
+    //             'message'           => 'Payment amounts updated successfully.',
+    //             'renewals_updated'  => $renewalUpdated,
+    //             'new_processed'     => $processed,
+    //             'new_skipped'       => $skipped,
+    //         ]);
+
+    //     } catch (\Throwable $e) {
+
+    //         // -------------------------------
+    //         // ❌ Log full error for devs
+    //         // -------------------------------
+    //         Log::error('Payment amount update failed', [
+    //             'message' => $e->getMessage(),
+    //             'file'    => $e->getFile(),
+    //             'line'    => $e->getLine(),
+    //             'trace'   => $e->getTraceAsString(),
+    //         ]);
+
+    //         // -------------------------------
+    //         // ❌ Return clean error to API
+    //         // -------------------------------
+    //         return response()->json([
+    //             'status'  => false,
+    //             'message' => 'Payment amount update failed.',
+    //             'error'   => $e->getMessage(), // ⚠️ hide in production if sensitive
+    //         ], 500);
+    //     }
+    // }
+
+    //    public function ActiveVehicleAmountUpdate()
+    //     {
+    //         try {
+
+    //             $processed = 0;
+    //             $skipped   = 0;
+
+    //             ExchangeVehicle::
+    //             // whereHas('order.product', function ($q) {
+    //             //         $q->where('id', '!=', 7);   // product_id != 7
+    //             //     })
+    //             //     ->with(['order.product'])
+    //                 chunkById(200, function ($vehicles) use (&$processed, &$skipped) {
+
+    //                     Log::info('AssignedVehicle chunk fetched', ['count' => $vehicles->count()]);
+
+    //                     foreach ($vehicles as $item) {
+
+    //                         // ---- Safety checks ----
+    //                         if (
+    //                             !$item->order ||
+    //                             !$item->order->product
+    //                         ) {
+    //                             Log::warning('Skipped assigned_vehicle ID '.$item->id.' due to missing relations.');
+    //                             $skipped++;
+    //                             continue;
+    //                         }
+    //                         $item->amount         = (float) $item->order->final_amount;
+    //                         $item->deposit_amount = (float) $item->order->deposit_amount;
+    //                         $item->rental_amount  = (float) $item->order->rental_amount;
+    //                         $item->save();
+
+    //                         $processed++;
+    //                     }
+    //                 });
+
+    //             return response()->json([
+    //                 'status'    => true,
+    //                 'message'   => 'Active vehicle amounts processed successfully.',
+    //                 'processed' => $processed,
+    //                 'skipped'   => $skipped,
+    //             ]);
+
+    //         } catch (\Throwable $e) {
+
+    //             Log::error('ActiveVehicleAmountUpdate failed', [
+    //                 'message' => $e->getMessage(),
+    //                 'file'    => $e->getFile(),
+    //                 'line'    => $e->getLine(),
+    //                 'trace'   => $e->getTraceAsString(),
+    //             ]);
+
+    //             return response()->json([
+    //                 'status'  => false,
+    //                 'message' => 'Active vehicle amount update failed.',
+    //                 'error'   => $e->getMessage(), // ⚠️ hide in prod
+    //             ], 500);
+    //         }
+    //     }
+
 
 
 }

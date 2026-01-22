@@ -184,6 +184,9 @@ class RiderEngagement extends Component
                     'start_date' => $startDate,
                     'end_date' => $order->user_type=="B2C"?$startDate->copy()->addDays($order->rent_duration):NULL,
                     'assigned_at' => $startDate,
+                    'amount'     => $order->final_amount,
+                    'deposit_amount'  => $order->final_amount - $order->rental_amount,
+                    'rental_amount'   => $order->rental_amount,
                     'assigned_by' => Auth::guard('admin')->user()->id, // Corrected Auth syntax
                 ]);
 

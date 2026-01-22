@@ -169,10 +169,16 @@ Route::middleware(['auth:organization'])->prefix('organization')->group(function
     });
     Route::get('vehicle/details/{vehicle_id}', VehicleDetail::class)->name('organization.vehicle.detail');
 });
+ 
 
 // Cron
 Route::group(['prefix' => 'cron'], function () {
     Route::get('/test', [CronController::class, 'TestLog']);
+
+    // Just For Testing
+    // Route::get('/payment-amount-update', [CronController::class, 'paymentAmountUpdate']);
+    // Route::get('/active-vehicle-amount-update', [CronController::class, 'ActiveVehicleAmountUpdate']);
+
     Route::get('/vehicles/daily-timeline', [CronController::class, 'DailyVehicleLog']);
     Route::get('/vehicles/check/payment-overdue', [CronController::class, 'VehiclePaymentOverDue']);
     Route::get('/vehicles/overdue/immobilizer-requests', [CronController::class, 'OverDueImmobilizerRequests']);

@@ -1579,8 +1579,8 @@ class AuthController extends Controller
                 'order_number' => $item->order_number,
                 'model' => $item->product ? $item->product->title : "N/A",
                 'subscription_type' => $item->subscription ? ucwords($item->subscription->subscription_type) : "N/A",
-                'deposit_amount' => $item->deposit_amount,
-                'rental_amount' => $item->rental_amount,
+                'deposit_amount' => (float) number_format($item->deposit_amount, 2, '.', ''),
+                'rental_amount'  => (float) number_format($item->rental_amount, 2, '.', ''),
                 'payment_status' => ucwords($item->payment_status),
                 'rent_duration' => $item->rent_duration . ' Days',
                 'status' => $item->rent_status,
@@ -2488,6 +2488,9 @@ class AuthController extends Controller
                             'vehicle_id'   => $assignRider->vehicle_id,
                             'start_date'   => $assignRider->start_date,
                             'end_date'     => $assignRider->end_date,
+                            'amount'     => $assignRider->amount,
+                            'deposit_amount'     => $assignRider->deposit_amount,
+                            'rental_amount'     => $assignRider->rental_amount,
                             'created_at'   => now(),
                             'updated_at'   => now(),
                         ]);
@@ -2495,6 +2498,9 @@ class AuthController extends Controller
                         $assignRider->start_date = $startDate;
                         $assignRider->end_date = $endDate;
                         $assignRider->status = "assigned";
+                        $assignRider->rental_amount = $payment_item->amount;
+                        $assignRider->deposit_amount = 0;
+                        $assignRider->amount = $payment_item->amount;
                         $assignRider->save();
 
                         DB::commit();
@@ -2765,6 +2771,15 @@ class AuthController extends Controller
         }
         $order = Order::with('vehicle','product','subscription')->whereIn('rent_status', ['pending', 'active', 'ready to assign', 'suspended', 'deallocated'])->where('user_id', $user->id)->first();
         if($order){
+
+            if($order->subscription){
+                $order->total_price = $order->subscription->deposit_amount + $order->subscription->rental_amount;
+                $order->final_amount = $order->subscription->deposit_amount + $order->subscription->rental_amount;
+                $order->deposit_amount = $order->subscription->deposit_amount;
+                $order->rental_amount = $order->subscription->rental_amount;
+                $order->save();
+            }
+            
             $data = [];
             // if($order->payment_status=="pending"){
             //     $data = [
