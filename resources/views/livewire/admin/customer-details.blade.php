@@ -445,7 +445,7 @@
                                           </tr>
                                           @empty
                                             <tr>
-                                              <td colspan="3">
+                                              <td colspan="4">
                                                 <div class="alert alert-info">No location history found.</div>
                                               </td>
                                             </tr>

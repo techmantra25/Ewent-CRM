@@ -118,7 +118,7 @@
                                                         <div>
                                                             <small class="badge bg-label-primary mb-0 cursor-pointer text-uppercase"> {{$organization->organization_id}}</small>
                                                         </div>
-                                                        <a href="{{ route('admin.customer.details', $organization->id) }}"
+                                                        <a href="{{ route('admin.organization.dashboard', $organization->id) }}"
                                                             class="text-heading"><span class="fw-medium text-truncate">{{ ucwords($organization->name) }}</span>
                                                         </a>
                                                         <small class="text-truncate">{{$organization->email}} | {{ $organization->mobile }} </small>

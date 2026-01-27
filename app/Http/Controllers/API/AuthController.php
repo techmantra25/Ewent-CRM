@@ -162,6 +162,11 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+          Log::info('user_details', [
+                'status' => 'success',
+                'message' => 'request data',
+                'data' => $request->all()
+            ]);
        // ✅ Add this line before validation
         $userType = $request->input('user_type', 'B2C'); // Default to B2C
 
@@ -175,12 +180,12 @@ class AuthController extends Controller
 
             // ✅ Add these new rules
             'user_type' => 'nullable|in:B2B,B2C',
-            'organization_id' => [
-                Rule::requiredIf(function () use ($userType) {
-                    return $userType === 'B2B';
-                }),
-                Rule::exists('organizations', 'id'),
-            ],
+            // 'organization_id' => [
+            //     Rule::requiredIf(function () use ($userType) {
+            //         return $userType === 'B2B';
+            //     }),
+            //     Rule::exists('organizations', 'id'),
+            // ],
         ]);
         // Check if validation fails
         if ($validator->fails()) {
@@ -2828,64 +2833,84 @@ class AuthController extends Controller
     }
 
     public function CurrentLocation(Request $request){
-        $user = $this->getAuthenticatedUser();
-        if ($user instanceof \Illuminate\Http\JsonResponse) {
-            return $user; // Return the response if the user is not authenticated
-        }
-
-        // Check if the user exists
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => 'User not found.',
-            ], 404); // 404 Not Found
-        }
-        $validator = Validator::make($request->all(), [
-                    'latitude' => 'required|string|max:255',
-                    'longitude' => 'required|string|max:255',
-                ]);
-
-                // Check if validation fails
-                if ($validator->fails()) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => $validator->errors()->first(),
-                    ], 422);
-                }
-           try {
-                $response = UserCurrentLocation($request->latitude,$request->longitude);
-                $address = null;
-                if (!empty($response['display_name'])) {
-                    $address = $response['display_name'];
-                }
-
-                DB::beginTransaction();
-
-                $new = new UserLocationLog;
-                $new->user_id = $user->id;
-                $new->address = $address;
-                $new->latitude = $request->latitude;
-                $new->longitude = $request->longitude;
-                $new->created_at = now();
-                $new->save();
-
-                DB::commit();
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Location retrieved and saved successfully.',
-                ], 200);
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-
-                return response()->json([
-                    'status' => false,
-                    'message' => $e->getMessage(),
-                    // 'error' => $e->getMessage(),
-                ], 500);
-            }
+    $user = $this->getAuthenticatedUser();
+    if ($user instanceof \Illuminate\Http\JsonResponse) {
+        return $user; // Return the response if the user is not authenticated
     }
+
+    // Check if the user exists
+    if (!$user) {
+        return response()->json([
+            'status' => false,
+            'message' => 'User not found.',
+        ], 404); // 404 Not Found
+    }
+
+    $validator = Validator::make($request->all(), [
+        'latitude' => 'required|string|max:255',
+        'longitude' => 'required|string|max:255',
+    ]);
+
+    // Check if validation fails
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => false,
+            'message' => $validator->errors()->first(),
+        ], 422);
+    }
+
+    try {
+        // 🔹 Log incoming location request
+        Log::info('CurrentLocation API called', [
+            'user_id'  => $user->id,
+            'latitude' => $request->latitude,
+            'longitude'=> $request->longitude,
+        ]);
+
+        $response = UserCurrentLocation($request->latitude,$request->longitude);
+        $address = null;
+        if (!empty($response['display_name'])) {
+            $address = $response['display_name'];
+        }
+
+        DB::beginTransaction();
+
+        $new = new UserLocationLog;
+        $new->user_id = $user->id;
+        $new->address = $address;
+        $new->latitude = $request->latitude;
+        $new->longitude = $request->longitude;
+        $new->created_at = now();
+        $new->save();
+
+        DB::commit();
+
+        // 🔹 Log successful save
+        Log::info('User location saved successfully', [
+            'user_id' => $user->id,
+            'address' => $address,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Location retrieved and saved successfully.',
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        // 🔹 Log error
+        Log::error('Error saving user location', [
+            'user_id' => $user->id ?? null,
+            'error'   => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
 
     protected function EsignVerification($signer_name,$signer_email,$signer_city)
     {

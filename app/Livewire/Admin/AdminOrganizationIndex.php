@@ -66,8 +66,8 @@ class AdminOrganizationIndex extends Component
             'email'  => 'required|email|unique:organizations,email,' . $this->edit_id,
             'mobile' => 'required|string|max:10|unique:organizations,mobile,' . $this->edit_id,
             'subscription_type' => 'required|in:weekly,monthly',
-            'discount_percentage' => 'nullable|numeric|min:0|max:99',
-            'rider_visibility_percentage' => 'nullable|numeric|min:0|max:99',
+            'discount_percentage' => 'required|numeric|min:0|max:99',
+            'rider_visibility_percentage' => 'required|numeric|min:0|max:99',
         ];
 
         // 🔥 Fetch existing organization if updating
@@ -81,6 +81,13 @@ class AdminOrganizationIndex extends Component
         | UPDATE: Required only if BOTH are empty (no number + no saved file).
         |--------------------------------------------------------------------------
         */
+        if ($this->edit_id) {
+        // Edit mode → image optional
+        $rules['image'] = 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120';
+        } else {
+            // Create mode → image required
+            $rules['image'] = 'required|image|mimes:jpg,jpeg,png,webp|max:5120';
+        }
         $rules['gst_number'] = 'nullable';
         $rules['gst_file']   = 'nullable|file|mimes:jpg,png,jpeg,pdf,webp|max:2048';
 
