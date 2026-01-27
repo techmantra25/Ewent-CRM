@@ -10,10 +10,23 @@ class ChangePassword extends Component
     public $new_password;
     public $new_password_confirmation;
 
+    protected function guard()
+    {
+        if (Auth::guard('admin')->check()) {
+            return 'admin';
+        }
+
+        if (Auth::guard('organization')->check()) {
+            return 'organization';
+        }
+
+        return null;
+    }
+
     public function updated($propertyName)
     {
         $this->validateOnly($propertyName, $this->rules());
-    }
+    }   
 
     public function rules()
     {
@@ -28,16 +41,27 @@ class ChangePassword extends Component
     {
         $this->validate();
 
-        $admin = Auth::guard('admin')->user();
-        if (!Hash::check($this->current_password, $admin->password)) {
+        $guard = $this->guard();
+
+        if (!$guard) {
+            abort(403);
+        }
+
+        $user = Auth::guard($guard)->user();
+
+        if (!Hash::check($this->current_password, $user->password)) {
             $this->addError('current_password', 'Current password is incorrect.');
             return;
         }
 
-        $admin->password = Hash::make($this->new_password);
-        $admin->save();
+        $user->password = Hash::make($this->new_password);
+        $user->save();
 
-        $this->reset(['current_password', 'new_password', 'new_password_confirmation']);
+        $this->reset([
+            'current_password',
+            'new_password',
+            'new_password_confirmation'
+        ]);
 
         session()->flash('message', 'Password updated successfully!');
     }
@@ -46,10 +70,11 @@ class ChangePassword extends Component
     {
         return view('livewire.admin.change-password');
     }
+
     public function resetForm()
-{
-    $this->reset(['current_password', 'new_password', 'new_password_confirmation']);
-}
+    {
+        $this->reset(['current_password', 'new_password', 'new_password_confirmation']);
+    }
 }
 
 ?>

@@ -164,6 +164,8 @@ Route::middleware(['auth:organization'])->prefix('organization')->group(function
     Route::get('dashboard', OrgDashboard::class)
         ->name('organization.dashboard');
 
+    Route::get('reset-password', ChangePassword::class)->name('organization.reset-password');
+
     Route::prefix('rider')->group(function () {
         Route::get('details/{id}', CustomerDetails::class)->name('organization.rider.details');
     });
