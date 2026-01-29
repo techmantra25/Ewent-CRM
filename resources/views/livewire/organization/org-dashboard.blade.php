@@ -234,7 +234,12 @@
                                             <h5 class="card-title mb-1">
                                             {{ strtolower($organization->subscription_type) == 'monthly' ? 'Billing Date' : 'Billing Day' }}
                                             </h5>
-                                            <p class="mb-0 text-muted">Next cycle billing</p>
+                                            @if(strtolower($organization->subscription_type) == "custom")
+                                            After {{ $organization->renewal_interval_days }}
+                                                {{ $organization->renewal_interval_days > 1 ? 'Days' : 'Day' }} from last invoice date
+                                            @else
+                                                <p class="mb-0 text-muted">Next cycle billing</p>
+                                            @endif
                                         </div>
                                         </div>
 
@@ -253,6 +258,11 @@
 
                                                 <span class="fw-bold display-6 text-warning">
                                                     {{ $renewalDate->format('jS M Y') }}
+                                                </span>
+                                           @elseif(strtolower($organization->subscription_type) == "custom")
+                                                <span class="fw-bold display-6 text-warning"> 
+                                                    {{ $organization->renewal_interval_days }}
+                                                    {{ $organization->renewal_interval_days > 1 ? 'days' : 'day' }}
                                                 </span>
                                             @else
                                                 <span class="fw-bold display-6 text-warning">

@@ -666,7 +666,6 @@ if (!function_exists('createInvoiceForOrganization')) {
     function createInvoiceForOrganization($org_id, $type, $invoice_start_date, $invoice_end_date, $due_date)
     {
         $org = Organization::with('user')->find($org_id);
-       
         if (!$org) {
             return null; // return null if org or rental not found
         }

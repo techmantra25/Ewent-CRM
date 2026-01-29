@@ -392,14 +392,15 @@ class CronController extends Controller
     // Daily Invoice generate for Organization
     public function generateOrganizationInvoice() {
         $timezone = env('APP_LOCAL_TIMEZONE', 'Asia/Kolkata');
+        
         $today_date = Carbon::now($timezone)->day;
         $today_day  = Carbon::now($timezone)->format('l');
 
         $summary = [
             'monthly' => ['organizations' => 0, 'invoices' => 0],
             'weekly'  => ['organizations' => 0, 'invoices' => 0],
+            'custom'  => ['organizations' => 0, 'invoices' => 0],
         ];
-
         // 1. Monthly Subscription
         $monthlySubscriber = Organization::where('subscription_type', 'monthly')
             ->where('renewal_day_of_month', $today_date)
@@ -458,6 +459,51 @@ class CronController extends Controller
 
                 if ($invoice) {
                     $summary['weekly']['invoices']++;
+                }
+            }
+        }
+
+        // 3. Custom Subscription
+        $customSubscriber = Organization::where('subscription_type', 'custom')
+            ->whereNotNull('renewal_interval_days')
+            ->get();
+
+        if ($customSubscriber->count() > 0) {
+            $summary['custom']['organizations'] = $customSubscriber->count();
+
+            foreach ($customSubscriber as $org) {
+                $latestInvoice = OrganizationInvoice::where('organization_id', $org->id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                if($latestInvoice){
+                    $today = Carbon::now($timezone)->startOfDay();
+                    // Last invoice date
+                    $lastInvoiceDate = Carbon::parse($latestInvoice->created_at, $timezone)->startOfDay();
+                    
+                    // Next renewal date = last invoice date + interval days
+                    $nextRenewalDate = $lastInvoiceDate->copy()->addDays((int) $org->renewal_interval_days);
+                    // dd($nextRenewalDate);
+                    // ✅ If today matches renewal date
+                    if ($nextRenewalDate->equalTo($today)) {
+                    } else {
+                        continue; // date match na → skip
+                    }
+                }
+                
+
+                $invoice_start_date = $latestInvoice && $latestInvoice->billing_end_date
+                    ? Carbon::parse($latestInvoice->billing_end_date)->addDay()
+                    : Carbon::parse($org->created_at);
+
+                $invoice_end_date = Carbon::now($timezone);
+                $due_date = Carbon::parse($invoice_end_date)
+                    ->addDays(config('subscription.custom_due_period'))
+                    ->toDateString();
+
+                $invoice = createInvoiceForOrganization($org->id, 'custom', $invoice_start_date, $invoice_end_date, $due_date);
+
+                if ($invoice) {
+                    $summary['custom']['invoices']++;
                 }
             }
         }

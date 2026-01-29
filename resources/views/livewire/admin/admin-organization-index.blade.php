@@ -5,6 +5,10 @@
             background: #fff;
             color: #000;
         }
+        .subscription-type{
+            font-size: 10px;
+            padding: 5px 5px;
+        }
     </style>
     <div class="col-lg-12 d-flex justify-content-between">
         <div>
@@ -128,17 +132,30 @@
                                             <td class="align-middle price-details text-center">
                                                 <div class="d-flex flex-column align-items-center">
                                                     <!-- Subscription Type Badge -->
-                                                    <span class="badge bg-label-{{$organization->subscription_type === "weekly"?"primary":"success"}} mb-0 cursor-pointer text-uppercase mb-1" style="font-size: 0.85rem;">
+                                                    @php
+                                                        $badgeColor = match($organization->subscription_type) {
+                                                            'weekly' => 'primary',
+                                                            'monthly' => 'info',
+                                                            'custom' => 'warning', // choose any color you want
+                                                            default => 'secondary',
+                                                        };
+                                                    @endphp
+
+                                                    <span class="badge bg-label-{{ $badgeColor }} mb-0 cursor-pointer text-uppercase mb-1" style="font-size: 0.85rem;">
                                                         {{ $organization->subscription_type }}
                                                     </span>
+
                                                     <!-- Renewal Info -->
                                                     <small class="text-muted" style="font-size: 0.75rem;">
                                                         @if($organization->subscription_type === "weekly")
                                                             Renewal: <span class="text-dark fw-semibold">{{ ucwords($organization->renewal_day) }}</span>
-                                                        @else
-                                                            Renewal: <span class="text-dark ffw-semibold">{{ $organization->renewal_day_of_month }}<sup>th</sup></span>
+                                                        @elseif($organization->subscription_type === "monthly")
+                                                            Renewal: <span class="text-dark fw-semibold">{{ $organization->renewal_day_of_month }}<sup>th</sup></span>
+                                                        @elseif($organization->subscription_type === "custom")
+                                                            Renewal: <span class="text-dark fw-semibold">After {{ $organization->renewal_interval_days }}<sup>Days</sup></span>
                                                         @endif
                                                     </small>
+
                                                 </div>
                                             </td>
 
@@ -344,8 +361,19 @@
                                                     value="weekly"
                                                     id="weekly"
                                                     autocomplete="off">
-                                                <label class="btn {{ $subscription_type === 'weekly' ? 'btn-success active' : 'btn-outline-success' }} btn-sm" for="weekly">
+                                                <label class="btn {{ $subscription_type === 'weekly' ? 'btn-success active' : 'btn-outline-success' }} btn-sm subscription-type" for="weekly">
                                                     Weekly
+                                                </label>
+
+                                                <input type="radio"
+                                                    class="btn-check"
+                                                    wire:model="subscription_type"
+                                                    wire:change="SubscriptionTypeChange"
+                                                    value="custom"
+                                                    id="custom"
+                                                    autocomplete="off">
+                                                <label class="btn  {{ $subscription_type === 'custom' ? 'btn-success active' : 'btn-outline-success' }} btn-sm subscription-type" for="custom">
+                                                    Custom
                                                 </label>
 
                                                 <input type="radio"
@@ -355,7 +383,7 @@
                                                     value="monthly"
                                                     id="monthly"
                                                     autocomplete="off">
-                                                <label class="btn  {{ $subscription_type === 'monthly' ? 'btn-success active' : 'btn-outline-success' }} btn-sm" for="monthly">
+                                                <label class="btn  {{ $subscription_type === 'monthly' ? 'btn-success active' : 'btn-outline-success' }} btn-sm subscription-type" for="monthly">
                                                     Monthly
                                                 </label>
                                             </div>
@@ -376,6 +404,24 @@
                                                     <option value="saturday">Saturday</option>
                                                 </select>
                                                 @error('renewal_day') <small class="text-danger">{{ $message }}</small> @enderror
+                                            </div>
+                                        @elseif($subscription_type === 'custom')
+                                            <div class="mb-3">
+                                                <label class="form-label">
+                                                    Renewal Duration (After Days)
+                                                </label>
+
+                                                <input
+                                                    type="number"
+                                                    class="form-control form-control-sm"
+                                                    wire:model="renewal_interval_days"
+                                                    placeholder="Number of days (max 360)"
+                                                    min="1"
+                                                    max="360"
+                                                >
+                                                @error('renewal_interval_days')
+                                                    <small class="text-danger">{{ $message }}</small>
+                                                @enderror
                                             </div>
                                         @elseif($subscription_type === 'monthly')
                                             <div class="mb-3">

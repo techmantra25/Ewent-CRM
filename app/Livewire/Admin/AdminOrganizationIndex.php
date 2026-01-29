@@ -27,6 +27,7 @@ class AdminOrganizationIndex extends Component
     public $subscription_type = 'weekly';
     public $renewal_day;
     public $renewal_day_of_month;
+    public $renewal_interval_days;
 
 
      public function boot()
@@ -65,7 +66,7 @@ class AdminOrganizationIndex extends Component
             'organization_id'  => 'nullable|string|unique:organizations,organization_id,' . $this->edit_id,
             'email'  => 'required|email|unique:organizations,email,' . $this->edit_id,
             'mobile' => 'required|string|max:10|unique:organizations,mobile,' . $this->edit_id,
-            'subscription_type' => 'required|in:weekly,monthly',
+            'subscription_type' => 'required|in:weekly,custom,monthly',
             'discount_percentage' => 'required|numeric|min:0|max:99',
             'rider_visibility_percentage' => 'required|numeric|min:0|max:99',
         ];
@@ -117,9 +118,15 @@ class AdminOrganizationIndex extends Component
         if ($this->subscription_type === 'weekly') {
             $rules['renewal_day'] = 'required|in:sunday,monday,tuesday,wednesday,thursday,friday,saturday';
             $rules['renewal_day_of_month'] = 'nullable';
+            $rules['renewal_interval_days'] = 'nullable';
         } elseif ($this->subscription_type === 'monthly') {
             $rules['renewal_day_of_month'] = 'required|integer|min:1|max:30';
             $rules['renewal_day'] = 'nullable';
+            $rules['renewal_interval_days'] = 'nullable';
+        } elseif ($this->subscription_type === 'custom') {
+            $rules['renewal_interval_days'] = 'required|integer|min:1|max:360';
+            $rules['renewal_day'] = 'nullable';
+            $rules['renewal_day_of_month'] = 'nullable';
         }
 
         // If creating new, password required
@@ -157,6 +164,7 @@ class AdminOrganizationIndex extends Component
         $org->subscription_type = $this->subscription_type;
         $org->renewal_day = $this->subscription_type === 'weekly' ? $this->renewal_day : null;
         $org->renewal_day_of_month = $this->subscription_type === 'monthly' ? $this->renewal_day_of_month : null;
+        $org->renewal_interval_days = $this->subscription_type === 'custom' ? $this->renewal_interval_days : null;
 
         $imagePath = $this->old_image ?? 'assets/img/organization.png';
 
@@ -275,6 +283,7 @@ class AdminOrganizationIndex extends Component
         $this->subscription_type = $org->subscription_type;
         $this->renewal_day = $org->renewal_day;
         $this->renewal_day_of_month = $org->renewal_day_of_month;
+        $this->renewal_interval_days = $org->renewal_interval_days;
         $this->old_image = $org->image ?? 'assets/img/organization.png';
         $this->image = null; // reset file input
         $this->gst_number = $org->gst_number;
@@ -292,7 +301,7 @@ class AdminOrganizationIndex extends Component
 
     public function resetForm()
     {
-        $this->reset(['edit_id', 'organization_id', 'name', 'email', 'mobile', 'password', 'street_address', 'city', 'state', 'pincode', 'image','subscription_type','renewal_day','renewal_day_of_month','discount_percentage','rider_visibility_percentage']);
+        $this->reset(['edit_id', 'organization_id', 'name', 'email', 'mobile', 'password', 'street_address', 'city', 'state', 'pincode', 'image','subscription_type','renewal_day','renewal_day_of_month','renewal_interval_days','discount_percentage','rider_visibility_percentage']);
          $this->activeTab = 'list';
     }
 
@@ -300,8 +309,13 @@ class AdminOrganizationIndex extends Component
     {
         if ($this->subscription_type === 'weekly') {
             $this->renewal_day_of_month = null; // reset
+            $this->renewal_interval_days = null; // reset
         } elseif ($this->subscription_type === 'monthly') {
             $this->renewal_day = null; // reset
+            $this->renewal_interval_days = null; // reset
+        } elseif ($this->subscription_type === 'custom') {
+            $this->renewal_day = null;
+            $this->renewal_day_of_month = null; // reset
         }
     }
     public function render()

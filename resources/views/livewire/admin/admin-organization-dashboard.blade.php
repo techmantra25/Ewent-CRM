@@ -214,14 +214,31 @@
 
 
                                 <!-- Subscription Type -->
-                                <div
-                                  class="d-flex justify-content-between align-items-center mb-2 p-2 rounded border bg-light">
-                                  <span class="fw-semibold">Type</span>
-                                  <span
-                                    class="badge {{ $organization->subscription_type == 'Monthly' ? 'bg-success' : 'bg-primary' }} px-3 py-2">
-                                    {{ $organization->subscription_type=="monthly" ?"Monthly": 'Weekly' }}
-                                  </span>
-                                </div>
+                                @php
+                                // Determine badge color based on subscription type
+                                $badgeColor = match(strtolower($organization->subscription_type)) {
+                                    'weekly' => 'bg-primary',
+                                    'monthly' => 'bg-success',
+                                    'custom' => 'bg-warning text-dark',
+                                    default => 'bg-secondary',
+                                };
+
+                                // Determine display text
+                                $badgeText = match(strtolower($organization->subscription_type)) {
+                                    'weekly' => 'Weekly',
+                                    'monthly' => 'Monthly',
+                                    'custom' => 'Custom',
+                                    default => ucfirst($organization->subscription_type),
+                                };
+                            @endphp
+
+                            <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded border bg-light">
+                                <span class="fw-semibold">Type</span>
+                                <span class="badge {{ $badgeColor }} px-3 py-2">
+                                    {{ $badgeText }}
+                                </span>
+                            </div>
+
 
                                 <!-- Renewal Day -->
                                 <div
@@ -230,6 +247,17 @@
                                   <span class="fw-semibold">Billing Date</span>
                                   <span
                                     class="badge bg-warning text-dark px-3 py-2">{{ucwords($organization->renewal_day_of_month)}}<sup>th</sup></span>
+                                  @elseif($organization->subscription_type=="custom")
+                                    <span class="fw-semibold">Billing Duration</span>
+                                    @if(!empty($organization->renewal_interval_days) && $organization->renewal_interval_days > 0)
+                                        <span class="badge bg-warning text-dark px-3 py-2">
+                                            After {{ $organization->renewal_interval_days }}<sup>{{ $organization->renewal_interval_days > 1 ? 'Days' : 'Day' }}</sup>
+                                        </span>
+                                    @else
+                                        <span class="badge bg-warning text-dark px-3 py-2">
+                                            Renewal on custom schedule
+                                        </span>
+                                    @endif
                                   @else
                                   <span class="fw-semibold">Billing Day</span>
                                   <span
