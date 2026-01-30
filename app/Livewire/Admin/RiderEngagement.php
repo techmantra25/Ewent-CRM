@@ -256,6 +256,9 @@ class RiderEngagement extends Component
                     'order_id'     => $assignRider->order_id,
                     'vehicle_id'   => $assignRider->vehicle_id,
                     'start_date'   => $assignRider->start_date,
+                    'amount'       => $assignRider->amount,
+                    'deposit_amount'    => $assignRider->deposit_amount,
+                    'rental_amount'     => $assignRider->rental_amount,
                     'end_date'     => now(),
                     'exchanged_by' => Auth::guard('admin')->user()->id, // Fixed typo (extra space)
                     'created_at'   => now(),
