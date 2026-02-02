@@ -13,6 +13,8 @@ use App\Models\AsignedVehicle;
 use App\Models\UserKycLog;
 use App\Models\Organization;
 use App\Models\CancelRequestHistory;
+use App\Exports\RiderEngagementExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -768,5 +770,17 @@ class RiderEngagement extends Component
             'suspended_users' => $suspended_users,
             'cancel_requested_users' => $cancel_requested_users,
         ]);
+    }
+
+    public function exportAll()
+    {
+        return Excel::download(
+                new RiderEngagementExport(
+                    $this->active_tab,        
+                    $this->search,     
+                    $this->selected_organization 
+                ),
+                'rider_engagement.xlsx'
+            );
     }
 }
