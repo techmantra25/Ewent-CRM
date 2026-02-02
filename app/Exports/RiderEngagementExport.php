@@ -99,7 +99,7 @@ class RiderEngagementExport implements FromCollection, WithHeadings
 
         return $query->orderBy('id', 'DESC')->get()->map(function ($user) {
             return [
-                'Customer ID'   => $user->customer_id,
+                'ID'            => $user->customer_id,
                 'Name'          => $user->name,
                 'Mobile'        => $user->mobile,
                 'Email'         => $user->email,
@@ -115,7 +115,7 @@ class RiderEngagementExport implements FromCollection, WithHeadings
     public function headings(): array
     {
         return [
-            'Customer ID',
+            'ID',
             'Name',
             'Mobile',
             'Email',
