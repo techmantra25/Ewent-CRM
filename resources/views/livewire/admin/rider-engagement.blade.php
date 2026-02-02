@@ -105,6 +105,12 @@
                                         class="btn btn-primary text-white mb-0 custom-input-sm ms-2">
                                     <span class="material-icons">Search</span>
                                 </button>
+
+                                <button type="button" wire:click="exportAll"
+                                        class="btn btn-secondary text-white mb-0 custom-input-sm ms-2">
+                                    <span class="material-icons">Export</span>
+                                </button>
+
                                 <!-- Refresh Button -->
                                 <button type="button" wire:click="reset_search"
                                         class="btn btn-outline-danger waves-effect mb-0 custom-input-sm ms-2">
