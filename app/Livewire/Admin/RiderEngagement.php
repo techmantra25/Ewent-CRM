@@ -556,7 +556,6 @@ class RiderEngagement extends Component
     public function render()
     {
         $searchTerm = '%' . $this->search . '%';
-        
         // Await users
         $await_users = User::whereHas('accessToken')
             ->when($this->search, function ($query) use ($searchTerm) {
