@@ -89,6 +89,16 @@ $adminUser = Auth::guard('admin')->user();
                       <small class="align-middle">Reset Password</small>
                       <i class="ri-key-line ms-2 ri-16px"></i>
                     </a>
+                    @php
+                        $adminUser = Auth::guard('admin')->user();
+                    @endphp
+
+                    @if ($adminUser && $adminUser->designation == 1)
+                        <a href="{{ route('admin.reset-token') }}" class="btn btn-secondary d-flex mb-1">
+                            <small class="align-middle">Reset Token</small>
+                            <i class="ri-shield-keyhole-line ms-2 ri-16px"></i>
+                        </a>
+                    @endif
                     <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="btn btn-danger d-flex">
                       <small class="align-middle">Logout</small>
                       <i class="ri-logout-box-r-line ms-2 ri-16px"></i>

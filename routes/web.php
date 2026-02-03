@@ -14,7 +14,9 @@ use App\Livewire\Admin\{
     AdminForgotPassword, CustomerAdd, Dashboard, CustomerIndex, CustomerDetails,
     OrderIndex, OfferIndex, PolicyDetails, OrderDetail, CityIndex, PincodeIndex,
     RiderEngagement, PaymentSummary, PaymentUserSummary, UserPaymentHistory,
-    PaymentVehicleSummary, RefundSummary, ChangePassword,AdminOrganizationIndex,AdminOrganizationDashboard,AdminOrganizationInvoices,AdminOrganizationPayments,PushNotificationList
+    PaymentVehicleSummary, RefundSummary, ChangePassword,AdminOrganizationIndex,
+    AdminOrganizationDashboard,AdminOrganizationInvoices,AdminOrganizationPayments,
+    PushNotificationList,ChangeToken
 };
 use App\Livewire\Product\{
     MasterCategory, MasterSubCategory, MasterProduct, AddProduct, UpdateProduct,
@@ -56,6 +58,7 @@ Route::middleware(['auth:admin', 'admin.maintenance'])->prefix('admin')->group(f
         return redirect()->route('admin.dashboard');
     });
     Route::get('reset-password', ChangePassword::class)->name('admin.reset-password');
+    Route::get('reset-token', ChangeToken::class)->name('admin.reset-token');
 
     // Dashboard and Customer Routes
     Route::get('dashboard', Dashboard::class)->name('admin.dashboard');
