@@ -7,7 +7,7 @@
 
     <div class="card my-4">
         <div class="card-body mx-4">
-            <h3 class="mb-4">Reset API Token</h3>
+            <h4 class="mb-4">Reset API Token</h4>
 
             <button
                 class="btn btn-primary mb-3"
