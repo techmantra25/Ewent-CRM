@@ -4013,4 +4013,86 @@ class AuthController extends Controller
         ], 200);
     }
 
+    public function kycApprovePaymentList(Request $request)
+    {
+        $data = User::select([
+                'users.id as rider_id',
+                'users.name as rider_name',
+                'users.mobile as rider_phone',
+                'users.email as rider_email',
+                'users.kyc_verified_at as rider_approved_date',
+                'payments.id as payment_id',
+                'payments.payment_date',
+
+                DB::raw("
+                    SUM(
+                        CASE 
+                            WHEN payment_items.type = 'deposit' 
+                            THEN payment_items.amount 
+                            ELSE 0 
+                        END
+                    ) as security_deposit
+                "),
+
+                DB::raw("
+                    SUM(
+                        CASE 
+                            WHEN payment_items.type = 'rental' 
+                            THEN payment_items.amount 
+                            ELSE 0 
+                        END
+                    ) as rental_amount
+                ")
+            ])
+            ->join('payments', 'payments.user_id', '=', 'users.id')
+            ->join('payment_items', 'payment_items.payment_id', '=', 'payments.id')
+            ->whereNotNull('users.kyc_verified_at')
+            ->where('users.is_verified', 'verified')
+            ->where('payments.payment_status', 'completed')
+            ->groupBy(
+                'users.id',
+                'users.name',
+                'users.mobile',
+                'users.email',
+                'users.kyc_verified_at',
+                'payments.id',
+                'payments.payment_date'
+            )
+            ->orderByDesc('payments.payment_date')
+            ->get();
+
+            $groupedData = $data->groupBy('rider_id')->map(function ($items) {
+
+            $first = $items->first();
+
+            return [
+                'rider_kyc_detail' => [
+                    'rider_id' => $first->rider_id,
+                    'name'     => $first->rider_name,
+                    'mobile'   => $first->rider_phone,
+                    'email'    => $first->rider_email,
+                ],
+
+                'rider_approved_date' => $first->rider_approved_date,
+
+                'payment_details' => $items->map(function ($item) {
+                    return [
+                        'payment_id'        => $item->payment_id,
+                        'payment_date'      => $item->payment_date,
+                        'security_deposit'  => (float) $item->security_deposit,
+                        'monthly_rental'    => (float) $item->rental_amount,
+                    ];
+                })->values()
+            ];
+        })->values();
+
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'KYC approved rider payment list fetched successfully.',
+            'data'    => $groupedData
+        ]);
+
+    }
+
 }

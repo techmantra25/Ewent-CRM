@@ -102,5 +102,9 @@ Route::prefix('customer')->group(function () {
         Route::get('/riders/e-signatures', [AuthController::class, 'RiderEsignList']);
         Route::get('/riders/payment-history', [AuthController::class, 'RiderPaymentHistory']);
     });
+    
+    Route::get('/riders/kyc-approved-payment', [AuthController::class, 'kycApprovePaymentList']);
+
+
 
     

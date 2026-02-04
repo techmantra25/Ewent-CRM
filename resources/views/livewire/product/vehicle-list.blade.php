@@ -231,7 +231,7 @@
                                                      <span class="badge px-2 rounded-pill bg-label-success text-sm">{{$ignition_status}}</span>
                                                      @else
                                                          <span class="badge px-2 rounded-pill bg-label-danger text-sm">OFF</span>
-                                                     @endif
+                                                     @endif 
                                                 </td> --}}
                                                 <td class="text-end">
                                                     <div class="dropdown cursor-pointer">
