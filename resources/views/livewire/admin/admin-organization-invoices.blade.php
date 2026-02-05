@@ -79,7 +79,7 @@
                                 </thead>
                                 <tbody>
                                     @forelse($invoices as $index => $invoice)
-                                        <tr style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#payment-invoice-{{ $invoice->id }}" aria-expanded="false" class="invoice-body-item">
+                                        <tr style="cursor:pointer;font-size: 12px;" data-bs-toggle="collapse" data-bs-target="#payment-invoice-{{ $invoice->id }}" aria-expanded="false" class="invoice-body-item">
                                             <td>{{ $invoices->firstItem() + $index }}</td>
                                             <td>
                                                 <div>
@@ -101,7 +101,7 @@
                                                     @endphp
                                                     <div class="d-flex flex-column">
                                                         @if($org)
-                                                            <a href="{{ route('admin.customer.details', $org->id) }}" class="text-heading">
+                                                            <a href="{{ route('admin.organization.dashboard', $org->id) }}" class="text-heading">
                                                                 <span class="fw-medium text-truncate">{{ ucwords($orgName) }}</span>
                                                                 @if(!empty($org->organization_id))
                                                                     <span class="badge rounded-pill bg-primary border border-white">
