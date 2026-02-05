@@ -16,7 +16,7 @@ class AdminOrganizationPayments extends Component
 
     public $search = '', $start_date,$end_date;
     public $page = 1;
-    public $status = '';
+    public $status = 'success';
     public $totals = [];
 
 

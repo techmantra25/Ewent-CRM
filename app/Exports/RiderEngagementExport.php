@@ -19,6 +19,7 @@ class RiderEngagementExport implements FromCollection, WithHeadings
         $this->organization = $organization;
     }
 
+    
     public function collection()
     {
         $tab = $this->tab ?? 4;
