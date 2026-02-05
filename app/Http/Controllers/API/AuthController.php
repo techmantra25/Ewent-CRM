@@ -4023,6 +4023,7 @@ class AuthController extends Controller
                 'users.name as rider_name',
                 'users.mobile as rider_phone',
                 'users.email as rider_email',
+                'users.address as rider_address',
                 'users.kyc_verified_at as rider_approved_date',
 
                 'payments.id as payment_id',
@@ -4100,6 +4101,7 @@ class AuthController extends Controller
                 'users.name',
                 'users.mobile',
                 'users.email',
+                'users.address',
                 'users.kyc_verified_at',
                 'payments.id',
                 'payments.payment_date',
@@ -4122,6 +4124,7 @@ class AuthController extends Controller
                     'name'     => $first->rider_name,
                     'mobile'   => $first->rider_phone,
                     'email'    => $first->rider_email,
+                    'address'  => $first->rider_address,
                 ],
 
                 'rider_approved_date' => $first->rider_approved_date,
