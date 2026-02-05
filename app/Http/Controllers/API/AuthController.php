@@ -4015,14 +4015,20 @@ class AuthController extends Controller
 
     public function kycApprovePaymentList(Request $request)
     {
-        $data = User::select([
+        $start_date = $request->start_date;
+        $end_date   = $request->end_date;
+
+        $query = User::select([
                 'users.id as rider_id',
                 'users.name as rider_name',
                 'users.mobile as rider_phone',
                 'users.email as rider_email',
                 'users.kyc_verified_at as rider_approved_date',
+
                 'payments.id as payment_id',
                 'payments.payment_date',
+
+                'orders.id as order_id',
 
                 DB::raw("
                     SUM(
@@ -4042,13 +4048,53 @@ class AuthController extends Controller
                             ELSE 0 
                         END
                     ) as rental_amount
+                "),
+
+                DB::raw("
+                    COALESCE(
+                        assigned_vehicles.assigned_at,
+                        orders.created_at
+                    ) as assigned_date
+                "),
+
+                DB::raw("
+                    CASE
+                        WHEN assigned_vehicles.id IS NOT NULL
+                            THEN 'N/A'
+                        ELSE orders.return_date
+                    END as unassigned_date
+                "),
+
+                DB::raw("
+                    CASE
+                        WHEN assigned_vehicles.id IS NOT NULL
+                            THEN 'N/A'
+                        WHEN orders.return_date IS NOT NULL
+                            THEN DATEDIFF(orders.return_date, orders.created_at)
+                        ELSE 'N/A'
+                    END as no_of_days
                 ")
             ])
             ->join('payments', 'payments.user_id', '=', 'users.id')
             ->join('payment_items', 'payment_items.payment_id', '=', 'payments.id')
+            ->join('orders', 'orders.user_id', '=', 'users.id')
+
+            ->leftJoin('assigned_vehicles', function ($join) {
+                $join->on('assigned_vehicles.order_id', '=', 'orders.id')
+                    ->where('assigned_vehicles.status', 'assigned');
+            })
+
             ->whereNotNull('users.kyc_verified_at')
             ->where('users.is_verified', 'verified')
-            ->where('payments.payment_status', 'completed')
+            ->where('payments.payment_status', 'completed');
+
+             if ($start_date && $end_date) {
+                $query->whereBetween('orders.created_at', [
+                    $start_date . ' 00:00:00',
+                    $end_date   . ' 23:59:59',
+                ]);
+            }
+            $data = $query
             ->groupBy(
                 'users.id',
                 'users.name',
@@ -4056,12 +4102,17 @@ class AuthController extends Controller
                 'users.email',
                 'users.kyc_verified_at',
                 'payments.id',
-                'payments.payment_date'
+                'payments.payment_date',
+                'orders.id',
+                'orders.created_at',
+                'orders.return_date',
+                'assigned_vehicles.id',
+                'assigned_vehicles.assigned_at'
             )
             ->orderByDesc('payments.payment_date')
             ->get();
 
-            $groupedData = $data->groupBy('rider_id')->map(function ($items) {
+        $groupedData = $data->groupBy('rider_id')->map(function ($items) {
 
             $first = $items->first();
 
@@ -4075,24 +4126,121 @@ class AuthController extends Controller
 
                 'rider_approved_date' => $first->rider_approved_date,
 
-                'payment_details' => $items->map(function ($item) {
+                'payment_details' => $items->unique('payment_id')->map(function ($item) {
                     return [
-                        'payment_id'        => $item->payment_id,
-                        'payment_date'      => $item->payment_date,
-                        'security_deposit'  => (float) $item->security_deposit,
-                        'monthly_rental'    => (float) $item->rental_amount,
+                        'payment_id'       => $item->payment_id,
+                        'order_id'         => $item->order_id,
+                        'payment_date'     => $item->payment_date,
+                        'security_deposit' => (float) $item->security_deposit,
+                        'monthly_rental'   => (float) $item->rental_amount,
                     ];
-                })->values()
+                })->values(),
+
+                'assignment_details' => $items->unique('order_id')->map(function ($item) {
+                    return [
+                        'order_id'        => $item->order_id,
+                        'assigned_date'   => $item->assigned_date,
+                        'unassigned_date' => $item->unassigned_date,
+                        'no_of_days'      => $item->no_of_days,
+                    ];
+                })->values(),
             ];
         })->values();
 
-
-        return response()->json([
+            return response()->json([
             'status'  => true,
-            'message' => 'KYC approved rider payment list fetched successfully.',
+            'message' => 'KYC detail, approved rider payment list and assigned/unassigned date with days fetched successfully.',
             'data'    => $groupedData
         ]);
 
     }
+
+    public function unallocatedAndLogsVehicle(Request $request)
+    {
+        $start_date = $request->start_date;
+        $end_date   = $request->end_date;
+
+        $vehiclesQuery = DB::table('stocks')
+            ->where('status', 1);
+
+        // Apply date filter only if dates are present
+        if ($start_date && $end_date) {
+            $vehiclesQuery->whereBetween('created_at', [
+                $start_date . ' 00:00:00',
+                $end_date   . ' 23:59:59',
+            ]);
+        }
+
+        $vehicles = $vehiclesQuery
+            ->select('id', 'vehicle_number')
+            ->get()
+            ->keyBy('id');
+
+        $activeVehicleIds = DB::table('assigned_vehicles')
+            ->whereIn('status', ['assigned', 'overdue'])
+            ->pluck('vehicle_id')
+            ->toArray();
+
+        $unallocatedVehicles = $vehicles
+            ->reject(fn ($v) => in_array($v->id, $activeVehicleIds))
+            ->values()
+            ->map(fn ($v) => [
+                'vehicle_id'     => $v->id,
+                'vehicle_number' => $v->vehicle_number,
+            ]);
+
+        $assignedLogs = DB::table('assigned_vehicles')
+            ->select(
+                'vehicle_id',
+                'user_id',
+                'order_id',
+                'status',
+                'assigned_at as action_date',
+                DB::raw("'assigned' as log_type")
+            )
+            ->get();
+
+        $exchangeLogs = DB::table('exchange_vehicles')
+            ->select(
+                'vehicle_id',
+                'user_id',
+                'order_id',
+                'status',
+                'exchanged_at as action_date',
+                DB::raw("'exchange' as log_type")
+            )
+            ->get();
+
+        $groupedLogs = $assignedLogs
+            ->merge($exchangeLogs)
+            ->sortByDesc('action_date')
+            ->groupBy('vehicle_id');
+
+        $vehiclesWithLogs = $vehicles->map(function ($vehicle) use ($groupedLogs) {
+            return [
+                'vehicle_id'     => $vehicle->id,
+                'vehicle_number' => $vehicle->vehicle_number,
+                'logs' => ($groupedLogs[$vehicle->id] ?? collect())->map(function ($log) {
+                    return [
+                        'user_id'     => $log->user_id,
+                        'order_id'    => $log->order_id,
+                        'status'      => $log->status,
+                        'action_date' => $log->action_date,
+                        'log_type'    => $log->log_type,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Unallocated vehicles and related logs fetched successfully',
+            'data' => [
+                'unallocated_vehicles' => $unallocatedVehicles,
+                'vehicles'             => $vehiclesWithLogs,
+            ],
+        ], 200);
+    }
+
 
 }

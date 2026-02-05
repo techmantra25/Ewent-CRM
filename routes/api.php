@@ -101,10 +101,11 @@ Route::prefix('customer')->group(function () {
     Route::middleware(['api.token'])->group(function () {
         Route::get('/riders/e-signatures', [AuthController::class, 'RiderEsignList']);
         Route::get('/riders/payment-history', [AuthController::class, 'RiderPaymentHistory']);
+        Route::get('/riders/kyc-approved-payment', [AuthController::class, 'kycApprovePaymentList']);
+        Route::get('/riders/unallocated-vehicle-logs', [AuthController::class, 'unallocatedAndLogsVehicle']);
     });
     
-    Route::get('/riders/kyc-approved-payment', [AuthController::class, 'kycApprovePaymentList']);
-
+    
 
 
     
