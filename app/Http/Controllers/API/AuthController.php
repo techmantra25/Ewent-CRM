@@ -4136,7 +4136,7 @@ class AuthController extends Controller
                     ];
                 })->values(),
 
-                'assignment_details' => $items->unique('order_id')->map(function ($item) {
+                'assigned_unassigned_details' => $items->unique('order_id')->map(function ($item) {
                     return [
                         'order_id'        => $item->order_id,
                         'assigned_date'   => $item->assigned_date,
