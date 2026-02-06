@@ -7,15 +7,18 @@
 
     <div class="card my-4">
         <div class="card-body mx-4">
-            <h4 class="mb-4">Reset API Token</h4>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Reset API Token</h4>
 
-            <button
-                class="btn btn-primary mb-3"
-                wire:click="generateToken"
-                wire:loading.attr="disabled"
-            >
-                Generate / Reset Token
-            </button>
+                <button
+                    class="btn btn-danger"
+                    type="button"
+                    onclick="confirmGenerateToken({{ $generatedToken ? 'true' : 'false' }})"
+                    wire:loading.attr="disabled"
+                >
+                    {{ $generatedToken ? 'Reset Token' : 'Generate Token' }}
+                </button>
+            </div>
 
             @if ($generatedToken)
                 <div class="mb-3">
@@ -39,7 +42,7 @@
                     </div>
 
                     <small class="text-muted">
-                        Copy and store this token securely.
+                        Copy and store this token securely. You won’t be able to see it again if changed.
                     </small>
                 </div>
             @else
@@ -47,6 +50,7 @@
                     No API token available. Generate one to continue.
                 </div>
             @endif
+
         </div>
     </div>
 
@@ -54,13 +58,36 @@
         <div class="loader"></div>
     </div>
 </div>
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-function copyToken(btn) {
-    const token = document.getElementById('generatedToken').value;
-    navigator.clipboard.writeText(token).then(() => {
-        btn.innerText = 'Copied ✓';
-        setTimeout(() => btn.innerText = 'Copy', 2000);
-    });
-}
+    function confirmGenerateToken(hasToken) {
+        if (!hasToken) {
+            @this.call('generateToken');
+            return;
+        }
+
+        Swal.fire({
+            title: "API Token Already Exists",
+            text: "Generating a new token may break existing APIs. Do you really want to reset it?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Yes, reset token",
+            cancelButtonText: "Cancel"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('generateToken');
+            }
+        });
+    }
+
+    function copyToken(btn) {
+        const token = document.getElementById('generatedToken').value;
+        navigator.clipboard.writeText(token).then(() => {
+            btn.innerText = 'Copied ✓';
+            setTimeout(() => btn.innerText = 'Copy', 2000);
+        });
+    }
 </script>
+
