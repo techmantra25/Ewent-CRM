@@ -4085,8 +4085,9 @@ class AuthController extends Controller
                     ->where('assigned_vehicles.status', 'assigned');
             })
 
-            ->whereNotNull('users.kyc_verified_at')
-            ->where('users.is_verified', 'verified')
+            // ->whereNotNull('users.kyc_verified_at')
+            // ->where('users.is_verified', 'verified')
+            ->where('users.user_type', 'B2C')
             ->where('payments.payment_status', 'completed');
 
              if ($start_date && $end_date) {
@@ -4111,7 +4112,7 @@ class AuthController extends Controller
                 'assigned_vehicles.id',
                 'assigned_vehicles.assigned_at'
             )
-            ->orderByDesc('payments.payment_date')
+            ->orderBy('users.id')
             ->get();
 
         $groupedData = $data->groupBy('rider_id')->map(function ($items) {
