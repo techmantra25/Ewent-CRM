@@ -93,13 +93,12 @@ class PushNotificationList extends Component
     public function messageText($value){
         $this->message = $value;
     }
-   public function sendPushNotificationForm()
+   public function sendPushNotificationForm($content)
     {
+        $this->message = $content;
+        // dd(count($this->selectedUsers), $this->message, $content);
         if (count($this->selectedUsers) === 0 || !$this->message) {
-            $this->dispatch('notification', [
-                'type' => 'error',
-                'message' => 'Please select at least one user and enter a message.'
-            ]);
+            session()->flash('error', 'Please select at least one user and enter a message.');
             return;
         }
 

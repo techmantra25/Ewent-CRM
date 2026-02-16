@@ -21,6 +21,7 @@ use App\Models\OrganizationInvoiceItemDetail;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Log;
 
 if (!function_exists('storeFileWithCustomName')) {
     function storeFileWithCustomName($file, $directory)
@@ -478,7 +479,9 @@ if (!function_exists('sendPushNotification')) {
     function sendPushNotification($user_id, $type, $data = [])
     {
         // dd($user_id, $type, $data);
+        
         $messages = [
+            'form_request' => '✅ Hi :name! Please take a moment to fill out this quick form. It only takes a minute 👉 https://docs.google.com/forms/d/e/1FAIpQLSeUorT4BF2TOJR4_izBfdhJ6COIz-1KH92TpUWog9pS2uZCkw/viewform',
             'weather_update' => '🚨 Dear :name, due to a payment issue we’ve unlocked your vehicles temporarily. Please continue your ride hassle-free.',
             'payment_overdue' => '🚨 Dear :name, your subscription is due for renewal. Please renew by paying ₹:amount to continue enjoying our services.',
 
@@ -544,15 +547,42 @@ if (!function_exists('sendPushNotification')) {
 
         try {
             $fcm = new FCMService();
+
             $response = $fcm->sendPushNotification(
                 $user->fcm_token,
                 'E-went',
                 $messageText,
                 array_merge(['type' => $type], $data)
             );
+
+            // ✅ SUCCESS LOG
+            Log::info('FCM Push Sent Successfully', [
+                'user_id'   => $user->id ?? null,
+                'token'     => $user->fcm_token,
+                'title'     => 'E-went',
+                'message'   => $messageText,
+                'type'      => $type,
+                'data'      => $data,
+                'response'  => $response,
+                'time'      => now()->toDateTimeString(),
+            ]);
+
             return $response;
 
         } catch (\Exception $e) {
+
+            // ❌ ERROR LOG
+            Log::error('FCM Push Failed', [
+                'user_id'   => $user->id ?? null,
+                'token'     => $user->fcm_token ?? null,
+                'title'     => 'E-went',
+                'message'   => $messageText,
+                'type'      => $type,
+                'data'      => $data ?? [],
+                'error'     => $e->getMessage(),
+                'time'      => now()->toDateTimeString(),
+            ]);
+
             return ['error' => $e->getMessage()];
         }
     }
@@ -663,8 +693,7 @@ if (!function_exists('getB2BproductPrice')) {
     }
 }
 if (!function_exists('createInvoiceForOrganization')) {
-    function createInvoiceForOrganization($org_id, $type, $invoice_start_date, $invoice_end_date, $due_date)
-    {
+    function createInvoiceForOrganization($org_id, $type, $invoice_start_date, $invoice_end_date, $due_date){
         $org = Organization::with('user')->find($org_id);
         if (!$org) {
             return null; // return null if org or rental not found
@@ -701,25 +730,31 @@ if (!function_exists('createInvoiceForOrganization')) {
                         foreach ($all_date_between_invoice_date as $invoice_date_item) {
                             // $invoice_date_item is a Carbon instance
                             $date = $invoice_date_item->toDateString();
+                           
                             // Find the current order for that day
                            $CurrentOrder = Order::where('user_id', $user->id)
-                            ->where('rent_start_date', '<=', $invoice_date_item)
+
+                            // ✅ same date only
+                            ->whereDate('rent_start_date', $date)
+
+                            // ✅ time must be <= 14:00:00
+                            ->whereTime('rent_start_date', '<=', '14:00:00')
+
                             ->whereIn('rent_status', ['active', 'returned'])
-                            ->where(function($q) use ($invoice_date_item) {
+
+                            ->where(function ($q) use ($invoice_date_item) {
                                 $q->where(function ($sub) use ($invoice_date_item) {
-                                    // Either still ongoing OR ended after this invoice date
                                     $sub->whereNull('rent_end_date')
-                                        ->orWhere('rent_end_date', '>=', $invoice_date_item->toDateString());
+                                        ->orWhereDate('rent_end_date', '>=', $invoice_date_item->toDateString());
                                 })
                                 ->orWhere(function ($sub) use ($invoice_date_item) {
-                                    // OR return_date is still open / after this invoice date
                                     $sub->whereNull('return_date')
-                                        ->orWhere('return_date', '>=', $invoice_date_item->toDateString());
+                                        ->orWhereDate('return_date', '>=', $invoice_date_item->toDateString());
                                 });
                             })
-                            ->orderBy('id', 'desc')
-                            ->first();
 
+                            ->orderByDesc('id')
+                            ->first();
                             // Skip this date if no order found
                             if (!$CurrentOrder) continue;
                             $checkexistingData = OrganizationInvoiceItemDetail::where('date', $date)->where('order_id', $CurrentOrder->id)->first();

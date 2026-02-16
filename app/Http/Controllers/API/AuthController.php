@@ -4012,7 +4012,7 @@ class AuthController extends Controller
             'data' => $org,
         ], 200);
     }
-
+    
     public function kycApprovePaymentList(Request $request)
     {
         $start_date = $request->start_date;

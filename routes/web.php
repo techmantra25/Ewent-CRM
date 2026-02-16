@@ -184,6 +184,7 @@ Route::group(['prefix' => 'cron'], function () {
     // Route::get('/payment-amount-update', [CronController::class, 'paymentAmountUpdate']);
     // Route::get('/active-vehicle-amount-update', [CronController::class, 'ActiveVehicleAmountUpdate']);
 
+    Route::get('/send-manual-push-notification', [CronController::class, 'sendManualPushNotification']);
     Route::get('/vehicles/daily-timeline', [CronController::class, 'DailyVehicleLog']);
     Route::get('/vehicles/check/payment-overdue', [CronController::class, 'VehiclePaymentOverDue']);
     Route::get('/vehicles/overdue/immobilizer-requests', [CronController::class, 'OverDueImmobilizerRequests']);
