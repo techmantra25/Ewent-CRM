@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\OrganizationDiscount;
 use App\Models\OrganizationProduct;
 use App\Models\Product;
+use App\Models\AsignedVehicle;
 use App\Models\OrganizationDepositInvoice;
 use Livewire\WithPagination;
 
@@ -16,6 +17,9 @@ class AdminOrganizationDashboard extends Component
 {
     use WithPagination;
     protected $paginationTheme = 'bootstrap';
+    public $vehicleStatus = "lock";
+    public $riderFilter = "all";
+    public $selectedVehicle = [];
     public $page = 1;
     public $organization;
     public $allRidersCount = null;
@@ -70,6 +74,10 @@ class AdminOrganizationDashboard extends Component
 
     public function changeTab($value){
         $this->activeTab = $value;
+        if($value=="vehicle_lock"){
+            $this->reset(['vehicleStatus','riderFilter','selectedVehicle']);
+            $this->ActiveRider();
+        }
         $this->resetPageField();
     }
     public function FilterRider($value)
@@ -176,6 +184,144 @@ class AdminOrganizationDashboard extends Component
     {
         OrganizationDepositInvoice::findOrFail($id)->delete();
     }
+
+    public function toggleVehicle($value)
+    {
+        $this->vehicleStatus = $value;
+        $this->ActiveRider();
+    }
+
+    public function toggleRiderFilter($value)
+    {
+        $this->riderFilter = $value;
+        $this->ActiveRider();
+    }
+
+    public function ActiveRider(){
+        if($this->riderFilter=="all"){
+           $selectedVehicle = User::with(['assigned_vehicle.stock'])
+            ->where('user_type', 'B2B')
+            ->where('organization_id', $this->organization->id)
+            ->whereHas('assigned_vehicle.stock', function ($q) {
+                $q->whereNotNull('vehicle_track_id');
+
+                if ($this->vehicleStatus == 'lock') {
+                    $q->where('immobilizer_status', 'MOBILIZE');
+                } else {
+                    $q->where('immobilizer_status', 'IMMOBILIZE');
+                }
+            })
+            ->orderBy('id', 'DESC')
+            ->get();
+
+
+        // 👉 FIRST map vehicles
+        $vehicles = $selectedVehicle->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'rider_name' => $user->name,
+                'vehicle_number' => $user->assigned_vehicle->stock->vehicle_number,
+                'vehicle_track_id' => $user->assigned_vehicle->stock->vehicle_track_id,
+                'immobilizer_status' => $user->assigned_vehicle->stock->immobilizer_status,
+            ];
+        });
+
+
+        // 👉 NOW you can pluck track ids
+        // $this->selectedRider = $vehicles->pluck('vehicle_track_id')->toArray();
+        // 👉 table data
+        $this->selectedVehicle = $vehicles;
+
+        }else{
+
+        }
+        
+    }
+
+    public function MobilizationRequest($vehicle_id, $value)
+    {
+        $url = 'https://app.loconav.sensorise.net/integration/api/v1/vehicles/'.$vehicle_id.'/immobilizer_requests';
+
+        $payload = ["value" => $value];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "User-Authentication: " . env('LOCONAV_TOKEN'),
+            "Accept: application/json",
+            "Content-Type: application/json"
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+
+        $vehiclesResponse = curl_exec($ch);
+        curl_close($ch);
+
+        $response = json_decode($vehiclesResponse, true);
+
+        // ❌ API not responding
+        if (!$response || !isset($response['success'])) {
+            return false;
+        }
+
+        // ❌ API error
+        if ($response['success'] === false) {
+            return false;
+        }
+
+        // ✅ Success
+        return true;
+    }
+
+    public function lockUnlockAllVehicles()
+    {
+        if(empty($this->selectedVehicle)){
+            session()->flash('error', 'No vehicles found');
+            return;
+        }
+
+        $successCount = 0;
+        $failCount = 0;
+
+        foreach($this->selectedVehicle as $item){
+
+            // Decide action
+            if($item['immobilizer_status'] == "MOBILIZE"){
+                $value = "IMMOBILIZE";
+            }else{
+                $value = "MOBILIZE";
+            }
+
+            $result = $this->MobilizationRequest($item['vehicle_track_id'], $value);
+
+            if($result){
+                $successCount++;
+            }else{
+                $failCount++;
+            }
+        }
+
+        // 🎉 Final message
+        if($successCount > 0 && $failCount == 0){
+            $msg = $this->vehicleStatus == 'lock'
+                ? 'All vehicles locked successfully'
+                : 'All vehicles unlocked successfully';
+
+            session()->flash('success', $msg);
+
+        }elseif($successCount > 0 && $failCount > 0){
+            session()->flash('error', 'Some vehicles failed to update');
+
+        }else{
+            session()->flash('error', 'Failed to update vehicles');
+        }
+
+        // refresh list
+        $this->vehicleStatus=='lock'?'unlock':'lock';
+        $this->ActiveRider();
+    }
+
+
 
     public function render()
     {
