@@ -727,22 +727,13 @@ if (!function_exists('createInvoiceForOrganization')) {
                         $invoice_item_total_price = 0;
                         $all_date_between_invoice_date = CarbonPeriod::create($start, $end);
                          
-                        foreach ($all_date_between_invoice_date as $invoice_date_item) {
+                        foreach ($all_date_between_invoice_date as $k=>$invoice_date_item) {
                             // $invoice_date_item is a Carbon instance
                             $date = $invoice_date_item->toDateString();
-                           
-                            // Find the current order for that day
-                           $CurrentOrder = Order::where('user_id', $user->id)
-
-                            // ✅ same date only
-                            ->whereDate('rent_start_date', $date)
-
-                            // ✅ time must be <= 14:00:00
-                            ->whereTime('rent_start_date', '<=', '14:00:00')
-
+                            $CurrentOrder = Order::where('user_id', $user->id)
+                            ->whereDate('rent_start_date', '<=', $invoice_date_item->toDateString())
                             ->whereIn('rent_status', ['active', 'returned'])
-
-                            ->where(function ($q) use ($invoice_date_item) {
+                            ->where(function($q) use ($invoice_date_item) {
                                 $q->where(function ($sub) use ($invoice_date_item) {
                                     $sub->whereNull('rent_end_date')
                                         ->orWhereDate('rent_end_date', '>=', $invoice_date_item->toDateString());
@@ -752,9 +743,21 @@ if (!function_exists('createInvoiceForOrganization')) {
                                         ->orWhereDate('return_date', '>=', $invoice_date_item->toDateString());
                                 });
                             })
-
                             ->orderByDesc('id')
                             ->first();
+
+                            // ⭐ your required condition
+                            $latestInvoice = OrganizationInvoice::where('organization_id', $user->organization_id)
+                            ->orderBy('id', 'desc')
+                            ->first();
+                            if(!$latestInvoice){
+                                if ($k == 0 && $CurrentOrder) {
+                                    $rentStartTime = \Carbon\Carbon::parse($CurrentOrder->rent_start_date)->format('H:i:s');
+                                    if ($rentStartTime > '14:00:00') {
+                                        continue; // skip this day
+                                    }
+                                }
+                            }
                             // Skip this date if no order found
                             if (!$CurrentOrder) continue;
                             $checkexistingData = OrganizationInvoiceItemDetail::where('date', $date)->where('order_id', $CurrentOrder->id)->first();

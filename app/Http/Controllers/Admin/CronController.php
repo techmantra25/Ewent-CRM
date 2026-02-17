@@ -509,7 +509,6 @@ class CronController extends Controller
         $customSubscriber = Organization::where('subscription_type', 'custom')
             ->whereNotNull('renewal_interval_days')
             ->get();
-
         if ($customSubscriber->count() > 0) {
             $summary['custom']['organizations'] = $customSubscriber->count();
 
@@ -520,11 +519,10 @@ class CronController extends Controller
                 $today = Carbon::now($timezone)->startOfDay();
                 if($latestInvoice){
                     // Last invoice date
-                    $lastInvoiceDate = Carbon::parse($latestInvoice->created_at, $timezone)->startOfDay();
-                    
+                    $lastInvoiceDate = Carbon::parse($latestInvoice->billing_end_date, $timezone)->startOfDay();
                     // Next renewal date = last invoice date + interval days
                     $nextRenewalDate = $lastInvoiceDate->copy()->addDays((int) $org->renewal_interval_days -1);
-                    // dd($nextRenewalDate);
+                    // dd($nextRenewalDate,$org->renewal_interval_days);
                     // ✅ If today matches renewal date
                     if ($nextRenewalDate->equalTo($today)) {
                     } else {

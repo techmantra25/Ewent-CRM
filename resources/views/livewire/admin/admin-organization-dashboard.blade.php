@@ -1218,69 +1218,160 @@
                                       </div>
                                     </div>
                                   </div>
+                                    <div class="mt-4">
+                                        <div class="table-responsive">
+                                            <table class="table align-middle">
+                                                <thead class="table-dark">
+                                                    <tr class="invoice-head-item">
+                                                        <th class="text-start text-uppercase" style="font-size:11px;">#</th>
+                                                        <th class="text-start text-uppercase" style="font-size:11px;">Rider Name</th>
+                                                        <th class="text-start text-uppercase" style="font-size:11px;">Vehicle Number</th>
+                                                        <th class="text-start text-uppercase" style="font-size:11px;">Status</th>
+                                                    </tr>
+                                                </thead>
 
-                                    @if($riderFilter == 'all')
-                                        <div class="mt-4">
-                                            <div class="table-responsive">
-                                                <table class="table align-middle">
-                                                    <thead class="table-dark">
-                                                        <tr class="invoice-head-item">
-                                                            <th class="text-start text-uppercase" style="font-size:11px;">#</th>
-                                                            <th class="text-start text-uppercase" style="font-size:11px;">Rider Name</th>
-                                                            <th class="text-start text-uppercase" style="font-size:11px;">Vehicle Number</th>
-                                                            <th class="text-start text-uppercase" style="font-size:11px;">Status</th>
-                                                        </tr>
-                                                    </thead>
+                                                <tbody>
+                                                   <tbody>
 
-                                                    <tbody>
-                                                        @forelse($selectedVehicle as $index => $item)
-                                                            <tr>
-                                                                <td>{{ $index + 1 }}</td>
-                                                                <td>{{ $item['rider_name'] }}</td>
-                                                                <td>{{ $item['vehicle_number'] }}</td>
+                                                        {{-- ================================= --}}
+                                                        {{-- SHOW ALL VEHICLES MODE --}}
+                                                        {{-- ================================= --}}
+                                                        @if($riderFilter == 'all')
 
-                                                                <td>
-                                                                    @if($item['immobilizer_status'] == 'IMMOBILIZE')
-                                                                        <span class="badge bg-danger">Locked</span>
-                                                                    @else
-                                                                        <span class="badge bg-success">Unlocked</span>
-                                                                    @endif
-                                                                </td>
-                                                            </tr>
-                                                        @empty
-                                                            <tr>
-                                                                <td colspan="4" class="text-center text-muted">
-                                                                    No Riders Found
-                                                                </td>
-                                                            </tr>
-                                                        @endforelse
-                                                    </tbody>
-                                                        <tfoot>
-                                                            <tr>
-                                                                <td colspan="4" class="text-end">
-                                                                    @if(count($selectedVehicle)>0)
-                                                                        @if($vehicleStatus == 'lock')
-                                                                            <button class="btn btn-danger btn-sm"
-                                                                                    wire:click="lockUnlockAllVehicles">
-                                                                                <i class="ri-lock-line"></i> Lock All Vehicles
-                                                                            </button>
+                                                            @forelse($selectedVehicle as $index => $item)
+                                                                <tr>
+                                                                    <td>{{ $index + 1 }}</td>
+                                                                    <td>{{ $item['rider_name'] }}</td>
+                                                                    <td>{{ $item['vehicle_number'] }}</td>
+                                                                    <td>
+                                                                        @if($item['immobilizer_status'] == 'IMMOBILIZE')
+                                                                            <span class="badge bg-label-danger mb-0 cursor-pointer text-uppercase">Locked</span>
                                                                         @else
-                                                                            <button class="btn btn-success btn-sm"
-                                                                                    wire:click="lockUnlockAllVehicles">
-                                                                                <i class="ri-lock-unlock-line"></i> Unlock All Vehicles
-                                                                            </button>
+                                                                            <span class="badge bg-label-success mb-0 cursor-pointer text-uppercase">Unlocked</span>
                                                                         @endif
+                                                                    </td>
+                                                                </tr>
+                                                            @empty
+                                                                <tr>
+                                                                    <td colspan="4" class="text-center text-muted">No Riders Found</td>
+                                                                </tr>
+                                                            @endforelse
+
+
+                                                        {{-- ================================= --}}
+                                                        {{-- INVOICE WISE MODE --}}
+                                                        {{-- ================================= --}}
+                                                        @else
+
+                                                            @forelse ($selectedInvoiceItem as $invoiceIndex => $invoice)
+
+                                                                {{-- Invoice Header Row --}}
+                                                                <tr class="table-primary">
+                                                                    <td colspan="4">
+                                                                        <div class="d-flex justify-content-between align-items-center">
+
+                                                                            <div>
+                                                                                <strong>Invoice:</strong> {{ $invoice['invoice_number'] }} <br>
+                                                                                <small>
+                                                                                    {{ $invoice['billing_start_date'] }} → {{ $invoice['billing_end_date'] }}
+                                                                                </small>
+                                                                            </div>
+
+                                                                            <div class="d-flex align-items-center gap-3">
+
+                                                                                {{-- Invoice Status --}}
+                                                                                @if($invoice['status'] == 'pending')
+                                                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                                                @elseif($invoice['status'] == 'overdue')
+                                                                                    <span class="badge bg-danger">Overdue</span>
+                                                                                @else
+                                                                                    <span class="badge bg-success">Paid</span>
+                                                                                @endif
+
+                                                                                {{-- Select All Checkbox --}}
+                                                                                @php
+                                                                                    $vehicleIds = collect($invoice['vehicles'])
+                                                                                                    ->pluck('id')
+                                                                                                    ->filter()
+                                                                                                    ->implode(',');
+                                                                                @endphp
+
+                                                                                <div class="form-check mb-0">
+                                                                                    <input 
+                                                                                        class="form-check-input cursor-pointer"
+                                                                                        type="checkbox"
+                                                                                        id="invoice-{{ $invoiceIndex }}"
+                                                                                        wire:change="toggleInvoiceVehicles('{{ $vehicleIds }}', $event.target.checked)"
+                                                                                    >
+                                                                                    <label class="form-check-label fw-semibold cursor-pointer"
+                                                                                        for="invoice-{{ $invoiceIndex }}">
+                                                                                        Select Rider
+                                                                                    </label>
+                                                                                </div>
+
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+
+                                                                </tr>
+
+                                                                {{-- Riders rows --}}
+                                                                @forelse($invoice['vehicles'] as $index => $vehicle)
+                                                                    <tr>
+                                                                        <td>{{ $index + 1 }}</td>
+                                                                        <td>{{ $vehicle['rider_name'] }}</td>
+                                                                        <td>{{ $vehicle['vehicle_number'] }}</td>
+
+                                                                        <td>
+                                                                            @if($vehicle['immobilizer_status'] == 'IMMOBILIZE')
+                                                                                <span class="badge bg-label-danger mb-0 cursor-pointer text-uppercase">Locked</span>
+                                                                            @else
+                                                                                <span class="badge bg-label-success mb-0 cursor-pointer text-uppercase">Unlocked</span>
+                                                                            @endif
+                                                                        </td>
+                                                                    </tr>
+                                                                @empty
+                                                                    <tr>
+                                                                        <td colspan="4" class="text-center text-muted">No Riders in this invoice</td>
+                                                                    </tr>
+                                                                @endforelse
+
+
+                                                            @empty
+                                                                <tr>
+                                                                    <td colspan="4" class="text-center text-muted">No Invoice Riders Found</td>
+                                                                </tr>
+                                                            @endforelse
+
+                                                        @endif
+
+                                                        </tbody>
+
+                                                </tbody>
+                                                    <tfoot>
+                                                        <tr>
+                                                            <td colspan="4" class="text-end">
+                                                                @if(count($selectedVehicle)>0)
+                                                                    @if($vehicleStatus == 'lock')
+                                                                        <button class="btn btn-danger btn-sm"
+                                                                                wire:click="lockUnlockAllVehicles">
+                                                                            <i class="ri-lock-line"></i> Lock {{count($selectedVehicle)}} Vehicles
+                                                                        </button>
+                                                                    @else
+                                                                        <button class="btn btn-success btn-sm"
+                                                                                wire:click="lockUnlockAllVehicles">
+                                                                            <i class="ri-lock-unlock-line"></i> Unlock {{count($selectedVehicle)}} Vehicles
+                                                                        </button>
                                                                     @endif
+                                                                @endif
 
-                                                                </td>
-                                                            </tr>
-                                                        </tfoot>
+                                                            </td>
+                                                        </tr>
+                                                    </tfoot>
 
-                                                </table>
-                                            </div>
+                                            </table>
                                         </div>
-                                    @endif
-
+                                    </div>
                               </div>
                             </div>
                           </div>
