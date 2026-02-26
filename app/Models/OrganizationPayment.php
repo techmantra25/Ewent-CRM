@@ -19,6 +19,9 @@ class OrganizationPayment extends Model
         'currency',
         'icici_merchantTxnNo',
         'icici_txnID',
+        'utr_no',
+        'receipt_upload',
+        'captured_by',
         'payment_date',
     ];
     protected $casts = [
@@ -33,5 +36,9 @@ class OrganizationPayment extends Model
     public function invoice()
     {
         return $this->belongsTo(\App\Models\OrganizationInvoice::class, 'invoice_id');
+    }
+    public function capturedByAdmin()
+    {
+        return $this->belongsTo(\App\Models\Admin::class, 'captured_by');
     }
 }

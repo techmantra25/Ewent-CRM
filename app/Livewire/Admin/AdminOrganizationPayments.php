@@ -18,6 +18,9 @@ class AdminOrganizationPayments extends Component
     public $page = 1;
     public $status = 'success';
     public $totals = [];
+    public $selectedPayment;
+    public $receiptImage;
+    public $isPdf = false;
 
 
     public function gotoPage($value, $pageName = 'page')
@@ -51,6 +54,20 @@ class AdminOrganizationPayments extends Component
 
     public function exportAll(){
         return Excel::download(new OrganizationPaymentExport($this->search, $this->status, $this->start_date, $this->end_date), 'organization_payment_history.xlsx');
+    }
+
+    public function viewReceipt($paymentId)
+    {
+        $payment = OrganizationPayment::with('capturedByAdmin')->findOrFail($paymentId);
+
+        $this->selectedPayment = $payment;
+
+        $this->receiptImage = asset($payment->receipt_upload);
+
+        $extension = pathinfo($payment->receipt_upload, PATHINFO_EXTENSION) ?? null;
+        $this->isPdf = $extension === 'pdf';
+
+        $this->dispatch('openReceiptModal');
     }
     public function render()
     {

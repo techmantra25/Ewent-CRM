@@ -105,6 +105,7 @@
                                         <th>Status</th>
                                         <th>ICICI Txn No</th>
                                         <th>Amount</th>
+                                        <th>NEFT Captured</th>
                                         <th>Payment Date</th>
                                     </tr>
                                 </thead>
@@ -150,7 +151,18 @@
 
                                             <td>{{ $payment->icici_txnID ?? $payment->icici_merchantTxnNo ?? '—' }}</td>
                                             <td>{{ env('APP_CURRENCY') }}{{ number_format($payment->amount, 2) }}</td>
-                                           <td>
+                                            <td>
+                                                @if($payment->receipt_upload)
+                                                    <button 
+                                                        class="badge btn btn-secondary"
+                                                        wire:click="viewReceipt({{ $payment->id }})">
+                                                        View
+                                                    </button>
+                                                @else   
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                            <td>
                                                 {{ $payment->payment_date 
                                                     ? \Carbon\Carbon::parse($payment->payment_date)->format('d M Y h:i A') 
                                                     : '—' 
@@ -185,14 +197,90 @@
                             <div class="mt-2">
                                 {{ $payments->links() }}
                             </div>
+
+                            {{-- captured modal --}}
+                                <div wire:ignore.self class="modal fade" id="receiptModal" tabindex="-1">
+                                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                                        <div class="modal-content">
+
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Payment Captured Details</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+
+                                            <div class="modal-body">
+
+                                                @if($selectedPayment)
+
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <strong>UTR No:</strong><br>
+                                                            {{ $selectedPayment->utr_no ?? '—' }}
+                                                        </div>
+
+                                                        <div class="col-md-6">
+                                                            <strong>Payment Date:</strong><br>
+                                                            {{ $selectedPayment->payment_date 
+                                                                ? \Carbon\Carbon::parse($selectedPayment->payment_date)->format('d M Y h:i A') 
+                                                                : '—' }}
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <strong>Captured By:</strong><br>
+                                                            {{ $selectedPayment->capturedByAdmin->name ?? '' }}
+                                                        </div>
+                                                    </div>
+
+                                                    <hr>
+
+                                                    <div class="text-center">
+
+                                                        @if($selectedPayment->receipt_upload)
+
+                                                            @if($isPdf)
+                                                                <a href="{{ asset($selectedPayment->receipt_upload) }}" 
+                                                                target="_blank" 
+                                                                class="btn btn-danger">
+                                                                Receipt PDF
+                                                                </a>
+                                                            @else
+                                                                <img src="{{ asset($selectedPayment->receipt_upload) }}" 
+                                                                    class="img-fluid rounded shadow">
+                                                            @endif
+
+                                                        @else
+                                                            <p>No receipt uploaded.</p>
+                                                        @endif
+
+                                                    </div>
+
+                                                @endif
+
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <div class="loader-container" wire:loading>
         <div class="loader"></div>
     </div>
 </div>
+@section('page-script')
+<script>
+    document.addEventListener('livewire:init', () => {
+        Livewire.on('openReceiptModal', () => {
+            let modal = new bootstrap.Modal(document.getElementById('receiptModal'));
+            modal.show();
+        });
+    });
+</script>
+@endsection
+

@@ -75,6 +75,7 @@
                                         <th>Invoice Date</th>
                                         <th>Due Date</th>
                                         <th>Payment Date</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -111,7 +112,7 @@
                                                             </a>
 
                                                             <small class="text-truncate">
-                                                                {{ $org->email ?? 'N/A' }} | {{ $org->mobile ?? 'N/A' }}
+                                                                {{ $org->email ?? 'N/A' }}
                                                             </small>
                                                         @else
                                                             <span class="text-muted">No organization data</span>
@@ -159,20 +160,25 @@
                                                 </span>
                                             </td>
                                             <td>
+                                                <span>
+                                                    {{ $invoice->payment_date 
+                                                        ? \Carbon\Carbon::parse($invoice->payment_date)->format('d M Y') 
+                                                        : '—' 
+                                                    }}
+                                                </span>
+                                            </td>
+                                            <td>
                                                 <div class="d-flex justify-content-between">
-                                                        <span>
-                                                            {{ $invoice->payment_date 
-                                                                    ? \Carbon\Carbon::parse($invoice->payment_date)->format('d M Y') 
-                                                                    : '—' 
-                                                                }}
-                                                            </span>
-                                                            <a href="javascript:void(0);" data-bs-toggle="collapse" data-bs-target="#payment-invoice-{{ $invoice->id }}" aria-expanded="false">
-                                                                <span class="control">
-                                                                    <i class="bi bi-chevron-down"></i> <!-- Bootstrap icon example -->
-                                                                </span>
-                                                            </a>
-                                                    </div>
-                                                </td>
+                                                    <a href="javascript:void(0);" data-bs-toggle="collapse" data-bs-target="#payment-invoice-{{ $invoice->id }}" aria-expanded="false">
+                                                        <span class="control">
+                                                            <i class="bi bi-chevron-down"></i> <!-- Bootstrap icon example -->
+                                                        </span>
+                                                    </a>
+                                                    <a href="javascript:void(0);" class="badge bg-info" wire:click="openPaymentModal({{ $invoice->id }})">
+                                                        Capture
+                                                    </a>
+                                                </div>
+                                            </td>
 
                                         </tr>
                                         <!-- Child: Invoice Items (Collapsed) -->
@@ -285,6 +291,59 @@
                                     </tr>
                                 </tfoot>
 
+                                <!-- Payment Capture Modal -->
+                                <div wire:ignore.self class="modal fade" id="paymentCaptureModal" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form wire:submit.prevent="savePayment">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">NEFT Payment Captured By UTR No.</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+
+                                                <div class="modal-body">
+                                                    @error('general')
+                                                        <div class="alert alert-danger">
+                                                            {{ $message }}
+                                                        </div>
+                                                    @enderror
+
+                                                    <!-- UTR Number -->
+                                                    <div class="mb-3">
+                                                        <label class="form-label">UTR Number</label>
+                                                        <input type="text" class="form-control" wire:model="utr_number">
+                                                        @error('utr_number') <small class="text-danger">{{ $message }}</small> @enderror
+                                                    </div>
+
+                                                    <!-- Payment Date -->
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Actual Payment Date</label>
+                                                        <input type="date" class="form-control" wire:model="payment_date">
+                                                        @error('payment_date') <small class="text-danger">{{ $message }}</small> @enderror
+                                                    </div>
+
+                                                    <!-- Receipt Upload -->
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Upload Receipt</label>
+                                                        <input type="file" class="form-control" wire:model="receipt">
+                                                        @error('receipt') <small class="text-danger">{{ $message }}</small> @enderror
+                                                    </div>
+
+                                                    <div wire:loading wire:target="receipt" class="text-info">
+                                                        Uploading...
+                                                    </div>
+
+                                                </div>
+
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </table>
                             <div class="mt-2">
                                 {{ $invoices->links() }}
@@ -300,6 +359,21 @@
       </div>
 </div>
 @section('page-script')
+<script>
+    document.addEventListener('livewire:init', () => {
 
+        Livewire.on('openPaymentModal', () => {
+            let modal = new bootstrap.Modal(document.getElementById('paymentCaptureModal'));
+            modal.show();
+        });
+
+        Livewire.on('closePaymentModal', () => {
+            let modalEl = document.getElementById('paymentCaptureModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+        });
+
+    });
+</script>
 @endsection
 
