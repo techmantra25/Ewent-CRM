@@ -8,6 +8,7 @@ use App\Models\Stock;
 use App\Models\CronLog;
 use App\Models\VehicleTimeline;
 use App\Models\AsignedVehicle;
+use App\Models\ExchangeVehicle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,9 @@ use App\Models\OrganizationInvoice;
 use App\Models\OrganizationInvoiceItem;
 use App\Models\OrganizationInvoiceItemDetail;
 use App\Models\PaymentLog;
+use App\Models\Payment;
 use App\Models\UserLocationLog;
+use Illuminate\Support\Facades\Log;
 
 class CronController extends Controller
 {
@@ -217,6 +220,48 @@ class CronController extends Controller
         }
     }
 
+    public function sendManualPushNotification(){
+        try {
+
+            // Get all overdue vehicles
+            $assignedVehicles = AsignedVehicle::where('status', 'assigned')->get();
+
+            if ($assignedVehicles->isEmpty()) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'No vehicle vehicles found'
+                ]);
+            }
+
+            $sentCount = 0;
+
+            foreach ($assignedVehicles as $vehicle) {
+                
+                $data = [];
+
+                // Your existing helper function
+                sendPushNotification(
+                    $vehicle->user_id,
+                    'form_request',
+                    $data
+                );
+
+                $sentCount++;
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Notifications sent successfully',
+                'total_notifications_sent' => $sentCount
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function VehiclePaymentOverDue()
     {
         DB::beginTransaction();
@@ -389,14 +434,15 @@ class CronController extends Controller
     // Daily Invoice generate for Organization
     public function generateOrganizationInvoice() {
         $timezone = env('APP_LOCAL_TIMEZONE', 'Asia/Kolkata');
+        
         $today_date = Carbon::now($timezone)->day;
         $today_day  = Carbon::now($timezone)->format('l');
 
         $summary = [
             'monthly' => ['organizations' => 0, 'invoices' => 0],
             'weekly'  => ['organizations' => 0, 'invoices' => 0],
+            'custom'  => ['organizations' => 0, 'invoices' => 0],
         ];
-
         // 1. Monthly Subscription
         $monthlySubscriber = Organization::where('subscription_type', 'monthly')
             ->where('renewal_day_of_month', $today_date)
@@ -455,6 +501,59 @@ class CronController extends Controller
 
                 if ($invoice) {
                     $summary['weekly']['invoices']++;
+                }
+            }
+        }
+
+        // 3. Custom Subscription
+        $customSubscriber = Organization::where('subscription_type', 'custom')
+            ->whereNotNull('renewal_interval_days')
+            ->get();
+        if ($customSubscriber->count() > 0) {
+            $summary['custom']['organizations'] = $customSubscriber->count();
+
+            foreach ($customSubscriber as $org) {
+                $latestInvoice = OrganizationInvoice::where('organization_id', $org->id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $today = Carbon::now($timezone)->startOfDay();
+                if($latestInvoice){
+                    // Last invoice date
+                    $lastInvoiceDate = Carbon::parse($latestInvoice->billing_end_date, $timezone)->startOfDay();
+                    // Next renewal date = last invoice date + interval days
+                    $nextRenewalDate = $lastInvoiceDate->copy()->addDays((int) $org->renewal_interval_days -1);
+                    // dd($nextRenewalDate,$org->renewal_interval_days);
+                    // ✅ If today matches renewal date
+                    if ($nextRenewalDate->equalTo($today)) {
+                    } else {
+                        continue; // date match na → skip
+                    }
+                }else{
+                     $lastInvoiceDate = Carbon::parse($org->created_at, $timezone)->startOfDay();
+
+                    $nextRenewalDate = $lastInvoiceDate
+                        ->copy()
+                        ->addDays((int) $org->renewal_interval_days - 1);
+                    if ($nextRenewalDate->equalTo($today)) {
+                    } else {
+                        continue; // date match na → skip
+                    }
+                }
+                
+
+                $invoice_start_date = $latestInvoice && $latestInvoice->billing_end_date
+                    ? Carbon::parse($latestInvoice->billing_end_date)->addDay()
+                    : Carbon::parse($org->created_at);
+                
+                $invoice_end_date = Carbon::now($timezone);
+                $due_date = Carbon::parse($invoice_end_date)
+                    ->addDays(config('subscription.custom_due_period'))
+                    ->toDateString();
+
+                $invoice = createInvoiceForOrganization($org->id, 'custom', $invoice_start_date, $invoice_end_date, $due_date);
+
+                if ($invoice) {
+                    $summary['custom']['invoices']++;
                 }
             }
         }
@@ -529,7 +628,7 @@ class CronController extends Controller
             return $userIds;
         });
         if(count($userIds)>0){
-            $this->immobilizeOverdueORGRiders($userIds);
+            // $this->immobilizeOverdueORGRiders($userIds);
         }
        
         return response()->json([
@@ -621,6 +720,166 @@ class CronController extends Controller
             'executed_at'     => Carbon::now(),
         ]);
     }
+
+
+    // For just Testing
+
+    // public function paymentAmountUpdate()
+    // {
+    //     try {
+
+    //         // -------------------------------
+    //         // 1️⃣ Renewal orders: rental = amount, deposit = 0
+    //         // -------------------------------
+    //         $renewalUpdated = Payment::where('order_type', 'like', 'renewal_%')
+    //             ->update([
+    //                 'deposit_amount' => 0.00,
+    //                 'rental_amount'  => DB::raw('amount'),
+    //             ]);
+
+    //         // -------------------------------
+    //         // 2️⃣ New subscriptions: split deposit + rental
+    //         // -------------------------------
+    //         $processed = 0;
+    //         $skipped   = 0;
+
+    //         DB::transaction(function () use (&$processed, &$skipped) {
+
+    //             Payment::with(['order.subscription'])
+    //                 ->where('order_type', 'like', 'new_subscription%')
+    //                 ->where(function ($q) {
+    //                     $q->whereNull('deposit_amount')
+    //                     ->orWhere('deposit_amount', 0)
+    //                     ->orWhereNull('rental_amount')
+    //                     ->orWhere('rental_amount', 0);
+    //                 })
+    //                 ->chunkById(200, function ($payments) use (&$processed, &$skipped) {
+
+    //                     Log::info('Chunk fetched', ['count' => $payments->count()]);
+
+    //                     foreach ($payments as $item) {
+
+    //                         // ---- Safety checks ----
+    //                         if (
+    //                             !$item->order ||
+    //                             !$item->order->subscription ||
+    //                             $item->amount === null
+    //                         ) {
+    //                             Log::warning('Skipped payment ID '.$item->id.' due to missing relations or amount.');
+    //                             $skipped++;
+    //                             continue;
+    //                         }
+
+    //                         $subscriptionDeposit = (float) $item->order->subscription->deposit_amount;
+    //                         $amount              = (float) $item->amount;
+
+    //                         // Prevent negative rental values
+    //                         $rentalAmount  = max(0, $amount - $subscriptionDeposit);
+    //                         $depositAmount = $subscriptionDeposit;
+
+    //                         $item->deposit_amount = $depositAmount;
+    //                         $item->rental_amount  = $rentalAmount;
+    //                         $item->save();
+
+    //                         $processed++;
+    //                     }
+    //                 });
+    //         });
+
+    //         // -------------------------------
+    //         // ✅ Success response
+    //         // -------------------------------
+    //         return response()->json([
+    //             'status'            => true,
+    //             'message'           => 'Payment amounts updated successfully.',
+    //             'renewals_updated'  => $renewalUpdated,
+    //             'new_processed'     => $processed,
+    //             'new_skipped'       => $skipped,
+    //         ]);
+
+    //     } catch (\Throwable $e) {
+
+    //         // -------------------------------
+    //         // ❌ Log full error for devs
+    //         // -------------------------------
+    //         Log::error('Payment amount update failed', [
+    //             'message' => $e->getMessage(),
+    //             'file'    => $e->getFile(),
+    //             'line'    => $e->getLine(),
+    //             'trace'   => $e->getTraceAsString(),
+    //         ]);
+
+    //         // -------------------------------
+    //         // ❌ Return clean error to API
+    //         // -------------------------------
+    //         return response()->json([
+    //             'status'  => false,
+    //             'message' => 'Payment amount update failed.',
+    //             'error'   => $e->getMessage(), // ⚠️ hide in production if sensitive
+    //         ], 500);
+    //     }
+    // }
+
+    //    public function ActiveVehicleAmountUpdate()
+    //     {
+    //         try {
+
+    //             $processed = 0;
+    //             $skipped   = 0;
+
+    //             ExchangeVehicle::
+    //             // whereHas('order.product', function ($q) {
+    //             //         $q->where('id', '!=', 7);   // product_id != 7
+    //             //     })
+    //             //     ->with(['order.product'])
+    //                 chunkById(200, function ($vehicles) use (&$processed, &$skipped) {
+
+    //                     Log::info('AssignedVehicle chunk fetched', ['count' => $vehicles->count()]);
+
+    //                     foreach ($vehicles as $item) {
+
+    //                         // ---- Safety checks ----
+    //                         if (
+    //                             !$item->order ||
+    //                             !$item->order->product
+    //                         ) {
+    //                             Log::warning('Skipped assigned_vehicle ID '.$item->id.' due to missing relations.');
+    //                             $skipped++;
+    //                             continue;
+    //                         }
+    //                         $item->amount         = (float) $item->order->final_amount;
+    //                         $item->deposit_amount = (float) $item->order->deposit_amount;
+    //                         $item->rental_amount  = (float) $item->order->rental_amount;
+    //                         $item->save();
+
+    //                         $processed++;
+    //                     }
+    //                 });
+
+    //             return response()->json([
+    //                 'status'    => true,
+    //                 'message'   => 'Active vehicle amounts processed successfully.',
+    //                 'processed' => $processed,
+    //                 'skipped'   => $skipped,
+    //             ]);
+
+    //         } catch (\Throwable $e) {
+
+    //             Log::error('ActiveVehicleAmountUpdate failed', [
+    //                 'message' => $e->getMessage(),
+    //                 'file'    => $e->getFile(),
+    //                 'line'    => $e->getLine(),
+    //                 'trace'   => $e->getTraceAsString(),
+    //             ]);
+
+    //             return response()->json([
+    //                 'status'  => false,
+    //                 'message' => 'Active vehicle amount update failed.',
+    //                 'error'   => $e->getMessage(), // ⚠️ hide in prod
+    //             ], 500);
+    //         }
+    //     }
+
 
 
 }

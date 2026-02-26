@@ -43,7 +43,7 @@ class UserRideSummaryExport implements FromCollection,WithHeadings
                 'vehicle' => $data->stock ? $data->stock->vehicle_number : "N/A",
                 'start_date' => $data->start_date ? $data->start_date : 'N/A',
                 'end_date' => $data->end_date ? $data->end_date : 'N/A',
-                'rent_amount' => $data->order ? $data->order->rental_amount : '0.00',
+                'rent_amount' => $data->order ? $data->rental_amount : '0.00',
                 'rent_status' => ucwords($data->status),
                 'action_by' => $data->admin ? $data->admin->email : '....',
             ];

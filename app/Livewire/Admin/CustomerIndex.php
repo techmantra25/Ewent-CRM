@@ -104,7 +104,7 @@ class CustomerIndex extends Component
     public function VerifyKyc($status, $id){
         $user = User::find($id);
         if($user){
-
+           
             // if($user->driving_licence_status!=2){
 
             // }

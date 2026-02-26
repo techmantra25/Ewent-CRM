@@ -87,7 +87,7 @@ class VehicleSummaryExport implements FromArray, WithHeadings
             if($item->order->user_type === 'B2C'){
                 // Safe handling: check if order exists and duration > 0
                 if ($item->order && $item->order->rent_duration > 0) {
-                    $item_per_day_price = $item->order->rental_amount / $item->order->rent_duration;
+                    $item_per_day_price = $item->rental_amount / $item->order->rent_duration;
                    
                     $start = \Carbon\Carbon::parse($item->start_date);
                     $today =  \Carbon\Carbon::parse($this->end_date)->format('Y-m-d H:i:s');
@@ -108,12 +108,22 @@ class VehicleSummaryExport implements FromArray, WithHeadings
                     if($item_duration > $item->order->rent_duration){
                         $item_duration = $item->order->rent_duration;
                     }
+                    $item_per_day_price = (float) $item_per_day_price;
+                    $item_duration      = (float) $item_duration;
+
                     $item_price = $item_per_day_price * $item_duration;
+
                 } else {
-                    $item_per_day_price = 0;
-                    $item_duration = 0;
-                    $item_price = 0;
+
+                    $item_per_day_price = 0.0;
+                    $item_duration      = 0.0;
+                    $item_price         = 0.0;
                 }
+
+                /* force 2 decimal WITHOUT converting to string */
+                $item_per_day_price = round($item_per_day_price, 2);
+                $item_duration      = round($item_duration, 2);
+                $item_price         = round($item_price, 2);
                
                 $ExchangeVehicleData = ExchangeVehicle::where('order_id', $item->order_id)->where('vehicle_id', $item->vehicle_id)->orderBy('id', 'ASC')->first();
                 
@@ -169,8 +179,8 @@ class VehicleSummaryExport implements FromArray, WithHeadings
 
                     // Rent Amount
                     ($item->order && $item->order->user_type === 'B2C')
-                        ? number_format($item_price, 2)
-                        : '',
+                    ? (float) round($item_price, 2)
+                    : '',
     
                     // Assigned at
                     $assignedValue ? \Carbon\Carbon::parse($assignedValue)->format('d M y h:i A') : '',

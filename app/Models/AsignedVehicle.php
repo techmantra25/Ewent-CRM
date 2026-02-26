@@ -10,7 +10,7 @@ class AsignedVehicle extends Model
     use HasFactory;
     protected $table = "assigned_vehicles";
     protected $fillable = [
-        'user_id', 'order_id', 'vehicle_id', 'start_date', 'end_date', 'status', 'assigned_at', 'assigned_by',
+        'user_id', 'order_id', 'vehicle_id', 'start_date', 'end_date', 'status', 'amount', 'deposit_amount', 'rental_amount', 'assigned_at', 'assigned_by',
     ];
     public function user(){
         return $this->belongsTo(User::class,'user_id','id');

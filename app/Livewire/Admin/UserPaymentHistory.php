@@ -279,6 +279,9 @@ class UserPaymentHistory extends Component
                                 'vehicle_id'   => $assignRider->vehicle_id,
                                 'start_date'   => $assignRider->start_date,
                                 'end_date'     => $assignRider->end_date,
+                                'amount'       => $assignRider->amount,
+                                'deposit_amount'  => $assignRider->deposit_amount,
+                                'rental_amount'   => $assignRider->rental_amount,
                                 'created_at'   => now(),
                                 'updated_at'   => now(),
                             ]); 
@@ -286,6 +289,9 @@ class UserPaymentHistory extends Component
                             $assignRider->start_date = $startDate;
                             $assignRider->end_date = $endDate;
                             $assignRider->status = "assigned";
+                            $assignRider->rental_amount = $payment_item->amount;
+                            $assignRider->deposit_amount = 0;
+                            $assignRider->amount = $payment_item->amount;
                             $assignRider->save();
 
                             DB::commit();

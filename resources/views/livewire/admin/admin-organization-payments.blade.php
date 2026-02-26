@@ -110,7 +110,7 @@
                                 </thead>
                                 <tbody>
                                     @forelse($payments as $index => $payment)
-                                        <tr>
+                                        <tr style="font-size: 12px;">
                                             <td>{{ $payments->firstItem() + $index }}</td>
 
                                             <td>

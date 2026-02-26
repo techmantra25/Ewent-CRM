@@ -162,6 +162,11 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+          Log::info('user_details', [
+                'status' => 'success',
+                'message' => 'request data',
+                'data' => $request->all()
+            ]);
        // ✅ Add this line before validation
         $userType = $request->input('user_type', 'B2C'); // Default to B2C
 
@@ -175,12 +180,12 @@ class AuthController extends Controller
 
             // ✅ Add these new rules
             'user_type' => 'nullable|in:B2B,B2C',
-            'organization_id' => [
-                Rule::requiredIf(function () use ($userType) {
-                    return $userType === 'B2B';
-                }),
-                Rule::exists('organizations', 'id'),
-            ],
+            // 'organization_id' => [
+            //     Rule::requiredIf(function () use ($userType) {
+            //         return $userType === 'B2B';
+            //     }),
+            //     Rule::exists('organizations', 'id'),
+            // ],
         ]);
         // Check if validation fails
         if ($validator->fails()) {
@@ -1579,8 +1584,8 @@ class AuthController extends Controller
                 'order_number' => $item->order_number,
                 'model' => $item->product ? $item->product->title : "N/A",
                 'subscription_type' => $item->subscription ? ucwords($item->subscription->subscription_type) : "N/A",
-                'deposit_amount' => $item->deposit_amount,
-                'rental_amount' => $item->rental_amount,
+                'deposit_amount' => (float) number_format($item->deposit_amount, 2, '.', ''),
+                'rental_amount'  => (float) number_format($item->rental_amount, 2, '.', ''),
                 'payment_status' => ucwords($item->payment_status),
                 'rent_duration' => $item->rent_duration . ' Days',
                 'status' => $item->rent_status,
@@ -2488,6 +2493,9 @@ class AuthController extends Controller
                             'vehicle_id'   => $assignRider->vehicle_id,
                             'start_date'   => $assignRider->start_date,
                             'end_date'     => $assignRider->end_date,
+                            'amount'     => $assignRider->amount,
+                            'deposit_amount'     => $assignRider->deposit_amount,
+                            'rental_amount'     => $assignRider->rental_amount,
                             'created_at'   => now(),
                             'updated_at'   => now(),
                         ]);
@@ -2495,6 +2503,9 @@ class AuthController extends Controller
                         $assignRider->start_date = $startDate;
                         $assignRider->end_date = $endDate;
                         $assignRider->status = "assigned";
+                        $assignRider->rental_amount = $payment_item->amount;
+                        $assignRider->deposit_amount = 0;
+                        $assignRider->amount = $payment_item->amount;
                         $assignRider->save();
 
                         DB::commit();
@@ -2765,6 +2776,15 @@ class AuthController extends Controller
         }
         $order = Order::with('vehicle','product','subscription')->whereIn('rent_status', ['pending', 'active', 'ready to assign', 'suspended', 'deallocated'])->where('user_id', $user->id)->first();
         if($order){
+
+            if($order->subscription){
+                $order->total_price = $order->subscription->deposit_amount + $order->subscription->rental_amount;
+                $order->final_amount = $order->subscription->deposit_amount + $order->subscription->rental_amount;
+                $order->deposit_amount = $order->subscription->deposit_amount;
+                $order->rental_amount = $order->subscription->rental_amount;
+                $order->save();
+            }
+            
             $data = [];
             // if($order->payment_status=="pending"){
             //     $data = [
@@ -2780,9 +2800,9 @@ class AuthController extends Controller
                 'subscription_type'=>$order->subscription->subscription_type,
                 'order_type' =>$order->order_type,
                 'order_number'=>$order->order_number,
-                'deposit_amount'=>$order->deposit_amount,
-                'rental_amount'=>$order->rental_amount,
-                'final_amount'=>$order->final_amount,
+                'deposit_amount' => (float) number_format($order->deposit_amount, 2, '.', ''),
+                'rental_amount'  => (float) number_format($order->rental_amount, 2, '.', ''),
+                'final_amount'   => (float) number_format($order->final_amount, 2, '.', ''),
                 'payment_mode'=>$order->payment_mode,
 
                 'payment_status'=>$order->payment_status,
@@ -2813,64 +2833,84 @@ class AuthController extends Controller
     }
 
     public function CurrentLocation(Request $request){
-        $user = $this->getAuthenticatedUser();
-        if ($user instanceof \Illuminate\Http\JsonResponse) {
-            return $user; // Return the response if the user is not authenticated
-        }
-
-        // Check if the user exists
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => 'User not found.',
-            ], 404); // 404 Not Found
-        }
-        $validator = Validator::make($request->all(), [
-                    'latitude' => 'required|string|max:255',
-                    'longitude' => 'required|string|max:255',
-                ]);
-
-                // Check if validation fails
-                if ($validator->fails()) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => $validator->errors()->first(),
-                    ], 422);
-                }
-           try {
-                $response = UserCurrentLocation($request->latitude,$request->longitude);
-                $address = null;
-                if (!empty($response['display_name'])) {
-                    $address = $response['display_name'];
-                }
-
-                DB::beginTransaction();
-
-                $new = new UserLocationLog;
-                $new->user_id = $user->id;
-                $new->address = $address;
-                $new->latitude = $request->latitude;
-                $new->longitude = $request->longitude;
-                $new->created_at = now();
-                $new->save();
-
-                DB::commit();
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Location retrieved and saved successfully.',
-                ], 200);
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-
-                return response()->json([
-                    'status' => false,
-                    'message' => $e->getMessage(),
-                    // 'error' => $e->getMessage(),
-                ], 500);
-            }
+    $user = $this->getAuthenticatedUser();
+    if ($user instanceof \Illuminate\Http\JsonResponse) {
+        return $user; // Return the response if the user is not authenticated
     }
+
+    // Check if the user exists
+    if (!$user) {
+        return response()->json([
+            'status' => false,
+            'message' => 'User not found.',
+        ], 404); // 404 Not Found
+    }
+
+    $validator = Validator::make($request->all(), [
+        'latitude' => 'required|string|max:255',
+        'longitude' => 'required|string|max:255',
+    ]);
+
+    // Check if validation fails
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => false,
+            'message' => $validator->errors()->first(),
+        ], 422);
+    }
+
+    try {
+        // 🔹 Log incoming location request
+        Log::info('CurrentLocation API called', [
+            'user_id'  => $user->id,
+            'latitude' => $request->latitude,
+            'longitude'=> $request->longitude,
+        ]);
+
+        $response = UserCurrentLocation($request->latitude,$request->longitude);
+        $address = null;
+        if (!empty($response['display_name'])) {
+            $address = $response['display_name'];
+        }
+
+        DB::beginTransaction();
+
+        $new = new UserLocationLog;
+        $new->user_id = $user->id;
+        $new->address = $address;
+        $new->latitude = $request->latitude;
+        $new->longitude = $request->longitude;
+        $new->created_at = now();
+        $new->save();
+
+        DB::commit();
+
+        // 🔹 Log successful save
+        Log::info('User location saved successfully', [
+            'user_id' => $user->id,
+            'address' => $address,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Location retrieved and saved successfully.',
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        // 🔹 Log error
+        Log::error('Error saving user location', [
+            'user_id' => $user->id ?? null,
+            'error'   => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
 
     protected function EsignVerification($signer_name,$signer_email,$signer_city)
     {
@@ -3972,5 +4012,238 @@ class AuthController extends Controller
             'data' => $org,
         ], 200);
     }
+    
+    public function kycApprovePaymentList(Request $request)
+    {
+        $start_date = $request->start_date;
+        $end_date   = $request->end_date;
+
+        $query = User::select([
+                'users.id as rider_id',
+                'users.name as rider_name',
+                'users.mobile as rider_phone',
+                'users.email as rider_email',
+                'users.address as rider_address',
+                'users.kyc_verified_at as rider_approved_date',
+
+                'payments.id as payment_id',
+                'payments.payment_date',
+
+                'orders.id as order_id',
+
+                DB::raw("
+                    SUM(
+                        CASE 
+                            WHEN payment_items.type = 'deposit' 
+                            THEN payment_items.amount 
+                            ELSE 0 
+                        END
+                    ) as security_deposit
+                "),
+
+                DB::raw("
+                    SUM(
+                        CASE 
+                            WHEN payment_items.type = 'rental' 
+                            THEN payment_items.amount 
+                            ELSE 0 
+                        END
+                    ) as rental_amount
+                "),
+
+                DB::raw("
+                    COALESCE(
+                        assigned_vehicles.assigned_at,
+                        orders.created_at
+                    ) as assigned_date
+                "),
+
+                DB::raw("
+                    CASE
+                        WHEN assigned_vehicles.id IS NOT NULL
+                            THEN 'N/A'
+                        ELSE orders.return_date
+                    END as unassigned_date
+                "),
+
+                DB::raw("
+                    CASE
+                        WHEN assigned_vehicles.id IS NOT NULL
+                            THEN 'N/A'
+                        WHEN orders.return_date IS NOT NULL
+                            THEN DATEDIFF(orders.return_date, orders.created_at)
+                        ELSE 'N/A'
+                    END as no_of_days
+                ")
+            ])
+            ->join('payments', 'payments.user_id', '=', 'users.id')
+            ->join('payment_items', 'payment_items.payment_id', '=', 'payments.id')
+            ->join('orders', 'orders.user_id', '=', 'users.id')
+
+            ->leftJoin('assigned_vehicles', function ($join) {
+                $join->on('assigned_vehicles.order_id', '=', 'orders.id')
+                    ->where('assigned_vehicles.status', 'assigned');
+            })
+
+            ->whereNotNull('users.kyc_verified_at')
+            ->where('users.is_verified', 'verified')
+            ->where('payments.payment_status', 'completed');
+
+             if ($start_date && $end_date) {
+                $query->whereBetween('orders.created_at', [
+                    $start_date . ' 00:00:00',
+                    $end_date   . ' 23:59:59',
+                ]);
+            }
+            $data = $query
+            ->groupBy(
+                'users.id',
+                'users.name',
+                'users.mobile',
+                'users.email',
+                'users.address',
+                'users.kyc_verified_at',
+                'payments.id',
+                'payments.payment_date',
+                'orders.id',
+                'orders.created_at',
+                'orders.return_date',
+                'assigned_vehicles.id',
+                'assigned_vehicles.assigned_at'
+            )
+            ->orderByDesc('payments.payment_date')
+            ->get();
+
+        $groupedData = $data->groupBy('rider_id')->map(function ($items) {
+
+            $first = $items->first();
+
+            return [
+                'rider_kyc_detail' => [
+                    'rider_id' => $first->rider_id,
+                    'name'     => $first->rider_name,
+                    'mobile'   => $first->rider_phone,
+                    'email'    => $first->rider_email,
+                    'address'  => $first->rider_address,
+                ],
+
+                'rider_approved_date' => $first->rider_approved_date,
+
+                'payment_details' => $items->unique('payment_id')->map(function ($item) {
+                    return [
+                        'payment_id'       => $item->payment_id,
+                        'order_id'         => $item->order_id,
+                        'payment_date'     => $item->payment_date,
+                        'security_deposit' => (float) $item->security_deposit,
+                        'monthly_rental'   => (float) $item->rental_amount,
+                    ];
+                })->values(),
+
+                'assigned_unassigned_details' => $items->unique('order_id')->map(function ($item) {
+                    return [
+                        'order_id'        => $item->order_id,
+                        'assigned_date'   => $item->assigned_date,
+                        'unassigned_date' => $item->unassigned_date,
+                        'no_of_days'      => $item->no_of_days,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+            return response()->json([
+            'status'  => true,
+            'message' => 'KYC detail, approved rider payment list and assigned/unassigned date with days fetched successfully.',
+            'data'    => $groupedData
+        ]);
+
+    }
+
+    public function unallocatedAndLogsVehicle(Request $request)
+    {
+        $start_date = $request->start_date;
+        $end_date   = $request->end_date;
+
+        $vehiclesQuery = DB::table('stocks')
+            ->where('status', 1);
+
+        // Apply date filter only if dates are present
+        if ($start_date && $end_date) {
+            $vehiclesQuery->whereBetween('created_at', [
+                $start_date . ' 00:00:00',
+                $end_date   . ' 23:59:59',
+            ]);
+        }
+
+        $vehicles = $vehiclesQuery
+            ->select('id', 'vehicle_number')
+            ->get()
+            ->keyBy('id');
+
+        $activeVehicleIds = DB::table('assigned_vehicles')
+            ->whereIn('status', ['assigned', 'overdue'])
+            ->pluck('vehicle_id')
+            ->toArray();
+
+        $unallocatedVehicles = $vehicles
+            ->reject(fn ($v) => in_array($v->id, $activeVehicleIds))
+            ->values()
+            ->map(fn ($v) => [
+                'vehicle_id'     => $v->id,
+                'vehicle_number' => $v->vehicle_number,
+            ]);
+
+        $assignedLogs = DB::table('assigned_vehicles')
+            ->select(
+                'vehicle_id',
+                'user_id',
+                'order_id',
+                'status',
+                'assigned_at as action_date',
+                DB::raw("'assigned' as log_type")
+            )
+            ->get();
+
+        $exchangeLogs = DB::table('exchange_vehicles')
+            ->select(
+                'vehicle_id',
+                'user_id',
+                'order_id',
+                'status',
+                'exchanged_at as action_date',
+                DB::raw("'exchange' as log_type")
+            )
+            ->get();
+
+        $groupedLogs = $assignedLogs
+            ->merge($exchangeLogs)
+            ->sortByDesc('action_date')
+            ->groupBy('vehicle_id');
+
+        $vehiclesWithLogs = $vehicles->map(function ($vehicle) use ($groupedLogs) {
+            return [
+                'vehicle_id'     => $vehicle->id,
+                'vehicle_number' => $vehicle->vehicle_number,
+                'logs' => ($groupedLogs[$vehicle->id] ?? collect())->map(function ($log) {
+                    return [
+                        'user_id'     => $log->user_id,
+                        'order_id'    => $log->order_id,
+                        'status'      => $log->status,
+                        'action_date' => $log->action_date,
+                        'log_type'    => $log->log_type,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Unallocated vehicles and related logs fetched successfully',
+            'data' => [
+                'unallocated_vehicles' => $unallocatedVehicles,
+                'vehicles'             => $vehiclesWithLogs,
+            ],
+        ], 200);
+    }
+
 
 }

@@ -13,6 +13,8 @@ use App\Models\AsignedVehicle;
 use App\Models\UserKycLog;
 use App\Models\Organization;
 use App\Models\CancelRequestHistory;
+use App\Exports\RiderEngagementExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -184,6 +186,9 @@ class RiderEngagement extends Component
                     'start_date' => $startDate,
                     'end_date' => $order->user_type=="B2C"?$startDate->copy()->addDays($order->rent_duration):NULL,
                     'assigned_at' => $startDate,
+                    'amount'     => $order->final_amount,
+                    'deposit_amount'  => $order->final_amount - $order->rental_amount,
+                    'rental_amount'   => $order->rental_amount,
                     'assigned_by' => Auth::guard('admin')->user()->id, // Corrected Auth syntax
                 ]);
 
@@ -253,6 +258,9 @@ class RiderEngagement extends Component
                     'order_id'     => $assignRider->order_id,
                     'vehicle_id'   => $assignRider->vehicle_id,
                     'start_date'   => $assignRider->start_date,
+                    'amount'       => $assignRider->amount,
+                    'deposit_amount'    => $assignRider->deposit_amount,
+                    'rental_amount'     => $assignRider->rental_amount,
                     'end_date'     => now(),
                     'exchanged_by' => Auth::guard('admin')->user()->id, // Fixed typo (extra space)
                     'created_at'   => now(),
@@ -456,6 +464,9 @@ class RiderEngagement extends Component
                 'order_id'     => $AsignedVehicle->order_id,
                 'vehicle_id'   => $AsignedVehicle->vehicle_id,
                 'start_date'   => $AsignedVehicle->start_date,
+                'amount'       => $AsignedVehicle->amount,
+                'deposit_amount'    => $AsignedVehicle->deposit_amount,
+                'rental_amount'     => $AsignedVehicle->rental_amount,
                 'end_date'     => $order->user_type=="B2C"?$AsignedVehicle->end_date:now(),
                 'exchanged_by' => Auth::guard('admin')->user()->id,
                 'created_at'   => now(),
@@ -547,7 +558,6 @@ class RiderEngagement extends Component
     public function render()
     {
         $searchTerm = '%' . $this->search . '%';
-        
         // Await users
         $await_users = User::whereHas('accessToken')
             ->when($this->search, function ($query) use ($searchTerm) {
@@ -759,5 +769,17 @@ class RiderEngagement extends Component
             'suspended_users' => $suspended_users,
             'cancel_requested_users' => $cancel_requested_users,
         ]);
+    }
+
+    public function exportAll()
+    {
+        return Excel::download(
+                new RiderEngagementExport(
+                    $this->active_tab,        
+                    $this->search,     
+                    $this->selected_organization 
+                ),
+                'rider_engagement.xlsx'
+            );
     }
 }

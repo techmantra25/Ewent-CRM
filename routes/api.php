@@ -97,7 +97,15 @@ Route::prefix('customer')->group(function () {
     Route::match(['GET', 'POST'], 'organization/deposit/thankyou', [AuthController::class, 'OrganizationDepositPaymentThankyou']);
 
     Route::get('organizations', [AuthController::class, 'OrganizationList']);
-    // Route::middleware(['auth.sanctum.custom'])->group(function () {
+
+    Route::middleware(['api.token'])->group(function () {
         Route::get('/riders/e-signatures', [AuthController::class, 'RiderEsignList']);
-    // });
-    Route::get('/riders/payment-history', [AuthController::class, 'RiderPaymentHistory']);
+        Route::get('/riders/payment-history', [AuthController::class, 'RiderPaymentHistory']);
+        Route::get('/riders/kyc-approved-payment', [AuthController::class, 'kycApprovePaymentList']);
+        Route::get('/riders/unallocated-vehicle-logs', [AuthController::class, 'unallocatedAndLogsVehicle']);
+    });
+    
+    
+
+
+    

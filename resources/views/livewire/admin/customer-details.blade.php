@@ -282,7 +282,7 @@
                                                             <td>
                                                                 <small class="text-muted">
                                                                     {{ optional($ride_item->order)->rental_amount
-                                                                        ? env('APP_CURRENCY') . number_format($ride_item->order->rental_amount)
+                                                                        ? env('APP_CURRENCY') . number_format($ride_item->rental_amount)
                                                                         : env('APP_CURRENCY') . '0.00' }}
                                                                 </small>
                                                             </td>
@@ -445,7 +445,7 @@
                                           </tr>
                                           @empty
                                             <tr>
-                                              <td colspan="3">
+                                              <td colspan="4">
                                                 <div class="alert alert-info">No location history found.</div>
                                               </td>
                                             </tr>

@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             //  middleware
             'check.permission' => \App\Http\Middleware\CheckPermission::class,
             'admin.maintenance' => \App\Http\Middleware\AdminUnderMaintenance::class,
+            'api.token' => \App\Http\Middleware\ApiTokenMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

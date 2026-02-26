@@ -12,7 +12,7 @@ class AdminOrganizationInvoices extends Component
     protected $paginationTheme = 'bootstrap';
     public $search = '';
     public $page = 1;
-    public $status = '';
+    public $status = 'pending';
     public $totals = [];
     public function gotoPage($value, $pageName = 'page')
     {
@@ -41,7 +41,6 @@ class AdminOrganizationInvoices extends Component
             'items.details',    // load day-wise breakdown
             'organization'
         ])
-        ->where('id',18)
         ->when($this->search, function ($query) {
             $searchTerm = '%' . $this->search . '%';
 
