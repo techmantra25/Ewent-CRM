@@ -141,9 +141,9 @@ class AdminOrganizationDashboard extends Component
     public function store()
     {
         $this->validate();
-
+    
         OrganizationDepositInvoice::create([
-            'organization_id' => auth()->user()->organization_id ?? 1,
+            'organization_id' => $this->organization->id,
             'invoice_number' => $this->invoice_number,
             'number_of_vehicle' => $this->number_of_vehicle,
             'vehicle_price_per_piece' => $this->vehicle_price_per_piece,
