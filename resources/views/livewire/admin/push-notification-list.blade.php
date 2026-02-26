@@ -355,9 +355,9 @@
           </div>
           <div class="card-body">
             <div>
-              <button type="button" class="btn variable-name" onclick="insertVariable(':name')">:name</button>
+              {{-- <button type="button" class="btn variable-name" onclick="insertVariable(':name')">:name</button>
               <button type="button" class="btn variable-name" onclick="insertVariable(':vehicle_number')">:vehicle_number</button>
-              <button type="button" class="btn variable-name" onclick="insertVariable(':price')">:price</button>
+              <button type="button" class="btn variable-name" onclick="insertVariable(':price')">:price</button> --}}
             </div>
 
             <label class="form-label">Message</label>
@@ -368,12 +368,18 @@
             </small>
 
             <button class="btn btn-success w-100" onclick="submitMessage()" @if(count($selectedUsers) === 0) disabled @endif>
+            {{-- <button class="btn btn-success w-100" id="sendBtn" @if(count($selectedUsers) === 0) disabled @endif> --}}
                   <i class="fas fa-paper-plane me-2"></i>Send</button>
 
              {{-- ✅ Success Alert --}}
             @if (session()->has('success'))
-              <div class="alert alert-success mt-3" id="successAlert">
+              <div class="alert alert-success mt-3">
                 {{ session('success') }}
+              </div>
+            @endif
+            @if (session()->has('error'))
+              <div class="alert alert-danger mt-3">
+                {{ session('error') }}
               </div>
             @endif
 
@@ -500,7 +506,8 @@
 
     function submitMessage() {
       const msg = getMessageText();
-      alert("Message content:\n" + msg);
+      @this.call('sendPushNotificationForm', msg);
+      // alert("Message content:\n" + msg);
     }
 </script>
 

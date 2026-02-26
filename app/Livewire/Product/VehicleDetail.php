@@ -215,6 +215,7 @@ class VehicleDetail extends Component
             // Decode and debug response
             if(isset($response['data']['id']) && $value=="IMMOBILIZE"){
                 $stock = Stock::find($this->vehicle->id);
+                $stock->immobilizer_status = "IMMOBILIZE";
                 $stock->immobilizer_request_id = $response['data']['id'];
                 $stock->save();
             }

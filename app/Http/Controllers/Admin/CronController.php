@@ -220,6 +220,48 @@ class CronController extends Controller
         }
     }
 
+    public function sendManualPushNotification(){
+        try {
+
+            // Get all overdue vehicles
+            $assignedVehicles = AsignedVehicle::where('status', 'assigned')->get();
+
+            if ($assignedVehicles->isEmpty()) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'No vehicle vehicles found'
+                ]);
+            }
+
+            $sentCount = 0;
+
+            foreach ($assignedVehicles as $vehicle) {
+                
+                $data = [];
+
+                // Your existing helper function
+                sendPushNotification(
+                    $vehicle->user_id,
+                    'form_request',
+                    $data
+                );
+
+                $sentCount++;
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Notifications sent successfully',
+                'total_notifications_sent' => $sentCount
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function VehiclePaymentOverDue()
     {
         DB::beginTransaction();
@@ -467,7 +509,6 @@ class CronController extends Controller
         $customSubscriber = Organization::where('subscription_type', 'custom')
             ->whereNotNull('renewal_interval_days')
             ->get();
-
         if ($customSubscriber->count() > 0) {
             $summary['custom']['organizations'] = $customSubscriber->count();
 
@@ -475,15 +516,24 @@ class CronController extends Controller
                 $latestInvoice = OrganizationInvoice::where('organization_id', $org->id)
                     ->orderBy('id', 'desc')
                     ->first();
+                $today = Carbon::now($timezone)->startOfDay();
                 if($latestInvoice){
-                    $today = Carbon::now($timezone)->startOfDay();
                     // Last invoice date
-                    $lastInvoiceDate = Carbon::parse($latestInvoice->created_at, $timezone)->startOfDay();
-                    
+                    $lastInvoiceDate = Carbon::parse($latestInvoice->billing_end_date, $timezone)->startOfDay();
                     // Next renewal date = last invoice date + interval days
-                    $nextRenewalDate = $lastInvoiceDate->copy()->addDays((int) $org->renewal_interval_days);
-                    // dd($nextRenewalDate);
+                    $nextRenewalDate = $lastInvoiceDate->copy()->addDays((int) $org->renewal_interval_days -1);
+                    // dd($nextRenewalDate,$org->renewal_interval_days);
                     // ✅ If today matches renewal date
+                    if ($nextRenewalDate->equalTo($today)) {
+                    } else {
+                        continue; // date match na → skip
+                    }
+                }else{
+                     $lastInvoiceDate = Carbon::parse($org->created_at, $timezone)->startOfDay();
+
+                    $nextRenewalDate = $lastInvoiceDate
+                        ->copy()
+                        ->addDays((int) $org->renewal_interval_days - 1);
                     if ($nextRenewalDate->equalTo($today)) {
                     } else {
                         continue; // date match na → skip
@@ -494,7 +544,7 @@ class CronController extends Controller
                 $invoice_start_date = $latestInvoice && $latestInvoice->billing_end_date
                     ? Carbon::parse($latestInvoice->billing_end_date)->addDay()
                     : Carbon::parse($org->created_at);
-
+                
                 $invoice_end_date = Carbon::now($timezone);
                 $due_date = Carbon::parse($invoice_end_date)
                     ->addDays(config('subscription.custom_due_period'))
@@ -578,7 +628,7 @@ class CronController extends Controller
             return $userIds;
         });
         if(count($userIds)>0){
-            $this->immobilizeOverdueORGRiders($userIds);
+            // $this->immobilizeOverdueORGRiders($userIds);
         }
        
         return response()->json([

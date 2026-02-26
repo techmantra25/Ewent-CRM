@@ -287,8 +287,8 @@
         </li>
       @endif
   {{-- Push Notifications Management --}}
-      {{-- @if (hasPermissionByParent('organization_management')) --}}
-        {{-- <li class="menu-item {{ (request()->is('admin/notifications*')) ? 'open' : '' }}">
+      @if (hasPermissionByParent('organization_management'))
+        <li class="menu-item {{ (request()->is('admin/notifications*')) ? 'open' : '' }}">
           <a href="#" class="menu-link menu-toggle waves-effect">
             <i class="menu-icon tf-icons ri-notification-line"></i>
             <div>Notification Management</div>
@@ -298,8 +298,8 @@
               <a href="{{ route('admin.notification.push-notification') }}" class="menu-link"><div>Push Notifications</div></a>
             </li>
           </ul>
-        </li> --}}
-      {{-- @endif --}}
+        </li>
+      @endif
 
     <div class="ps__rail-x" style="left: 0px; bottom: 0px;">
       <div class="ps__thumb-x" tabindex="0" style="left: 0px; width: 0px;"></div>
