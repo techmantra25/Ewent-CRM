@@ -16,6 +16,7 @@ use App\Livewire\Admin\{
     RiderEngagement, PaymentSummary, PaymentUserSummary, UserPaymentHistory,
     PaymentVehicleSummary, RefundSummary, ChangePassword,AdminOrganizationIndex,
     AdminOrganizationDashboard,AdminOrganizationInvoices,AdminOrganizationPayments,
+    AdminOrganizationDepositInvoices,AdminOrganizationDepositPayments,
     PushNotificationList,ChangeToken
 };
 use App\Livewire\Product\{
@@ -149,6 +150,8 @@ Route::middleware(['auth:admin', 'admin.maintenance'])->prefix('admin')->group(f
         Route::get('/', AdminOrganizationIndex::class)->name('admin.organization.index')->middleware('check.permission');
         Route::get('/invoices', AdminOrganizationInvoices::class)->name('admin.organization.invoice.list')->middleware('check.permission');
         Route::get('/payments', AdminOrganizationPayments::class)->name('admin.organization.payment.list')->middleware('check.permission');
+        Route::get('/deposit-invoices', AdminOrganizationDepositInvoices::class)->name('admin.organization.deposit-invoice.list');
+        Route::get('/deposit-payments', AdminOrganizationDepositPayments::class)->name('admin.organization.deposit-payment.list');
         Route::get('{id}/dashboard/', AdminOrganizationDashboard::class)->name('admin.organization.dashboard')->middleware('check.permission');
     });
     // Notification Management

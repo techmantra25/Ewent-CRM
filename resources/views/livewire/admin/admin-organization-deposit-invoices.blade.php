@@ -7,11 +7,11 @@
     </style>
     <div class="col-lg-12 d-flex justify-content-between">
         <div>
-            <h5 class="mb-0">Organization Invoices</h5>
+            <h5 class="mb-0">Organization Deposit Invoices</h5>
             <div>
                  <small class="text-dark fw-medium">Dashboard</small>
                  <small class="text-success fw-medium arrow">Organizations</small>
-                 <small class="text-success fw-medium arrow">Invoices</small>
+                 <small class="text-success fw-medium arrow">Deposit Invoices</small>
             </div>
          </div>
     </div>
@@ -173,101 +173,14 @@
                                                             <i class="bi bi-chevron-down"></i> <!-- Bootstrap icon example -->
                                                         </span>
                                                     </a>
-                                                    <a href="javascript:void(0);" class="badge bg-info" wire:click="openPaymentModal({{ $invoice->id }})">
+                                                    {{-- <a href="javascript:void(0);" class="badge bg-info" wire:click="openPaymentModal({{ $invoice->id }})">
                                                         Capture
-                                                    </a>
+                                                    </a> --}}
                                                 </div>
                                             </td>
 
                                         </tr>
-                                        <!-- Child: Invoice Items (Collapsed) -->
-                                         <tr class="collapse" id="payment-invoice-{{ $invoice->id }}">
-                                            <td colspan="9" class="p-0">
-                                                <table class="table mb-0">
-                                                    @foreach($invoice->items as $item)
-                                                    @php
-                                                        // Unique collapse id per rider (invoice + item)
-                                                        $collapseId = "invoice-details-{$invoice->id}-{$item->id}";
-                                                    @endphp
-                                                        <tr class="table-light invoice-items cursor-pointer" data-bs-toggle="collapse" 
-                                                                data-bs-target="#{{$collapseId}}">
-                                                            <td colspan="3"><strong>Rider:</strong> {{ $item->user?->name ?? 'N/A' }}</td>
-                                                            <td colspan="3"><strong>Total Days:</strong> {{ $item->total_day }}</td>
-                                                            <td colspan="3" width="20%" class="text-end"><strong>Total Price:</strong> {{env('APP_CURRENCY')}}{{ number_format($item->total_price, 2) }}
-                                                            <a href="javascript:void(0);" 
-                                                                data-bs-toggle="collapse" 
-                                                                data-bs-target="#{{$collapseId}}" 
-                                                                aria-expanded="false" 
-                                                                class="toggle-arrow">
-                                                                <i class="ri-arrow-down-s-line ri-24px"></i>
-                                                            </a>
-                                                            </td>
-                                                        </tr>
-                                                        @php
-                                                            $details = [];
-                                                            foreach ($item->details as $key => $value) {
-                                                                $details[$value->day_amount]['dates'][] = $value->date;
-                                                                $details[$value->day_amount]['days'][] = $key+1;
-                                                                $details[$value->day_amount]['amounts'][] = $value->day_amount;
-                                                            }
-                                                        @endphp
-
-                                                        @foreach($details as $day_amount => $detail)
-                                                            @php
-                                                                // Sort dates
-                                                                $dates = collect($detail['dates'])->sort()->values()->all();
-
-                                                                // Group consecutive dates
-                                                                $groups = [];
-                                                                $group = [];
-                                                                foreach ($dates as $date) {
-                                                                    if (empty($group)) {
-                                                                        $group[] = $date;
-                                                                    } else {
-                                                                        $prevDate = end($group);
-                                                                        $expectedNext = date('Y-m-d', strtotime($prevDate . ' +1 day'));
-                                                                        if ($date === $expectedNext) {
-                                                                            $group[] = $date;
-                                                                        } else {
-                                                                            $groups[] = $group; // save previous group
-                                                                            $group = [$date]; // start new group
-                                                                        }
-                                                                    }
-                                                                }
-                                                                if (!empty($group)) {
-                                                                    $groups[] = $group; // add last group
-                                                                }
-                                                            @endphp
-                                                            @foreach($groups as $datesGroup)
-                                                                @php
-                                                                    $startDate = \Carbon\Carbon::parse($datesGroup[0])->format('d M Y');
-                                                                    $endDate   = \Carbon\Carbon::parse(end($datesGroup))->format('d M Y');
-                                                                    $totalDays = count($datesGroup);
-                                                                    $amountPerDay = (float)$day_amount;
-                                                                    $totalAmount = $amountPerDay * $totalDays;
-                                                                @endphp
-
-                                                                <tr class="table-sm invoice-details collapse" id="{{ $collapseId }}">
-                                                                    <td colspan="3">
-                                                                        {{ $startDate }} @if($totalDays > 1) to {{ $endDate }} @endif
-                                                                    </td>
-                                                                    <td colspan="3">
-                                                                        {{ $totalDays }} {{ Str::plural('day', $totalDays) }}
-                                                                    </td>
-                                                                    <td colspan="3" class="text-end">
-                                                                        {{ env('APP_CURRENCY') }}{{ number_format($amountPerDay, 2) }}
-                                                                        × {{ $totalDays }} = 
-                                                                        <strong>{{ env('APP_CURRENCY') }}{{ number_format($totalAmount, 2) }}</strong>
-                                                                    </td>
-                                                                </tr>
-                                                            @endforeach
-                                                        @endforeach
-
-
-                                                    @endforeach
-                                                </table>
-                                            </td>
-                                        </tr>
+                                         
                                     @empty
                                         <tr>
                                             <td colspan="9" class="text-center">No invoices found</td>
@@ -291,7 +204,7 @@
                                 </tfoot>
 
                                 <!-- Payment Capture Modal -->
-                                <div wire:ignore.self class="modal fade" id="paymentCaptureModal" tabindex="-1">
+                                {{-- <div wire:ignore.self class="modal fade" id="paymentCaptureModal" tabindex="-1">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <form wire:submit.prevent="savePayment">
@@ -341,7 +254,7 @@
                                             </form>
                                         </div>
                                     </div>
-                                </div>
+                                </div> --}}
 
                             </table>
                             <div class="mt-2">

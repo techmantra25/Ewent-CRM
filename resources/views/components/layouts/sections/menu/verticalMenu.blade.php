@@ -283,6 +283,12 @@
             <li class="menu-item {{ (request()->is('admin/organization/payments')) ? 'open' : '' }}">
               <a href="{{ route('admin.organization.payment.list') }}" class="menu-link"><div>Payments</div></a>
             </li>
+             <li class="menu-item {{ (request()->is('admin/organization/deposit-invoices')) ? 'open' : '' }}">
+              <a href="{{ route('admin.organization.deposit-invoice.list') }}" class="menu-link"><div>Deposit Invoices</div></a>
+            </li>
+            <li class="menu-item {{ (request()->is('admin/organization/deposit-payments')) ? 'open' : '' }}">
+              <a href="{{ route('admin.organization.deposit-payment.list') }}" class="menu-link"><div>Deposit Payments</div></a>
+            </li>
           </ul>
         </li>
       @endif
