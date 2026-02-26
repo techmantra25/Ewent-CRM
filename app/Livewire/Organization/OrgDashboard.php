@@ -108,8 +108,8 @@ class OrgDashboard extends Component
             "customerEmailID"=> optional($invoice->organization)->email ?? "testmail123@gmail.com",
             "transactionType"=> "SALE",
             "txnDate"=> date('YmdHis'),
-            "returnURL"=> 'http://127.0.0.1:8000/api/organization/thankyou',
-            // "returnURL"=> secure_url('api/organization/thankyou'),
+            // "returnURL"=> 'http://127.0.0.1:8000/api/organization/thankyou',
+            "returnURL"=> secure_url('api/organization/thankyou'),
             "customerMobileNo"=> "91".optional($invoice->organization)->mobile ?? "9876543210",
             "customerName"=> optional($invoice->organization)->name ?? "N/A",
         ];
@@ -242,8 +242,8 @@ class OrgDashboard extends Component
             "customerEmailID"=> optional($invoice->organization)->email ?? "testmail123@gmail.com",
             "transactionType"=> "SALE",
             "txnDate"=> date('YmdHis'),
-            "returnURL"=> 'http://127.0.0.1:8000/api/organization/deposit/thankyou',
-            // "returnURL"=> secure_url('api/organization/deposit/thankyou'),
+            // "returnURL"=> 'http://127.0.0.1:8000/api/organization/deposit/thankyou',
+            "returnURL"=> secure_url('api/organization/deposit/thankyou'),
             "customerMobileNo"=> "91".optional($invoice->organization)->mobile ?? "9876543210",
             "customerName"=> optional($invoice->organization)->name ?? "N/A",
         ];
