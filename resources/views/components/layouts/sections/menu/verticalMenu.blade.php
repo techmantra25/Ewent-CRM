@@ -55,6 +55,21 @@
             </ul>
           </li>
       @endif
+       {{-- @if (hasPermissionByParent('master_management')) --}}
+          <li class="menu-item {{ (request()->is('admin/branch*')) ? 'open' : '' }}">
+            <a href="#" class="menu-link menu-toggle waves-effect" target="_blank">
+              <i class="menu-icon tf-icons ri-git-branch-line"></i>
+              <div>Branch Management</div>
+            </a>
+            <ul class="menu-sub">
+              <li class="menu-item {{ (request()->is('admin/branch/list*')) ? 'open' : '' }}">
+                <a href="{{route('admin.branch.list')}}" class="menu-link">
+                  <div>List</div>
+                </a>
+              </li>
+            </ul>
+          </li>
+      {{-- @endif --}}
       @if (hasPermissionByParent('employee_management'))
         <li class="menu-item {{ (request()->is('admin/employee*')) ? 'open' : '' }}">
           <a href="#" class="menu-link menu-toggle waves-effect" target="_blank">

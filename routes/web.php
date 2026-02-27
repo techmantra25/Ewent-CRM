@@ -27,7 +27,8 @@ use App\Livewire\Product\{
 };
 use App\Livewire\Master\{
     BannerIndex, FaqIndex, WhyEwentIndex, EmployeeManagementList, EmployeeManagementCreate,
-    EmployeeManagementUpdate, DesignationIndex, DesignationPermissionList
+    EmployeeManagementUpdate, DesignationIndex, DesignationPermissionList,
+    BranchIndex, BranchCreate, BranchUpdate
 };
 
 // Public Route for Login
@@ -129,6 +130,13 @@ Route::middleware(['auth:admin', 'admin.maintenance'])->prefix('admin')->group(f
         Route::get('/faq', FaqIndex::class)->name('admin.faq.index')->middleware('check.permission');
         Route::get('/why-ewent', WhyEwentIndex::class)->name('admin.why-ewent')->middleware('check.permission');
         Route::get('/policy-details', PolicyDetails::class)->name('admin.policy-details')->middleware('check.permission');
+    });
+
+     // Employee Management
+    Route::group(['prefix' => 'branch'], function () {
+        Route::get('list', BranchIndex::class)->name('admin.branch.list');
+        Route::get('create', BranchCreate::class)->name('admin.branch.create');
+        Route::get('update/{id}', BranchUpdate::class)->name('admin.branch.update');
     });
 
     // Employee Management
