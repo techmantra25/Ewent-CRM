@@ -65,7 +65,8 @@ class AdminOrganizationInvoices extends Component
 
             // Prevent double payment
             if ($invoice->status === 'paid') {
-                session()->flash('error', 'This invoice is already marked as paid.');
+                DB::rollBack();
+                $this->addError('modal-err', 'This invoice is already marked as paid.');
                 return;
             }
 
@@ -80,6 +81,7 @@ class AdminOrganizationInvoices extends Component
             // Update Invoice
             $invoice->update([
                 'status'       => 'paid',
+                'payment_date' => $this->payment_date,
             ]);
 
             // Create or Update Organization Payment Record
@@ -103,9 +105,9 @@ class AdminOrganizationInvoices extends Component
 
             DB::commit();
 
-            session()->flash('message', 'Payment captured successfully and marked as Paid.');
-
             $this->dispatch('closePaymentModal');
+
+            session()->flash('message', 'Payment captured successfully and marked as Paid.');
 
         } catch (\Exception $e) {
 

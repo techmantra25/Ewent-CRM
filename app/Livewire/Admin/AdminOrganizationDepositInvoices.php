@@ -50,70 +50,76 @@ class AdminOrganizationDepositInvoices extends Component
         $this->dispatch('openPaymentModal');
     }
 
-    // public function savePayment()
-    // {
-    //     $this->validate([
-    //         'utr_number'   => 'required|string|max:100',
-    //         'payment_date' => 'required|date',
-    //         'receipt'      => 'nullable|file|max:2048',
-    //     ]);
+    public function savePayment()
+    {
+        $this->validate([
+            'utr_number'   => 'required|string|max:100',
+            'payment_date' => 'required|date',
+            'receipt'      => 'nullable|file|max:2048',
+        ]);
 
-    //     DB::beginTransaction();
+        DB::beginTransaction();
 
-    //     try {
-    //         $invoice = OrganizationDepositInvoice::findOrFail($this->selectedInvoiceId);
+        try {
 
-    //         // Prevent double payment
-    //         if ($invoice->status === 'paid') {
-    //             session()->flash('error', 'This invoice is already marked as paid.');
-    //             return;
-    //         }
+            $invoice = OrganizationDepositInvoice::findOrFail($this->selectedInvoiceId);
 
-    //         // Upload receipt
-    //         $receiptPath = null;
-    //         if ($this->receipt) {
-    //             $receiptPath = storeFileWithCustomName(
-    //                 $this->receipt,
-    //                 'uploads/payment-receipts'
-    //             );
-    //         }
-    //         // Update Invoice
-    //         $invoice->update([
-    //             'status'       => 'paid',
-    //         ]);
+            if ($invoice->status === 'paid') {
+                DB::rollBack();
+                $this->addError('modal-err', 'This invoice is already marked as paid.');
+                return;
+            }
 
-    //         // Create or Update Organization Payment Record
-    //         OrganizationDepositPayment::updateOrCreate(
-    //             [
-    //                 'invoice_id' => $invoice->id,
-    //             ],
-    //             [
-    //                 'organization_id'  => $invoice->organization_id,
-    //                 'invoice_type'     => $invoice->type,
-    //                 'payment_method'   => 'NEFT',
-    //                 'payment_status'   => 'success',
-    //                 'amount'           => $invoice->amount,
-    //                 'currency'         => 'INR',
-    //                 'utr_no'           => $this->utr_number,
-    //                 'receipt_upload'   => $receiptPath,
-    //                 'captured_by'      => auth()->id(),
-    //                 'payment_date'     => $this->payment_date,
-    //             ]
-    //         );
+            // Upload receipt if exists
+            $receiptPath = null;
+            if ($this->receipt) {
+                $receiptPath = storeFileWithCustomName(
+                    $this->receipt,
+                    'uploads/payment-receipts'
+                );
+            }
 
-    //         DB::commit();
+            $payment = OrganizationDepositPayment::firstOrNew([
+                'deposit_invoice_id' => $invoice->id,
+            ]);
 
-    //         session()->flash('message', 'Payment captured successfully and marked as Paid.');
+            if ($payment->exists && $payment->payment_status === 'success') {
+                DB::rollBack();
+                $this->addError('modal-err', 'This payment has already been processed.');
+                return;
+            }
 
-    //         $this->dispatch('closePaymentModal');
+            $payment->organization_id    = $invoice->organization_id;
+            $payment->deposit_invoice_id = $invoice->id;
+            $payment->invoice_type       = $invoice->type;
+            $payment->payment_method     = 'NEFT'; 
+            $payment->utr_no             = $this->utr_number;
+            $payment->payment_status     = 'success';
+            $payment->amount             = $invoice->total_amount;
+            $payment->currency           = 'INR';
+            $payment->receipt_upload     = $receiptPath;
+            $payment->captured_by        = auth()->id();
+            $payment->payment_date       = $this->payment_date;
+            $payment->save();
 
-    //     } catch (\Exception $e) {
+            $invoice->update([
+                'status'       => 'paid',
+                'payment_date' => $this->payment_date,
+            ]);
 
-    //         DB::rollBack();
+            DB::commit();
 
-    //         $this->addError('modal-err', 'Something went wrong: ' . $e->getMessage());
-    //     }
-    // }
+            $this->dispatch('closePaymentModal');
+
+            session()->flash('message', 'Payment captured successfully and marked as Paid.');
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+            
+            $this->addError('modal-err', 'Something went wrong: ' . $e->getMessage());
+        }
+    }
 
     public function render()
     {

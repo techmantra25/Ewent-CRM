@@ -72,7 +72,7 @@
                                         <th>Status</th>
                                         <th>Amount</th>
                                         <th>Invoice Date</th>
-                                        <th>Due Date</th>
+                                        {{-- <th>Due Date</th> --}}
                                         <th>Payment Date</th>
                                         <th></th>
                                     </tr>
@@ -141,7 +141,7 @@
                                                     {{ ucfirst($status) }}
                                                 </span>
                                             </td>
-                                            <td>{{env('APP_CURRENCY')}}{{ number_format($invoice->amount, 2) }}</td>
+                                            <td>{{env('APP_CURRENCY')}}{{ number_format($invoice->total_amount, 2) }}</td>
                                             <td>
                                                 <span>
                                                     {{ $invoice->created_at 
@@ -150,14 +150,14 @@
                                                     }}
                                                 </span>
                                             </td>
-                                            <td>
+                                            {{-- <td>
                                                 <span>
                                                     {{ $invoice->due_date 
                                                         ? \Carbon\Carbon::parse($invoice->due_date)->format('d M Y') 
                                                         : '—' 
                                                     }}
                                                 </span>
-                                            </td>
+                                            </td> --}}
                                             <td>
                                                 <span>
                                                     {{ $invoice->payment_date 
@@ -168,14 +168,14 @@
                                             </td>
                                             <td>
                                                 <div class="d-flex justify-content-between">
-                                                    <a href="javascript:void(0);" data-bs-toggle="collapse" data-bs-target="#payment-invoice-{{ $invoice->id }}" aria-expanded="false">
+                                                    {{-- <a href="javascript:void(0);" data-bs-toggle="collapse" data-bs-target="#payment-invoice-{{ $invoice->id }}" aria-expanded="false">
                                                         <span class="control">
                                                             <i class="bi bi-chevron-down"></i> <!-- Bootstrap icon example -->
                                                         </span>
-                                                    </a>
-                                                    {{-- <a href="javascript:void(0);" class="badge bg-info" wire:click="openPaymentModal({{ $invoice->id }})">
-                                                        Capture
                                                     </a> --}}
+                                                    <a href="javascript:void(0);" class="badge bg-info" wire:click="openPaymentModal({{ $invoice->id }})">
+                                                        Capture
+                                                    </a>
                                                 </div>
                                             </td>
 
@@ -204,7 +204,7 @@
                                 </tfoot>
 
                                 <!-- Payment Capture Modal -->
-                                {{-- <div wire:ignore.self class="modal fade" id="paymentCaptureModal" tabindex="-1">
+                                <div wire:ignore.self class="modal fade" id="paymentCaptureModal" tabindex="-1">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <form wire:submit.prevent="savePayment">
@@ -214,7 +214,7 @@
                                                 </div>
 
                                                 <div class="modal-body">
-                                                    @error('general')
+                                                    @error('modal-err')
                                                         <div class="alert alert-danger">
                                                             {{ $message }}
                                                         </div>
@@ -254,7 +254,7 @@
                                             </form>
                                         </div>
                                     </div>
-                                </div> --}}
+                                </div>
 
                             </table>
                             <div class="mt-2">

@@ -105,7 +105,7 @@
                                         <th>Status</th>
                                         <th>ICICI Txn No</th>
                                         <th>Amount</th>
-                                        {{-- <th>NEFT Captured</th> --}}
+                                        <th>NEFT Captured</th>
                                         <th>Payment Date</th>
                                     </tr>
                                 </thead>
@@ -151,7 +151,7 @@
 
                                             <td>{{ $payment->icici_txnID ?? $payment->icici_merchantTxnNo ?? '—' }}</td>
                                             <td>{{ env('APP_CURRENCY') }}{{ number_format($payment->amount, 2) }}</td>
-                                            {{-- <td>
+                                            <td>
                                                 @if($payment->receipt_upload)
                                                     <button 
                                                         class="badge btn btn-secondary"
@@ -161,7 +161,7 @@
                                                 @else   
                                                     <span class="text-muted">—</span>
                                                 @endif
-                                            </td> --}}
+                                            </td>
                                             <td>
                                                 {{ $payment->payment_date 
                                                     ? \Carbon\Carbon::parse($payment->payment_date)->format('d M Y h:i A') 

@@ -19,6 +19,9 @@ class OrganizationDepositPayment extends Model
         'currency',
         'icici_merchantTxnNo',
         'icici_txnID',
+        'utr_no',
+        'receipt_upload',
+        'captured_by',
         'payment_date',
     ];
 
@@ -41,5 +44,10 @@ class OrganizationDepositPayment extends Model
         return $this->belongsTo(OrganizationDepositInvoice::class,
             'deposit_invoice_id'
         );
+    }
+    
+    public function capturedByAdmin()
+    {
+        return $this->belongsTo(\App\Models\Admin::class, 'captured_by');
     }
 }

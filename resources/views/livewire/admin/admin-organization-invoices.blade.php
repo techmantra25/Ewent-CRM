@@ -301,12 +301,11 @@
                                                 </div>
 
                                                 <div class="modal-body">
-                                                    @error('general')
+                                                    @error('modal-err')
                                                         <div class="alert alert-danger">
                                                             {{ $message }}
                                                         </div>
                                                     @enderror
-
                                                     <!-- UTR Number -->
                                                     <div class="mb-3">
                                                         <label class="form-label">UTR Number</label>
