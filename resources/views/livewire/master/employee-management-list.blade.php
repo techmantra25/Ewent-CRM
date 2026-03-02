@@ -35,18 +35,42 @@
                         </div>
                         <div class="row">
                             <div class="col-lg-12 d-flex justify-content-end my-auto">
-                                <div class="d-flex align-items-center">
-                                    <input type="text" wire:model.debounce.300ms="search"
-                                           class="form-control border border-2 p-2 custom-input-sm"
-                                           placeholder="Search here...">
-                                        <button type="button" wire:click="searchButtonClicked"
-                                                class="btn btn-dark text-white mb-0 custom-input-sm ms-2">
-                                            <span class="material-icons">search</span>
-                                        </button>
-                                    <!-- Refresh Button -->
-                                    <button type="button" wire:click="resetSearch" class="btn btn-danger text-white mb-0 custom-input-sm ms-2">
-                                            <i class="ri-restart-line"></i>
+                                <div class="d-flex align-items-center gap-2">
+                                    <!-- Branch Filter -->
+                                    <div wire:ignore style="width:200px;">
+                                        <select id="branch_filter" class="form-select">
+                                            <option value="">All Branch</option>
+                                            @foreach(\App\Models\Branch::where('status',1)->orderBy('name')->get() as $branch)
+                                                <option value="{{ $branch->id }}"
+                                                    {{ $branch->id == $branch_id ? 'selected' : '' }}>
+                                                    {{ $branch->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <!-- Search Input -->
+                                    <input type="text"
+                                        wire:model.debounce.300ms="search"
+                                        class="form-control border border-2 p-2 custom-input-sm"
+                                        placeholder="Search here..."
+                                        style="width:200px;">
+
+                                    
+
+                                    <!-- Search Button -->
+                                    <button type="button"
+                                            wire:click="searchButtonClicked"
+                                            class="btn btn-dark text-white custom-input-sm">
+                                        <span class="material-icons">search</span>
                                     </button>
+
+                                    <!-- Refresh Button -->
+                                    <button type="button"
+                                            wire:click="resetSearch"
+                                            class="btn btn-danger text-white custom-input-sm">
+                                        <i class="ri-restart-line"></i>
+                                    </button>
+
                                 </div>
                             </div>
                         </div>
@@ -145,6 +169,8 @@
       </div>
 </div>
 @section('page-script')
+<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
+<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     window.addEventListener('showConfirm', function (event) {
@@ -163,6 +189,35 @@
                 // Swal.fire("Deleted!", "Your item has been deleted.", "success");
             }
         });
+    });
+
+// chosen
+    var jq = $.noConflict();
+
+    function initBranchChosen() {
+
+        if (jq("#branch_filter").data('chosen')) {
+            jq("#branch_filter").chosen("destroy");
+        }
+
+        jq("#branch_filter").chosen({
+            width: "200px"
+        });
+
+        jq("#branch_filter").off('change').on('change', function () {
+            let selected = jq(this).val();
+            @this.set('branch_id', selected);
+        });
+    }
+
+    document.addEventListener("livewire:init", function () {
+
+        initBranchChosen();
+
+        Livewire.hook('morph.updated', () => {
+            initBranchChosen();
+        });
+
     });
 </script>
 @endsection

@@ -92,25 +92,25 @@
                   <p class="text-danger inputerror">{{ $message }}</p>
                   @enderror
               </div>
-              <div class="col-4">
-                <div class="mb-2 form-floating form-floating-outline">
-                    <select wire:model="branch_id"
-                        class="form-select border border-2">
-                        <option value="" hidden>Select Branch</option>
-                        @foreach($branches as $branch)
-                            <option value="{{ $branch->id }}">
-                                {{ $branch->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <label class="form-label">
-                        Branch <span class="text-danger">*</span>
-                    </label>
-                </div>
-                @error('branch_id')
-                    <p class="text-danger inputerror">{{ $message }}</p>
-                @enderror
-            </div>
+              <div class="col-4" wire:ignore>
+                  <label class="form-label">
+                      Branch <span class="text-danger">*</span>
+                  </label>
+
+                  <select id="branch_select" class="form-select">
+                      <option value="">Select Branch</option>
+                      @foreach($branches as $branch)
+                          <option value="{{ $branch->id }}"
+                              {{ $branch->id == $branch_id ? 'selected' : '' }}>
+                              {{ $branch->name }}
+                          </option>
+                      @endforeach
+                  </select>
+
+                  @error('branch_id')
+                      <p class="text-danger inputerror">{{ $message }}</p>
+                  @enderror
+              </div>
               
             </div>
           </div>
@@ -178,6 +178,25 @@
 }
   
 </script>
+<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
+    <script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
+    <script>
+        var jq = $.noConflict();
+        console.log("Selected Branch:", jq);
+            jq("#branch_select").chosen({
+                width: "100%"
+            });
 
+            jq("#branch_select").off('change').on('change', function () {
+                const selected = jq(this).val();
+                console.log("Selected Branch:", selected);
+                @this.call('BranchUpdate', selected);
+            });
+        window.addEventListener('bind-chosen', () => {
+            setTimeout(() => {
+                initChosen();
+            }, 100);
+        });
+</script>
 @endsection
 

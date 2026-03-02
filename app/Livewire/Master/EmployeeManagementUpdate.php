@@ -41,6 +41,11 @@ class EmployeeManagementUpdate extends Component
             $this->designation = $designation_id;
         }
 
+        public function BranchUpdate($value){
+                $this->branch_id = $value;
+                $this->resetPage();
+        }
+
         public function saveProduct()
         {
              $this->validate([

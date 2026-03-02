@@ -31,6 +31,11 @@ class EmployeeManagementList extends Component
     {
         $this->branch_id = request()->branch_id;
     }
+
+    public function updatedBranchId()
+    {
+        $this->resetPage();
+    }
      public function toggleStatus($id)
     {
         $admin = Admin::findOrFail($id);
