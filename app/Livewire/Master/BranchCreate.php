@@ -34,6 +34,7 @@ class BranchCreate extends Component
         $this->validate([
             'branch_name' => 'required|string|max:255',
             'city_id'     => 'required|exists:cities,id',
+            'address'     => 'required|string|max:500',
             'designation' => 'required|exists:designations,id',
             'name'        => 'required|string|max:255',
             'mobile'      => 'required|string|max:15|unique:admins,mobile|regex:/^[0-9]{10,15}$/',

@@ -49,6 +49,9 @@
                         <input type="text" wire:model="branch_name" class="form-control border border-2 p-2" placeholder="Enter Branch Name">
                         <label>Branch Name <span class="text-danger">*</span></label>
                     </div>
+                    @error('branch_name')
+                      <p class="text-danger inputerror">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="col-6">
@@ -56,6 +59,9 @@
                         <input type="text" wire:model="branch_code" class="form-control border border-2 p-2" placeholder="Enter Branch Code" readonly>
                         <label>Branch Code</label>
                     </div>
+                    @error('branch_code')
+                      <p class="text-danger inputerror">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="col-6">
@@ -68,6 +74,9 @@
                         </select>
                         <label>City <span class="text-danger">*</span></label>
                     </div>
+                    @error('city_id')
+                            <p class="text-danger inputerror">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="col-12">
@@ -75,6 +84,9 @@
                         <textarea wire:model="address" class="form-control border border-2 p-2" placeholder="Enter Address"></textarea>
                         <label>Address <span class="text-danger">*</span></label>
                     </div>
+                    @error('address')
+                      <p class="text-danger inputerror">{{ $message }}</p>
+                    @enderror
                 </div>
             
             <h6 class="mb-3">Employee Information</h6>

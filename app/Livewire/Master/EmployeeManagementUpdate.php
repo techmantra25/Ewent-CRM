@@ -5,6 +5,7 @@ namespace App\Livewire\Master;
 use Livewire\Component;
 use App\Models\Admin;
 use App\Models\Designation;
+use App\Models\Branch;
 use Illuminate\Support\Facades\Hash;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
@@ -12,14 +13,18 @@ use Illuminate\Support\Facades\DB;
 class EmployeeManagementUpdate extends Component
 {
    use WithFileUploads;
-        public $name,$designation, $image, $mobile, $email,$id,$employee;
+        public $name ,$designation, $image, $mobile, $email ,$id ,$employee ,$branch_id;
         
         public $designations = [];
-
+        public $branches = [];
         public function mount($id)
         {   
             $this->id = $id;
             $this->designations = Designation::orderBY('name', 'ASC')->get();
+            $this->branches = Branch::where('status', 1)
+                        ->orderBy('name', 'ASC')
+                        ->get();
+
             $this->employee = Admin::find($this->id);
             if(!$this->employee){
                 abort(404);
@@ -28,7 +33,7 @@ class EmployeeManagementUpdate extends Component
             $this->email = $this->employee->email;
             $this->mobile = $this->employee->mobile;
             $this->designation = $this->employee->designation;
-            $this->email = $this->employee->email;
+            $this->branch_id = $this->employee->branch_id;
         }
 
         public function GetDesignation($designation_id)
@@ -44,6 +49,7 @@ class EmployeeManagementUpdate extends Component
                 'mobile' => 'required|string|max:15|unique:admins,mobile,' . $this->id . '|regex:/^[0-9]{10,15}$/', // Improved mobile validation
                 'email' => 'required|email|max:255|unique:admins,email,' . $this->id, // Valid email format
                 'image' => 'nullable|image|max:2048|mimes:jpg,jpeg,png,webp', // Increased size to 2MB (2048KB)
+                'branch_id'   => 'required|exists:branches,id',
             ]);
 
             DB::beginTransaction();
@@ -66,6 +72,7 @@ class EmployeeManagementUpdate extends Component
                 $store->designation = $this->designation;
                 $store->mobile = $this->mobile;
                 $store->email = $this->email;
+                $store->branch_id = $this->branch_id;   
                 if ($this->image) {
                     $store->image = $imagePath; // Update image only if provided
                 }

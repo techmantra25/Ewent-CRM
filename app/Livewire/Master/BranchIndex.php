@@ -34,6 +34,7 @@ class BranchIndex extends Component
     public function render()
     {
         $branch = Branch::with('city')
+            ->withCount('employees')
             ->when($this->search, function ($query) {
             $searchTerm = '%' . $this->search . '%';
             $query->where(function ($q) use ($searchTerm) {

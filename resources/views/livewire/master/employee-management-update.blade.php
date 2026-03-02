@@ -92,6 +92,25 @@
                   <p class="text-danger inputerror">{{ $message }}</p>
                   @enderror
               </div>
+              <div class="col-4">
+                <div class="mb-2 form-floating form-floating-outline">
+                    <select wire:model="branch_id"
+                        class="form-select border border-2">
+                        <option value="" hidden>Select Branch</option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}">
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <label class="form-label">
+                        Branch <span class="text-danger">*</span>
+                    </label>
+                </div>
+                @error('branch_id')
+                    <p class="text-danger inputerror">{{ $message }}</p>
+                @enderror
+            </div>
               
             </div>
           </div>

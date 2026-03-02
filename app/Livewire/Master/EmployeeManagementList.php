@@ -13,6 +13,8 @@ class EmployeeManagementList extends Component
 
     use WithFileUploads, WithPagination; // Include WithPagination trait
     public $search = "";
+    public $branch_id;
+
      public function boot()
     {
         Paginator::useBootstrap();
@@ -25,6 +27,10 @@ class EmployeeManagementList extends Component
     {
         $this->reset('search');     // Reset pagination
     }
+    public function mount()
+    {
+        $this->branch_id = request()->branch_id;
+    }
      public function toggleStatus($id)
     {
         $admin = Admin::findOrFail($id);
@@ -34,17 +40,21 @@ class EmployeeManagementList extends Component
     }
     public function render()
     {
-        $employees = Admin::when($this->search, function ($query) {
-            $searchTerm = '%' . $this->search . '%';
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('name', 'like', $searchTerm)
-                ->orWhere('mobile', 'like', $searchTerm)
-                ->orWhere('email', 'like', $searchTerm);
-            });
-        })
-        ->orderBy('id', 'DESC')
-        ->where('id', '!=', 1)
-        ->paginate(20);
+        $employees = Admin::with(['designationData','branchData'])
+            ->when($this->branch_id, function ($query) {
+                $query->where('branch_id', $this->branch_id);
+            })
+            ->when($this->search, function ($query) {
+                $searchTerm = '%' . $this->search . '%';
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('name', 'like', $searchTerm)
+                    ->orWhere('mobile', 'like', $searchTerm)
+                    ->orWhere('email', 'like', $searchTerm);
+                });
+            })
+            ->orderBy('id', 'DESC')
+            ->where('id', '!=', 1)
+            ->paginate(20);
         return view('livewire.master.employee-management-list',[
             'employees'=>$employees,
         ]);

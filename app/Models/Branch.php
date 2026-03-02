@@ -18,4 +18,8 @@ class Branch extends Model
     {
         return $this->belongsTo(\App\Models\City::class);
     }
+    public function employees()
+    {
+        return $this->hasMany(Admin::class, 'branch_id');
+    }
 }

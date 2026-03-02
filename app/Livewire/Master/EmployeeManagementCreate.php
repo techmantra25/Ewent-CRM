@@ -5,6 +5,7 @@ namespace App\Livewire\Master;
 use Livewire\Component;
 use App\Models\Admin;
 use App\Models\Designation;
+use App\Models\Branch;
 use Illuminate\Support\Facades\Hash;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
@@ -13,13 +14,17 @@ class EmployeeManagementCreate extends Component
 {
     
         use WithFileUploads;
-        public $name,$designation, $image, $mobile, $email;
+        public $name,$designation, $image, $mobile, $email, $branch_id;
         
         public $designations = [];
+        public $branches = [];
 
         public function mount()
         {
             $this->designations = Designation::orderBY('name', 'ASC')->get();
+            $this->branches = Branch::where('status', 1)
+                        ->orderBy('name', 'ASC')
+                        ->get();
         }
 
         public function GetDesignation($designation_id)
@@ -35,6 +40,7 @@ class EmployeeManagementCreate extends Component
                 'mobile' => 'required|string|max:15|unique:admins,mobile|regex:/^[0-9]{10,15}$/', // Improved mobile validation
                 'email' => 'required|email|max:255|unique:admins,email', // Valid email format
                 'image' => 'nullable|image|max:2048|mimes:jpg,jpeg,png,webp', // Increased size to 2MB (2048KB)
+                'branch_id' => 'required|exists:branches,id',
             ]);
 
             DB::beginTransaction();
@@ -52,6 +58,7 @@ class EmployeeManagementCreate extends Component
                 $store->designation = $this->designation;
                 $store->mobile = $this->mobile;
                 $store->email = $this->email;
+                $store->branch_id = $this->branch_id;
                 $store->image = $imagePath; // Corrected: Use the $imagePath variable
                 $store->password = Hash::make(123456);
                 $store->save(); // Save the user (missing in your code)

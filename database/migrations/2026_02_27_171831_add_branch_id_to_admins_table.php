@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-         Schema::table('admins', function (Blueprint $table) {
-
-            $table->unsignedBigInteger('branch_id')
+        Schema::table('admins', function (Blueprint $table) {
+            $table->foreignId('branch_id')
                   ->nullable()
-                  ->default(1)
-                  ->after('id');
+                  ->after('id')
+                  ->constrained('branches')
+                  ->nullOnDelete();
         });
 
     }
@@ -27,6 +27,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('admins', function (Blueprint $table) {
+            $table->dropForeign(['branch_id']);
             $table->dropColumn('branch_id');
         });
     }

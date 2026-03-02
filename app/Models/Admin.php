@@ -28,7 +28,7 @@ class Admin extends Authenticatable
         'email_verified_at' => 'datetime',
         'last_login_at' => 'datetime',
     ];
-
+    
     public function designationData(){
         return $this->belongsTo(Designation::class,'designation', 'id');
     }
@@ -40,6 +40,10 @@ class Admin extends Authenticatable
         }
 
         return $this->designationData->permissions()->where('route', $route)->exists();
+    }
+
+    public function branchData(){
+        return $this->belongsTo(Branch::class,'branch_id', 'id');
     }
 
 }

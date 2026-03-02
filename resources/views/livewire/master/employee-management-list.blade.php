@@ -65,6 +65,9 @@
                                     <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
                                         Designation
                                     </th>
+                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
+                                        Branch
+                                    </th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
                                         Status
                                     </th>
@@ -105,7 +108,9 @@
                                         <td class="align-middle price-details text-center">
                                             {{$employee->designationData?$employee->designationData->name:"N/A"}}
                                         </td>
-
+                                        <td class="align-middle price-details text-center">
+                                            {{$employee->branchData?$employee->branchData->name:"N/A"}}
+                                        </td>
                                         <td class="align-middle text-sm text-center">
                                             <div class="form-check form-switch">
                                                 <input

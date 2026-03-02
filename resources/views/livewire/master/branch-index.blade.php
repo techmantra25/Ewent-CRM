@@ -71,6 +71,9 @@
                                     <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
                                         Address
                                     </th>
+                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
+                                        Employees
+                                    </th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
                                         Status
                                     </th>
@@ -98,6 +101,12 @@
                                         </td>
                                         <td class="align-middle price-details text-center">
                                             {{$branch->address}}
+                                        </td>
+                                        <td class="align-middle price-details text-center">
+                                            <a href="{{ route('admin.employee.list', ['branch_id' => $branch->id]) }}"
+                                                class="text-primary fw-bold">
+                                                    {{ $branch->employees_count }}
+                                            </a>
                                         </td>
                                         <td class="align-middle text-sm text-center">
                                             <div class="form-check form-switch">
