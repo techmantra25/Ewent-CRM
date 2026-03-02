@@ -42,6 +42,21 @@
                         <!-- Product Title -->
                         <div class="col-4">
                             <div class="mb-2 mt-2 form-floating form-floating-outline">
+                                <select wire:model="branch"
+                                    class="form-select border border-2 p-2">
+                                    <option value="" selected hidden>Select branch</option>
+                                    @foreach($branchs as $item)
+                                    <option value="{{ $item->id }}">{{$item->name}}| {{$item->branch_code}}</option>
+                                    @endforeach
+                                </select>
+                                <label class="form-label">Branch <span class="text-danger">*</span></label>
+                            </div>
+                            @error('branch')
+                            <p class="text-danger inputerror">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-2 mt-2 form-floating form-floating-outline">
                             <select wire:model="model"
                                 class="form-select border border-2 p-2">
                                 <option value="" selected hidden>Select model</option>
