@@ -38,6 +38,15 @@
                     <div class="row justify-content-end">
                         <div class="col-lg-3 col-6 my-auto mb-2">
                             <select
+                                class="form-select border border-2 p-2 custom-input-sm" wire:model="branch" wire:change="FilterModel($event.target.value)">
+                                <option value="" selected hidden>Select vehicle type</option>
+                                @foreach($models as $model_item)
+                                <option value="{{ $model_item->id }}">{{$model_item->category->title}}|{{ $model_item->title }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-6 my-auto mb-2">
+                            <select
                                 class="form-select border border-2 p-2 custom-input-sm" wire:model="model" wire:change="FilterModel($event.target.value)">
                                 <option value="" selected hidden>Select vehicle type</option>
                                 @foreach($models as $model_item)

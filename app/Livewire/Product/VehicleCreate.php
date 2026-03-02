@@ -5,6 +5,9 @@ namespace App\Livewire\Product;
 use Livewire\Component;
 use App\Models\Product;
 use App\Models\Stock;
+use App\Models\Branch;
+use App\Models\BranchLog;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class VehicleCreate extends Component
@@ -12,8 +15,9 @@ class VehicleCreate extends Component
     public $existing_stock = [];
     public $models = [];
     public $vehicles = [];
+    public $branchs = [];
     public $vehicle_mapping = [];
-    public $model,$vehicle_number,$vehicle_track_id,$imei_number,$chassis_number,$friendly_name;
+    public $branch,$model,$vehicle_number,$vehicle_track_id,$imei_number,$chassis_number,$friendly_name;
     public function mount(){
 
         $vehiclesUrl = 'https://app.loconav.sensorise.net/integration/api/v1/vehicles?perPage=1000';
@@ -42,6 +46,9 @@ class VehicleCreate extends Component
         
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
         $this->existing_stock = Stock::orderBy('vehicle_number', 'ASC')->get()->pluck('vehicle_number')->toArray();
+        $this->branchs = Branch::whereIn('id', get_branches())
+                        ->where('status', 1)
+                        ->get();
        
     }
     public function selectVehicle($number)
@@ -74,6 +81,7 @@ class VehicleCreate extends Component
     }
 
     protected $rules = [
+        'branch' => 'required|exists:branches,id',
         'model' => 'required|exists:products,id',
         'vehicle_track_id' => 'required|string|unique:stocks,vehicle_track_id',
         'friendly_name' => 'nullable|string|max:255',
@@ -85,6 +93,7 @@ class VehicleCreate extends Component
     {
         $validatedData = $this->validate();
         Stock::create([
+            'branch_id' => $validatedData['branch'],
             'product_id' => $validatedData['model'],
             'vehicle_number' => $validatedData['vehicle_number'],
             'vehicle_track_id' => $validatedData['vehicle_track_id'],
@@ -93,6 +102,17 @@ class VehicleCreate extends Component
             'friendly_name' => $validatedData['friendly_name'],
         ]);
 
+        // Create Branch Log
+        BranchLog::create([
+            'branch_id'    => $validatedData['branch'],
+            'admin_id'     => Auth::guard('admin')->user()->id,
+            'action'       => 'create',
+            'module'       => 'Stock',
+            'reference_id' => $stock->id,
+            'new_data'     => json_encode($stock->toArray()),
+            'ip_address'   => request()->ip(),
+            'user_agent'   => request()->userAgent(),
+        ]);
         session()->flash('message', 'Vehicle created successfully!');
         return redirect()->route('admin.vehicle.list');
     }

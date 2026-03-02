@@ -21,6 +21,7 @@ use App\Models\OrganizationInvoiceItemDetail;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use App\Models\Branch;
 use Illuminate\Support\Facades\Log;
 
 if (!function_exists('storeFileWithCustomName')) {
@@ -962,6 +963,26 @@ if (!function_exists('esign_pdf_generate')) {
                 'message' => 'Transaction not successful or signed_url already exists.'
             ];
         }
+    }
+}
+
+if (!function_exists('get_branches')) {
+
+    function get_branches()
+    {
+        $admin = Auth::guard('admin')->user();
+
+        if (!$admin) {
+            return [];
+        }
+
+        // If Super Admin (branch_id == 1) → return all branch IDs
+        if ($admin->branch_id == 1) {
+            return Branch::pluck('id')->toArray();
+        }
+
+        // Else → return only his branch
+        return [$admin->branch_id];
     }
 }
 
