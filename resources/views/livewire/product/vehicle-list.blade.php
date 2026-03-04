@@ -36,15 +36,17 @@
             <div class="col-12">
                 <div class="card mb-2 py-4 px-2">
                     <div class="row justify-content-end">
-                        <div class="col-lg-3 col-6 my-auto mb-2">
-                            <select
-                                class="form-select border border-2 p-2 custom-input-sm" wire:model="branch" wire:change="FilterModel($event.target.value)">
-                                <option value="" selected hidden>Select vehicle type</option>
-                                @foreach($models as $model_item)
-                                <option value="{{ $model_item->id }}">{{$model_item->category->title}}|{{ $model_item->title }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                        @if(auth('admin')->user()->branch_id==1)
+                            <div class="col-lg-3 col-6 my-auto mb-2">
+                                <select
+                                    class="form-select border border-2 p-2 custom-input-sm" wire:model="branch" wire:change="FilterBranch($event.target.value)">
+                                    <option value="" selected hidden>Select branch</option>
+                                    @foreach($branch_list as $item)
+                                    <option value="{{ $item->id }}">{{$item->name}}|{{ $item->branch_code }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
                         <div class="col-lg-3 col-6 my-auto mb-2">
                             <select
                                 class="form-select border border-2 p-2 custom-input-sm" wire:model="model" wire:change="FilterModel($event.target.value)">

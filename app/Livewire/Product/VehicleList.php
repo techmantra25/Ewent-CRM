@@ -14,19 +14,25 @@ class VehicleList extends Component
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';
-    public $model;
+    public $model,$branch;
     public $search = '';
     public $active_tab = 1;
     public $models = [];
-    public $branchs = [];
+    public $branches = [];
+    public $branch_list = [];
     public $isModalOpen = false; // Track modal visibility
 
     /**
      * Search button click handler to reset pagination.
      */
     public function mount(){
+        $this->branches = get_branches() ?? [];
+
+        if (count($this->branches) === 1) {
+            $this->branch = $this->branches[0];
+        }
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
-        $this->branchs = Branch::whereIn('id', get_branches())
+        $this->branch_list = Branch::whereIn('id', get_branches())
                         ->where('status', 1)
                         ->get();
     }
@@ -42,6 +48,9 @@ class VehicleList extends Component
     }
     public function FilterModel($value){
         $this->model =$value;
+    }
+    public function FilterBranch($value){
+        $this->branch =$value;
     }
 
     /**
@@ -61,10 +70,15 @@ class VehicleList extends Component
     }
     public function render()
     {
-
         // Fetch all vehicles (with or without assigned vehicles)
         $all_vehicles = Stock::with('product','assignedVehicle','overdueVehicle')
-        ->whereIn('branch_id',get_branches())
+        ->when($this->branch, function ($query) {
+            // If specific branch selected
+            $query->where('branch_id', $this->branch);
+        }, function ($query) {
+            // If no branch selected, filter by allowed branches
+            $query->whereIn('branch_id', $this->branches);
+        })
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
         })
@@ -78,6 +92,7 @@ class VehicleList extends Component
         ->orderBy('id', 'DESC')
         ->orderBy('product_id', 'DESC')
         ->paginate(20,['*'],'all_vehicles');
+        
         // Fetch only assigned vehicles (having an entry in the assigned_vehicles table)
         $assigned_vehicles = Stock::with('assignedVehicle')
         ->whereIn('branch_id',get_branches())
@@ -97,7 +112,13 @@ class VehicleList extends Component
         ->paginate(20, ['*'], 'assigned_vehicles');
 
 
-        $unassigned_vehicles = Stock::whereIn('branch_id',get_branches())->whereDoesntHave('assignedVehicle', function ($query) {
+        $unassigned_vehicles = Stock::when($this->branch, function ($query) {
+            // If specific branch selected
+            $query->where('branch_id', $this->branch);
+        }, function ($query) {
+            // If no branch selected, filter by allowed branches
+            $query->whereIn('branch_id', $this->branches);
+        })->whereDoesntHave('assignedVehicle', function ($query) {
             $query->whereIn('status', ['assigned','sold']); // Ensure it's truly unassigned
         })->whereDoesntHave('overdueVehicle', function ($query) {
             $query->whereIn('status', ['overdue']); // Ensure it's truly unassigned
@@ -119,7 +140,13 @@ class VehicleList extends Component
 
         $today = Carbon::today();
         $overdue_vehicles = Stock::with('overdueVehicle')
-        ->whereIn('branch_id',get_branches())
+        ->when($this->branch, function ($query) {
+            // If specific branch selected
+            $query->where('branch_id', $this->branch);
+        }, function ($query) {
+            // If no branch selected, filter by allowed branches
+            $query->whereIn('branch_id', $this->branches);
+        })
         ->whereHas('overdueVehicle') // Ensures only assigned vehicles are fetched
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
