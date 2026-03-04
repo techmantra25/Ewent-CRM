@@ -19,7 +19,10 @@ class VehicleUpdate extends Component
         $this->id = $id;
         $stock = Stock::find($id);
         if (!$stock) {
-            abort(404); // This will throw a 404 error page
+            abort(404); //This will throw a 404 error page
+        }
+        if (!in_array($stock->branch_id, get_branches() ?? [])) {
+            abort(403);
         }
          // Pre-fill form fields for update
          $this->model = $stock->product_id;
