@@ -173,9 +173,11 @@
                                                             <i class="bi bi-chevron-down"></i> <!-- Bootstrap icon example -->
                                                         </span>
                                                     </a>
-                                                    <a href="javascript:void(0);" class="badge bg-info" wire:click="openPaymentModal({{ $invoice->id }})">
-                                                        Capture
-                                                    </a>
+                                                    @if($status!= 'paid')
+                                                        <a href="javascript:void(0);" class="badge bg-info" wire:click="openPaymentModal({{ $invoice->id }})">
+                                                            Capture
+                                                        </a>
+                                                    @endif
                                                 </div>
                                             </td>
 

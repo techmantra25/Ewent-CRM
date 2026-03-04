@@ -10,6 +10,7 @@ use App\Models\ProductType;
 use App\Models\RentalPrice;
 use App\Models\ProductImage;
 use App\Models\ProductFeature;
+use App\Models\Branch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule; // Import the Rule class
 
@@ -34,10 +35,12 @@ class UpdateProduct extends Component
     public $existingImages = [];
    
     public $features = [];
+    public $branch;
+    public $branches = [];
 
     public function mount($productId)
     {
-        $product = Product::with('ProductImages')->where('id', $productId)->with('features')->first();
+        $product = Product::with('ProductImages')->where('id', $productId)->whereIn('branch_id', get_branches())->with('features')->first();
     
         if (!$product) {
             abort(404, 'Product not found.');
@@ -79,6 +82,13 @@ class UpdateProduct extends Component
 
         $this->existingImages = $product->ProductImages->pluck('image', 'id')->toArray(); // Map image ID to file path
         // $this->rent_duration = env('DEFAULT_RENT_DURATION', 30);
+
+        $this->branches = Branch::whereIn('id', get_branches())
+            ->where('status', 1)
+            ->get();
+
+        // Set current product branch
+        $this->branch = $product->branch_id;
     }
 
     public function removeExistingImage($imageId)
@@ -169,6 +179,10 @@ class UpdateProduct extends Component
                 // 'rental_prices.*.duration' => $this->is_rent ? 'required|numeric' : 'nullable',
                 // 'rental_prices.*.duration_type' => $this->is_rent ? 'required|string' : 'nullable',
                 // 'rental_prices.*.price' => $this->is_rent ? 'required|numeric' : 'nullable',
+                'branch' => [
+                        'required',
+                        Rule::in(get_branches())
+                    ],
             ]);
         DB::beginTransaction();
 
@@ -186,6 +200,7 @@ class UpdateProduct extends Component
             $product = Product::find($this->productId);
             $selectedProductTypesString = implode(',', $this->selectedProductTypes);
             $product->update([
+                'branch_id' => $this->branch,
                 'category_id' => $this->category_id,
                 'sub_category_id' => $this->sub_category_id,
                 'title' => ucwords($this->title),

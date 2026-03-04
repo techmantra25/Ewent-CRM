@@ -20,7 +20,7 @@ class EmployeeManagementUpdate extends Component
         public function mount($id)
         {   
             $this->id = $id;
-            $this->designations = Designation::orderBY('name', 'ASC')->get();
+            $this->designations = Designation::where('status', 1)->orderBY('name', 'ASC')->get();
             $this->branches = Branch::where('status', 1)
                         ->orderBy('name', 'ASC')
                         ->get();

@@ -88,7 +88,7 @@ class Product extends Model
 
     
     // public function types()
-    // {
+    // {    
     //     return $this->belongsToMany(ProductType::class);
     // }
 }

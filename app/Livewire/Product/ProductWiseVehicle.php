@@ -58,7 +58,9 @@ class ProductWiseVehicle extends Component
 
         // Create or update logic
         if ($this->vehicle_id) {
-            $Stock = Stock::findOrFail($this->vehicle_id);
+            $Stock = Stock::where('id', $this->vehicle_id)
+            ->whereIn('branch_id', get_branches())
+            ->firstOrFail();
             $Stock->vehicle_number = $this->vehicle_number;
             $Stock->product_id = $this->product_id;
 
@@ -68,6 +70,7 @@ class ProductWiseVehicle extends Component
             $Stock = new Stock([
                 'product_id' => $this->product_id,
                 'vehicle_number' => $this->vehicle_number,
+                'branch_id' => auth()->user()->branch_id,
                 'status' => true,
             ]);
             
@@ -93,7 +96,9 @@ class ProductWiseVehicle extends Component
         } 
     }
     public function UpdateStatus($id){
-        $stock = Stock::where('id', $id)->first();
+        $stock = Stock::where('id', $id)
+        ->whereIn('branch_id', get_branches())
+        ->first();
         if($stock){
             $stock->status = $stock->status==1?0:1;
             $stock->save();
@@ -103,7 +108,9 @@ class ProductWiseVehicle extends Component
     }
 
     public function UpdateVehicle($id){
-        $stock = Stock::where('id', $id)->first();
+        $stock = Stock::where('id', $id)
+        ->whereIn('branch_id', get_branches())
+        ->firstOrFail();
         $this->vehicle_number = $stock->vehicle_number;
         $this->vehicle_id = $stock->id;
     }
@@ -111,6 +118,7 @@ class ProductWiseVehicle extends Component
     public function render()
     {   
         $vehicles = Stock::with('product') // Eager load product details
+        ->whereIn('branch_id', get_branches())
         ->when($this->search, function ($query) {
             $query->where('vehicle_number', 'like', '%' . $this->search . '%');
         })

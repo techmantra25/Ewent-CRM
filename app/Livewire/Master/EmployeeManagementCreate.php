@@ -21,7 +21,7 @@ class EmployeeManagementCreate extends Component
 
         public function mount()
         {
-            $this->designations = Designation::orderBY('name', 'ASC')->get();
+            $this->designations = Designation::where('status', 1)->orderBy('name', 'ASC')->get();
             $this->branches = Branch::where('status', 1)
                         ->orderBy('name', 'ASC')
                         ->get();

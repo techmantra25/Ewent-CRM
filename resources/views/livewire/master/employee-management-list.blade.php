@@ -39,7 +39,7 @@
                                     <!-- Branch Filter -->
                                     <div wire:ignore style="width:200px;">
                                         <select id="branch_filter" class="form-select">
-                                            <option value="">All Branch</option>
+                                            <option value="">Select Branch</option>
                                             @foreach(\App\Models\Branch::where('status',1)->orderBy('name')->get() as $branch)
                                                 <option value="{{ $branch->id }}"
                                                     {{ $branch->id == $branch_id ? 'selected' : '' }}>
@@ -54,8 +54,6 @@
                                         class="form-control border border-2 p-2 custom-input-sm"
                                         placeholder="Search here..."
                                         style="width:200px;">
-
-                                    
 
                                     <!-- Search Button -->
                                     <button type="button"
