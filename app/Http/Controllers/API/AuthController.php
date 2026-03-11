@@ -1890,7 +1890,7 @@ class AuthController extends Controller
 
                 DB::commit();
 
-                 if($user->user_type == "B2B"){
+                if($user->user_type == "B2B"){
                     return response()->json([
                         'status' => true,
                         'response' => "Your request has been successfully sent. Please wait for the administrator's confirmation.",
@@ -1926,7 +1926,7 @@ class AuthController extends Controller
                     ], 400);
                 }
                 
-
+            
         } catch (\Exception $e) {
             DB::rollBack();
             // dd($e->getMessage());
@@ -2494,7 +2494,7 @@ class AuthController extends Controller
                             'start_date'   => $assignRider->start_date,
                             'end_date'     => $assignRider->end_date,
                             'amount'     => $assignRider->amount,
-                            'deposit_amount'     => $assignRider->deposit_amount,
+                            'deposit_amount'    => $assignRider->deposit_amount,
                             'rental_amount'     => $assignRider->rental_amount,
                             'created_at'   => now(),
                             'updated_at'   => now(),
@@ -2778,9 +2778,9 @@ class AuthController extends Controller
         if($order){
 
             if($order->subscription){
-                $order->total_price = $order->subscription->deposit_amount + $order->subscription->rental_amount;
-                $order->final_amount = $order->subscription->deposit_amount + $order->subscription->rental_amount;
-                $order->deposit_amount = $order->subscription->deposit_amount;
+                // $order->total_price = $order->deposit_amount + $order->subscription->rental_amount;
+                // $order->final_amount = $order->deposit_amount + $order->subscription->rental_amount;
+                // $order->deposit_amount = $order->subscription->deposit_amount;
                 $order->rental_amount = $order->subscription->rental_amount;
                 $order->save();
             }

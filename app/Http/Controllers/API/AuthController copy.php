@@ -1659,41 +1659,41 @@ class AuthController extends Controller
                     $message = "Order updated successfully";
                     DB::commit();
 
-                if($user->user_type == "B2B"){
-                    return response()->json([
-                        'status' => true,
-                        'response' => "Your request has been successfully sent. Please wait for the administrator's confirmation.",
-                    ], 200);
-                }else{
-                    $InitiateSaleResponse = $this->iciciInitiateSale($order->id,'new');
-                    // Check responseCode
-                    if (isset($InitiateSaleResponse['responseCode']) && $InitiateSaleResponse['responseCode'] === 'R1000') {
-                         return response()->json([
+                    if($user->user_type == "B2B"){
+                        return response()->json([
                             'status' => true,
-                            'response' => "Transaction has been successfully generated.",
-                            'merchantTxnNo' => $InitiateSaleResponse['merchantTxnNo'] ?? null,
-                            'redirect_url' => isset($InitiateSaleResponse['redirectURI'], $InitiateSaleResponse['tranCtx'])
-                                    ? $InitiateSaleResponse['redirectURI'] . '?tranCtx=' . $InitiateSaleResponse['tranCtx']
-                                    : null,
-                            // 'data' => [
-
-                            //     'showOTPCapturePage' => $InitiateSaleResponse['showOTPCapturePage'] ?? null,
-                            //     'generateOTPURI'     => $InitiateSaleResponse['generateOTPURI'] ?? null,
-                            //     'verifyOTPURI'       => $InitiateSaleResponse['verifyOTPURI'] ?? null,
-                            //     'authorizeURI'       => $InitiateSaleResponse['authorizeURI'] ?? null,
-                            //     'secureHash'         => $InitiateSaleResponse['secureHash'] ?? null,
-                            // ]
+                            'response' => "Your request has been successfully sent. Please wait for the administrator's confirmation.",
                         ], 200);
+                    }else{
+                        $InitiateSaleResponse = $this->iciciInitiateSale($order->id,'new');
+                        // Check responseCode
+                        if (isset($InitiateSaleResponse['responseCode']) && $InitiateSaleResponse['responseCode'] === 'R1000') {
+                            return response()->json([
+                                'status' => true,
+                                'response' => "Transaction has been successfully generated.",
+                                'merchantTxnNo' => $InitiateSaleResponse['merchantTxnNo'] ?? null,
+                                'redirect_url' => isset($InitiateSaleResponse['redirectURI'], $InitiateSaleResponse['tranCtx'])
+                                        ? $InitiateSaleResponse['redirectURI'] . '?tranCtx=' . $InitiateSaleResponse['tranCtx']
+                                        : null,
+                                // 'data' => [
 
+                                //     'showOTPCapturePage' => $InitiateSaleResponse['showOTPCapturePage'] ?? null,
+                                //     'generateOTPURI'     => $InitiateSaleResponse['generateOTPURI'] ?? null,
+                                //     'verifyOTPURI'       => $InitiateSaleResponse['verifyOTPURI'] ?? null,
+                                //     'authorizeURI'       => $InitiateSaleResponse['authorizeURI'] ?? null,
+                                //     'secureHash'         => $InitiateSaleResponse['secureHash'] ?? null,
+                                // ]
+                            ], 200);
+
+                        }
+
+                        // If responseCode is not R1000
+                        return response()->json([
+                            'status' => false,
+                            'response' => 'Failed to initiate transaction.',
+                            'error' => $InitiateSaleResponse
+                        ], 400);
                     }
-
-                    // If responseCode is not R1000
-                    return response()->json([
-                        'status' => false,
-                        'response' => 'Failed to initiate transaction.',
-                        'error' => $InitiateSaleResponse
-                    ], 400);
-                }
 
                 }elseif ($existing_order->rent_status == "ready to assign") {
                     return response()->json([
