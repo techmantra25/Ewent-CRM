@@ -239,6 +239,7 @@
                                                                 if (!empty($group)) {
                                                                     $groups[] = $group; // add last group
                                                                 }
+                                                                // dd($group,$groups);
                                                             @endphp
                                                             @foreach($groups as $datesGroup)
                                                                 @php

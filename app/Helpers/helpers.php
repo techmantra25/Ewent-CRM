@@ -986,6 +986,12 @@ if (!function_exists('get_branches')) {
     }
 }
 
+// if(!function_exists('get_vehicle')){
+//     function get_vehicle($user_id, $date){
+
+//     }           
+// }
+
 
 
 

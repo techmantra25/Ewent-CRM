@@ -461,6 +461,7 @@ class RefundSummary extends Component
             // ->where('subscription_type', 'like', 'new_subscription_%')
             ->where('payment_status', 'completed')
             ->where('rent_status', 'returned')
+            ->where('user_type', 'B2C')
             ->orderByDesc('id')
             ->paginate(20);
        $in_progress_data = OrderItemReturn::with('order_item')
