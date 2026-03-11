@@ -45,7 +45,9 @@ class EmployeeManagementList extends Component
     }
     public function render()
     {
-        $employees = Admin::with(['designationData','branchData'])
+        $employees = branchFilter(
+                Admin::with(['designationData','branchData'])
+            )
             ->when($this->branch_id, function ($query) {
                 $query->where('branch_id', $this->branch_id);
             })
@@ -58,8 +60,8 @@ class EmployeeManagementList extends Component
                 });
             })
             ->orderBy('id', 'DESC')
-            ->where('id', '!=', 1)
             ->paginate(20);
+            
         return view('livewire.master.employee-management-list',[
             'employees'=>$employees,
         ]);

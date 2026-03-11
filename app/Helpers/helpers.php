@@ -23,6 +23,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use App\Models\Branch;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Builder;
 
 if (!function_exists('storeFileWithCustomName')) {
     function storeFileWithCustomName($file, $directory)
@@ -983,6 +984,20 @@ if (!function_exists('get_branches')) {
 
         // Else → return only his branch
         return [$admin->branch_id];
+    }
+}
+
+if (!function_exists('branchFilter')) {
+
+    function branchFilter(Builder $query)
+    {
+        $user = Auth::guard('admin')->user();
+
+        if ($user && $user->branch_id != 1) {
+            $query->where('branch_id', $user->branch_id);
+        }
+
+        return $query;
     }
 }
 
