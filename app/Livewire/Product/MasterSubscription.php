@@ -6,17 +6,20 @@ use Livewire\Component;
 use App\Models\Category;
 use App\Models\RentalPrice;
 use App\Models\Product;
+use App\Models\Branch;
 use App\Models\SubCategory;
 use Illuminate\Validation\Rule;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Auth;
 
 class MasterSubscription extends Component
 {
     use WithPagination;
     public $subscriptionId = null;
     public $asset = null;
+    public $branches = [];
     public $customerType = 'B2C';
-    public $model,$models,$subscription_type,$customer_type, $duration,$deposit_amount,$rental_amount;
+    public $model,$models,$branch_id,$subscription_type,$customer_type, $duration,$deposit_amount,$rental_amount;
 
     protected function rules()
     {
@@ -48,6 +51,7 @@ class MasterSubscription extends Component
     ];
     public function mount()
     {
+        $this->branches = Branch::where('status', 1)->orderBy('name', 'ASC')->get();
         $this->models = Product::where('status',1)->orderBy('title','ASC')->get(); // Load categories for dropdown
     }
 

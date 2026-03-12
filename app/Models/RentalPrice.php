@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class RentalPrice extends Model
 {
     protected $table = 'rental_prices';
-    protected $fillable = ['product_id', 'duration', 'subscription_type', 'customer_type', 'deposit_amount', 'rental_amount', 'status'];
+    protected $fillable = ['branch_id','product_id', 'duration', 'subscription_type', 'customer_type', 'deposit_amount', 'rental_amount', 'status'];
 
     public function product()
     {
@@ -16,5 +16,8 @@ class RentalPrice extends Model
     public function orders()
     {
         return $this->hasMany(Order::class, 'subscription_id', 'id');
+    }
+    public function branch(){
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
     }
 }

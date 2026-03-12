@@ -50,7 +50,8 @@ $adminUser = Auth::guard('admin')->user();
 
           <!-- Place this tag where you want the button to render. -->
           <li class="nav-item lh-1 me-4">
-            <a href="#">{{$adminUser->name}}</a>
+            <h6 class="mb-0">{{$adminUser->name}}</h6>
+            <small class="text-muted">{{ optional($adminUser->branchData)->name }}</small>
           </li>
 
           <!-- User -->
@@ -71,7 +72,7 @@ $adminUser = Auth::guard('admin')->user();
                     </div>
                     <div class="flex-grow-1">
                       <h6 class="mb-0 small">{{ $adminUser->name }}</h6>
-                      <small class="text-muted">{{ $adminUser->designationData->name }}</small>
+                      <small class="text-muted">{{ optional($adminUser->designationData)->name }}</small>
                     </div>
                   </div>
                 </a>
