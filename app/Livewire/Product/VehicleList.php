@@ -8,6 +8,8 @@ use App\Models\Stock;
 use App\Models\Branch;
 use App\Models\Product;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\OverdueVehicleExport;
 
 class VehicleList extends Component
 {
@@ -68,10 +70,23 @@ class VehicleList extends Component
         $this->resetPage('unassigned_vehicles');
         $this->resetPage('overdue_vehicles');
     }
+
+    public function exportOverdue()
+    {
+        return Excel::download(
+            new OverdueVehicleExport($this->branch,$this->model,$this->search),
+            'overdue_vehicles.xlsx'
+        );
+    }
+
     public function render()
     {
         // Fetch all vehicles (with or without assigned vehicles)
-        $all_vehicles = Stock::with('product','assignedVehicle','overdueVehicle')
+        $all_vehicles = Stock::with([
+                'product',
+                'assignedVehicle.user',
+                'overdueVehicle.user'
+            ])
         ->when($this->branch, function ($query) {
             // If specific branch selected
             $query->where('branch_id', $this->branch);
@@ -83,29 +98,63 @@ class VehicleList extends Component
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
         })
         ->when($this->search, function ($query) {
+
             $searchTerm = '%' . $this->search . '%';
-            $query->where('vehicle_number', 'like', $searchTerm)
+
+            $query->where(function ($q) use ($searchTerm) {
+
+                $q->where('vehicle_number', 'like', $searchTerm)
                 ->orWhere('imei_number', 'like', $searchTerm)
                 ->orWhere('chassis_number', 'like', $searchTerm)
-                ->orWhere('friendly_name', 'like', $searchTerm);
+                ->orWhere('friendly_name', 'like', $searchTerm)
+
+                ->orWhereHas('assignedVehicle.user', function ($uq) use ($searchTerm) {
+                    $uq->where('name', 'like', $searchTerm)
+                    ->orWhere('mobile', 'like', $searchTerm)
+                    ->orWhere('email', 'like', $searchTerm);
+                })
+
+                ->orWhereHas('overdueVehicle.user', function ($uq) use ($searchTerm) {
+                    $uq->where('name', 'like', $searchTerm)
+                    ->orWhere('mobile', 'like', $searchTerm)
+                    ->orWhere('email', 'like', $searchTerm);
+                });
+
+            });
+
         })
         ->orderBy('id', 'DESC')
         ->orderBy('product_id', 'DESC')
         ->paginate(20,['*'],'all_vehicles');
         
         // Fetch only assigned vehicles (having an entry in the assigned_vehicles table)
-        $assigned_vehicles = Stock::with('assignedVehicle')
+        $assigned_vehicles = Stock::with([
+                'assignedVehicle.user'
+            ])
         ->whereIn('branch_id',get_branches())
         ->whereHas('assignedVehicle') // Ensures only assigned vehicles are fetched
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
         })
         ->when($this->search, function ($query) {
+
             $searchTerm = '%' . $this->search . '%';
-            $query->where('vehicle_number', 'like', $searchTerm)
+
+            $query->where(function ($q) use ($searchTerm) {
+
+                $q->where('vehicle_number', 'like', $searchTerm)
                 ->orWhere('imei_number', 'like', $searchTerm)
                 ->orWhere('chassis_number', 'like', $searchTerm)
-                ->orWhere('friendly_name', 'like', $searchTerm);
+                ->orWhere('friendly_name', 'like', $searchTerm)
+
+                ->orWhereHas('assignedVehicle.user', function ($uq) use ($searchTerm) {
+                    $uq->where('name', 'like', $searchTerm)
+                    ->orWhere('mobile', 'like', $searchTerm)
+                    ->orWhere('email', 'like', $searchTerm);
+                });
+
+            });
+
         })
         ->orderBy('id', 'DESC')
         ->orderBy('product_id', 'DESC')
@@ -139,7 +188,9 @@ class VehicleList extends Component
         ->paginate(20,['*'], 'unassigned_vehicles');
 
         $today = Carbon::today();
-        $overdue_vehicles = Stock::with('overdueVehicle')
+        $overdue_vehicles = Stock::with([
+            'overdueVehicle.user'
+        ])
         ->when($this->branch, function ($query) {
             // If specific branch selected
             $query->where('branch_id', $this->branch);
@@ -172,10 +223,18 @@ class VehicleList extends Component
                 $searchTerm = '%' . $this->search . '%';
 
                 $query->where(function ($q) use ($searchTerm) {
+
                     $q->where('vehicle_number', 'like', $searchTerm)
                     ->orWhere('imei_number', 'like', $searchTerm)
                     ->orWhere('chassis_number', 'like', $searchTerm)
-                    ->orWhere('friendly_name', 'like', $searchTerm);
+                    ->orWhere('friendly_name', 'like', $searchTerm)
+
+                    ->orWhereHas('overdueVehicle.user', function ($uq) use ($searchTerm) {
+                        $uq->where('name', 'like', $searchTerm)
+                        ->orWhere('mobile', 'like', $searchTerm)
+                        ->orWhere('email', 'like', $searchTerm);
+                    });
+
                 });
             }
         })

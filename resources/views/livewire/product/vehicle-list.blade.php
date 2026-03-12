@@ -10,12 +10,19 @@
     </div>
     <div class="col-lg-4 col-md-6 my-sm-auto ms-sm-auto me-sm-0 mx-auto mt-3">
         <div class="nav-wrapper position-relative end text-end">
-          <!-- Back Button -->
-          <a class="btn btn-secondary btn-sm add-new btn-primary waves-effect waves-light" href="{{route('admin.vehicle.create')}}">
-            New Vehicle
-          </a>
+            @if($active_tab == 4)
+            <button type="button"
+                wire:click="exportOverdue"
+                class="btn btn-success btn-sm add-new waves-effect waves-light me-2">
+                <i class="ri-download-2-line me-1"></i> Export
+            </button>
+            @endif
+            <a class="btn btn-secondary btn-sm add-new btn-primary waves-effect waves-light"
+            href="{{ route('admin.vehicle.create') }}">
+                New Vehicle
+            </a>
         </div>
-      </div>
+    </div>
     <div class="col-lg-12 justify-content-left">
         <div class="row">
             @if(session()->has('message'))

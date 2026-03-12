@@ -7,6 +7,8 @@ use App\Models\BomPart;
 use App\Models\Product;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Validator;
+use App\Exports\BomPartExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BomPartList extends Component
 {
@@ -27,7 +29,7 @@ class BomPartList extends Component
     public $existingImageUrl;
     public $active_tab = 1;
     public $csv_file;
-    protected $listeners = ['autoImportCSV' => 'import','csvImported' => '$refresh'];
+    protected $listeners = ['csvImported' => '$refresh'];
 
 
    protected $rules = [
@@ -167,6 +169,12 @@ class BomPartList extends Component
         $this->reset('search'); // Reset the search term
         $this->mount();     // Reset pagination
     }
+
+    public function exportAll()
+    {
+        return Excel::download(new BomPartExport($this->search), 'bom_parts.xlsx');
+    }
+
     public function render()
     {
         return view('livewire.product.bom-part-list', [
@@ -178,6 +186,33 @@ class BomPartList extends Component
    {
     $this->dispatch('openFile',[]);
    }
+
+    public function downloadSampleCsv()
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="bom_part_sample.csv"',
+        ];
+
+        $columns = [
+            'Product Title',
+            'Part Name',
+            'Part Number',
+            'Part Unit',
+            'Part Price',
+            'Warranty In Days',
+            'Warranty (Yes/No)'
+        ];
+
+        $callback = function () use ($columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns); // header row
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+    
    public function import()
     {
         $this->validate([
@@ -251,6 +286,7 @@ class BomPartList extends Component
 
         session()->flash('message', 'CSV imported successfully!');
         $this->reset('csv_file');
+        $this->dispatch('closeImportModal');
     }
 
 

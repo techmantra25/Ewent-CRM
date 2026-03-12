@@ -5,46 +5,41 @@
                 <i class="ri-add-line ri-16px me-0 me-sm-2 align-baseline"></i>
                 Create New Part
             </button>
-            <button type="button"  class="btn btn-warning ms-2" wire:click="openFile()">
-                <i class="ri-file-text-line ri-16px me-0 me-sm-2 align-baseline "></i>
+            <button type="button" class="btn btn-warning ms-2"
+                    data-bs-toggle="modal"
+                    data-bs-target="#importCsvModal">
+                <i class="ri-file-text-line ri-16px me-0 me-sm-2 align-baseline"></i>
                 Import
             </button>
-            <a href="{{ asset('storage/uploads/sample_csv/bom_part.csv') }}" target="_blank">
-            <button type="button"  class="btn btn-success ms-2" >
-                            <i class="ri-download-line ri-16px me-0 me-sm-2 align-baseline "></i>
-                            Download
-                        </button>
-            </a>
+            {{-- <a href="{{ asset('storage/uploads/sample_csv/bom_part.csv') }}" target="_blank">
+                <button type="button"  class="btn btn-success ms-2" >
+                    <i class="ri-download-line ri-16px me-0 me-sm-2 align-baseline "></i>
+                        Download
+                </button>
+            </a> --}}
 
-        </div>
-          <div class="col-lg-12 justify-content-left">
-    <div class="row">
-      @if(session()->has('message'))
-      <div class="alert alert-success" id="flashMessage">
-        {{ session('message') }}
-      </div>
-      @endif
-
-    </div>
-  </div>
-
-       <form wire:submit.prevent="import" enctype="multipart/form-data" method="post">
-        <div class="mb-3">
-            <input type="file" wire:model="csv_file" class="form-control" id="csv_file" style="display: none;" ency>
-            @error('csv_file') <span class="text-danger">{{ $message }}</span> @enderror
-           <button type="submit" style="display:none;" id="csv_submit"></button>
-
-        </div>
-
-
-    </form>
-    @else
-        <div class="col-lg-12 d-flex justify-content-end">
-            <button type="button" class="btn btn-dark btn-sm waves-effect waves-light" wire:click="ActiveCreateTab(1)" role="button">
-                <i class="ri-arrow-go-back-line"></i> Back
+            <button type="button" class="btn btn-success ms-2" wire:click="exportAll">
+                <i class="ri-download-2-line me-1"></i> Export
             </button>
+
         </div>
-    @endif
+            <div class="col-lg-12 justify-content-left">
+                <div class="row">
+                    @if(session()->has('message'))
+                        <div class="alert alert-success" id="flashMessage">
+                            {{ session('message') }}
+                        </div>
+                    @endif
+
+                </div>
+            </div>
+        @else
+            <div class="col-lg-12 d-flex justify-content-end">
+                <button type="button" class="btn btn-dark btn-sm waves-effect waves-light" wire:click="ActiveCreateTab(1)" role="button">
+                    <i class="ri-arrow-go-back-line"></i> Back
+                </button>
+            </div>
+        @endif
 
     @if($active_tab==2)
     <div class="col-lg-12 col-md-6 mb-md-0 my-4">
@@ -421,29 +416,75 @@
             </div>
         </div>
     @endif
+
+    <!-- Import CSV Modal -->
+    <div wire:ignore.self class="modal fade" id="importCsvModal" tabindex="-1" aria-labelledby="importCsvLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importCsvLabel">Import BOM Parts</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <form wire:submit.prevent="import" enctype="multipart/form-data">
+                    <div class="modal-body">
+
+                        <div class="mb-3">
+                            <label class="form-label">Upload CSV File</label>
+                            <input type="file"
+                                wire:model="csv_file"
+                                class="form-control">
+                            @error('csv_file')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <div class="text-end">
+                            <button type="button" class="btn btn-success ms-2" wire:click="downloadSampleCsv">
+                                <i class="ri-download-line ri-16px me-0 me-sm-2 align-baseline"></i>
+                                Download Sample
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button"
+                                class="btn btn-secondary"
+                                data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+
+                        <button type="submit"
+                                class="btn btn-primary">
+                            Import
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+
     <div class="loader-container" wire:loading>
         <div class="loader"></div>
       </div>
 </div>
 @section('page-script')
 <script>
-   window.addEventListener('openFile', function (event) {
-   document.getElementById('csv_file').click();
+document.addEventListener('livewire:init', () => {
 
-
-});
-document.addEventListener('DOMContentLoaded', function () {
-        const csvInput = document.getElementById('csv_file');
-        if (csvInput) {
-            csvInput.addEventListener('change', function () {
-                setTimeout(() => {
-                    Livewire.dispatch('autoImportCSV');
-                }, 3000);
-            });
-        } else {
-            console.warn('#csv_file not found');
+    Livewire.on('closeImportModal', () => {
+        let modalElement = document.getElementById('importCsvModal');
+        let modal = bootstrap.Modal.getInstance(modalElement);
+        if(modal){
+            modal.hide();
         }
     });
+
+});
 </script>
 @endsection
 
