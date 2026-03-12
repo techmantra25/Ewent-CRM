@@ -468,7 +468,7 @@
         </div>
     </div>
 
-    <div class="loader-container" wire:loading>
+    <div class="loader-container" wire:loading wire:target="import,csv_file">
         <div class="loader"></div>
       </div>
 </div>
