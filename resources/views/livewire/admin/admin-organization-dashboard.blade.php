@@ -516,24 +516,54 @@
                                                                 @endphp
 
                                                                 @foreach($details as $day_amount => $detail)
-                                                                    @php
-                                                                        // Sort dates to ensure correct range
-                                                                        $dates = collect($detail['dates'])->sort()->values();
-                                                                        $startDate = \Carbon\Carbon::parse($dates->first())->format('d M Y');
-                                                                        $endDate   = \Carbon\Carbon::parse($dates->last())->format('d M Y');
+                                                                        @php
+                                                                            // Sort dates
+                                                                            $dates = collect($detail['dates'])->sort()->values();
 
-                                                                        $totalDays = count($dates);
-                                                                        $amountPerDay = (float)$day_amount;
-                                                                        $totalAmount = $amountPerDay * $totalDays;
-                                                                    @endphp
+                                                                            $start = $dates->first();
+                                                                            $end   = $dates->last();
+
+                                                                            $startDate = \Carbon\Carbon::parse($start)->format('d M Y');
+                                                                            $endDate   = \Carbon\Carbon::parse($end)->format('d M Y');
+
+                                                                            $totalDays = $dates->count();
+                                                                            $amountPerDay = (float)$day_amount;
+                                                                            $totalAmount = $amountPerDay * $totalDays;
+
+                                                                            // Fetch vehicles
+                                                                            $vehicles = \App\Models\AsignedVehicle::with('stock')
+                                                                                ->where('user_id', $item->user_id)
+                                                                                ->where(function($q) use ($start, $end) {
+                                                                                    $q->whereBetween('start_date', [$start, $end])
+                                                                                    ->orWhereBetween('end_date', [$start, $end])
+                                                                                    ->orWhere(function($q2) use ($start, $end) {
+                                                                                        $q2->where('start_date', '<=', $start)
+                                                                                            ->where('end_date', '>=', $end);
+                                                                                    });
+                                                                                })
+                                                                                ->get()
+                                                                                ->pluck('stock.vehicle_number')
+                                                                                ->filter()
+                                                                                ->unique()
+                                                                                ->values();
+                                                                        @endphp
 
                                                                     <tr class="table-sm invoice-details collapse" id="{{ $collapseId }}">
-                                                                        <td colspan="3">
+                                                                        <td colspan="2">
                                                                             {{ $startDate }} @if($totalDays > 1) to {{ $endDate }} @endif
+                                                                        </td>
+                                                                         <td colspan="2">
+                                                                            <strong>Vehicles:</strong><br>
+                                                                            @if($vehicles->count())
+                                                                                {{ $vehicles->implode(', ') }}
+                                                                            @else
+                                                                                <span class="text-muted">N/A</span>
+                                                                            @endif
                                                                         </td>
                                                                         <td colspan="2">
                                                                             {{ $totalDays }} {{ Str::plural('day', $totalDays) }}
                                                                         </td>
+
                                                                         <td colspan="3" class="text-end">
                                                                             {{ env('APP_CURRENCY') }}{{ number_format($amountPerDay, 2) }}
                                                                             × {{ $totalDays }} = 
@@ -1106,20 +1136,48 @@
                                                                       @endphp
 
                                                                       @foreach($details as $day_amount => $detail)
-                                                                          @php
-                                                                              // Sort dates to ensure correct range
-                                                                              $dates = collect($detail['dates'])->sort()->values();
-                                                                              $startDate = \Carbon\Carbon::parse($dates->first())->format('d M Y');
-                                                                              $endDate   = \Carbon\Carbon::parse($dates->last())->format('d M Y');
+                                                                           @php
+                                                                                // Sort dates
+                                                                                $dates = collect($detail['dates'])->sort()->values();
 
-                                                                              $totalDays = count($dates);
-                                                                              $amountPerDay = (float)$day_amount;
-                                                                              $totalAmount = $amountPerDay * $totalDays;
-                                                                          @endphp
+                                                                                $start = $dates->first();
+                                                                                $end   = $dates->last();
 
+                                                                                $startDate = \Carbon\Carbon::parse($start)->format('d M Y');
+                                                                                $endDate   = \Carbon\Carbon::parse($end)->format('d M Y');
+
+                                                                                $totalDays = $dates->count();
+                                                                                $amountPerDay = (float)$day_amount;
+                                                                                $totalAmount = $amountPerDay * $totalDays;
+
+                                                                                // Fetch vehicles
+                                                                                $vehicles = \App\Models\AsignedVehicle::with('stock')
+                                                                                    ->where('user_id', $item->user_id)
+                                                                                    ->where(function($q) use ($start, $end) {
+                                                                                        $q->whereBetween('start_date', [$start, $end])
+                                                                                        ->orWhereBetween('end_date', [$start, $end])
+                                                                                        ->orWhere(function($q2) use ($start, $end) {
+                                                                                            $q2->where('start_date', '<=', $start)
+                                                                                                ->where('end_date', '>=', $end);
+                                                                                        });
+                                                                                    })
+                                                                                    ->get()
+                                                                                    ->pluck('stock.vehicle_number')
+                                                                                    ->filter()
+                                                                                    ->unique()
+                                                                                    ->values();
+                                                                            @endphp
                                                                           <tr class="table-sm invoice-details collapse" id="{{ $collapseId }}">
                                                                               <td colspan="3">
                                                                                   {{ $startDate }} @if($totalDays > 1) to {{ $endDate }} @endif
+                                                                              </td>
+                                                                              <td colspan="2">
+                                                                                    <strong>Vehicles:</strong><br>
+                                                                                    @if($vehicles->count())
+                                                                                        {{ $vehicles->implode(', ') }}
+                                                                                    @else
+                                                                                        <span class="text-muted">N/A</span>
+                                                                                    @endif
                                                                               </td>
                                                                               <td colspan="3">
                                                                                   {{ $totalDays }} {{ Str::plural('day', $totalDays) }}
