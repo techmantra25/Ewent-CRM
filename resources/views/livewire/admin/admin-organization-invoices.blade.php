@@ -249,12 +249,41 @@
                                                                     $amountPerDay = (float)$day_amount;
                                                                     $totalAmount = $amountPerDay * $totalDays;
                                                                 @endphp
+                                                                @php
+                                                                    $start = $datesGroup[0];
+                                                                    $end   = end($datesGroup);
+
+                                                                    $vehicles = \App\Models\AsignedVehicle::with('stock')
+                                                                        ->where('user_id', $item->user_id)
+                                                                        ->where(function($q) use ($start, $end) {
+                                                                            $q->whereBetween('start_date', [$start, $end])
+                                                                            ->orWhereBetween('end_date', [$start, $end])
+                                                                            ->orWhere(function($q2) use ($start, $end) {
+                                                                                $q2->where('start_date', '<=', $start)
+                                                                                    ->where('end_date', '>=', $end);
+                                                                            });
+                                                                        })
+                                                                        ->get()
+                                                                        ->pluck('stock.vehicle_number')
+                                                                        ->filter()
+                                                                        ->unique()
+                                                                        ->values()
+                                                                        ->toArray();
+                                                                @endphp
 
                                                                 <tr class="table-sm invoice-details collapse" id="{{ $collapseId }}">
-                                                                    <td colspan="3">
+                                                                    <td colspan="1">
                                                                         {{ $startDate }} @if($totalDays > 1) to {{ $endDate }} @endif
                                                                     </td>
-                                                                    <td colspan="3">
+                                                                       <td colspan="2">
+                                                                            <strong>Vehicles:</strong><br>
+                                                                            @if(count($vehicles))
+                                                                                {{ implode(', ', $vehicles) }}
+                                                                            @else
+                                                                                <span class="text-muted">N/A</span>
+                                                                            @endif
+                                                                        </td>
+                                                                    <td colspan="2">
                                                                         {{ $totalDays }} {{ Str::plural('day', $totalDays) }}
                                                                     </td>
                                                                     <td colspan="3" class="text-end">
