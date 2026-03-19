@@ -21,7 +21,8 @@ use App\Models\PaymentLog;
 use App\Models\Payment;
 use App\Models\UserLocationLog;
 use Illuminate\Support\Facades\Log;
-
+use App\Models\Order;
+use App\Models\VehicleDailyEarningB2c;
 class CronController extends Controller
 {
     public function TestLog(){
@@ -880,6 +881,168 @@ class CronController extends Controller
     //         }
     //     }
 
+    public function vehicleB2CEarnings()
+    {
+        $startBase = Carbon::parse('2025-06-18');
+        $today = Carbon::today();
+
+        $existingDates = VehicleDailyEarningB2c::pluck('date')
+            ->map(fn($d) => Carbon::parse($d)->toDateString())
+            ->unique()
+            ->toArray();
+
+        $processDate = null;
+
+        for ($date = $startBase->copy(); $date->lte($today); $date->addDay()) {
+            if (!in_array($date->toDateString(), $existingDates)) {
+                $processDate = $date->copy();
+                break;
+            }
+        }
+
+        if (!$processDate) {
+            Log::info('Vehicle B2C Earnings: All dates already synced');
+            return response()->json([
+                'message' => 'All dates already synced'
+            ]);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $allVehicle = Stock::orderBy('id', 'ASC')->pluck('id');
+
+            foreach ($allVehicle as $vehicleId) {
+
+                $asignedVehicle = AsignedVehicle::with(['user', 'order.subscription'])
+                    ->where('vehicle_id', $vehicleId)
+                    ->whereDate('start_date', '<=', $processDate)
+                    ->whereDate('end_date', '>=', $processDate)
+                    ->first();
+
+                if ($asignedVehicle) {
+
+                    if (!$asignedVehicle->user || !$asignedVehicle->order || !$asignedVehicle->order->subscription) {
+                        continue;
+                    }
+
+                    if ($asignedVehicle->user->user_type === "B2B") {
+                        continue;
+                    }
+
+                    $order_id   = $asignedVehicle->order_id;
+                    $rider_id   = $asignedVehicle->user_id;
+                    $vehicle_id = $asignedVehicle->vehicle_id;
+
+                    $exchangeVehicle = ExchangeVehicle::where('vehicle_id', $vehicleId)
+                        ->whereDate('exchanged_at', $processDate)
+                        ->first();
+
+                    if ($exchangeVehicle) {
+                        $vehicle_id = $exchangeVehicle->vehicle_id ?? $vehicleId;
+                    }
+
+                    $duration = $asignedVehicle->order->subscription->duration ?? 0;
+
+                    if ($duration <= 0) {
+                        continue;
+                    }
+
+                    $amount = bcdiv((string)$asignedVehicle->rental_amount, (string)$duration, 2);
+
+                    $exists = VehicleDailyEarningB2c::where('order_id', $order_id)
+                        ->whereDate('date', $processDate)
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
+                    VehicleDailyEarningB2c::create([
+                        'order_id'   => $order_id,
+                        'rider_id'   => $rider_id,
+                        'vehicle_id' => $vehicle_id,
+                        'amount'     => $amount,
+                        'date'       => $processDate,
+                    ]);
+
+                } else {
+
+                    $exchangeVehicle = ExchangeVehicle::with(['user', 'order.subscription'])
+                        ->where('vehicle_id', $vehicleId)
+                        ->whereDate('start_date', '<=', $processDate)
+                        ->whereDate('end_date', '>=', $processDate)
+                        ->first();
+
+                    if (!$exchangeVehicle) {
+                        continue;
+                    }
+
+                    if (!$exchangeVehicle->user || !$exchangeVehicle->order || !$exchangeVehicle->order->subscription) {
+                        continue;
+                    }
+
+                    if ($exchangeVehicle->user->user_type === "B2B") {
+                        continue;
+                    }
+
+                    $order_id   = $exchangeVehicle->order_id;
+                    $rider_id   = $exchangeVehicle->user_id;
+                    $vehicle_id = $exchangeVehicle->vehicle_id;
+
+                    $duration = $exchangeVehicle->order->subscription->duration ?? 0;
+
+                    if ($duration <= 0) {
+                        continue;
+                    }
+
+                    $amount = bcdiv((string)$exchangeVehicle->rental_amount, (string)$duration, 2);
+
+                    $exists = VehicleDailyEarningB2c::where('order_id', $order_id)
+                        ->whereDate('date', $processDate)
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
+                    VehicleDailyEarningB2c::create([
+                        'order_id'   => $order_id,
+                        'rider_id'   => $rider_id,
+                        'vehicle_id' => $vehicle_id,
+                        'amount'     => $amount,
+                        'date'       => $processDate,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            Log::info('Vehicle B2C Earnings processed successfully', [
+                'date' => $processDate->toDateString()
+            ]);
+
+            return response()->json([
+                'processed_date' => $processDate->toDateString(),
+                'status' => 'success'
+            ]);
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            Log::error('Vehicle B2C Earnings failed', [
+                'date' => $processDate ? $processDate->toDateString() : null,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Something went wrong'
+            ], 500);
+        }
+    }
 
 
 }
