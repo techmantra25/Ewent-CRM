@@ -377,6 +377,7 @@ class CronController extends Controller
                         if (!empty($response['data']['id'])) {
                             $stock = Stock::find($item->vehicle_id);
                             if ($stock) {
+                                $stock->immobilizer_status = "IMMOBILIZE";
                                 $stock->immobilizer_request_id = $response['data']['id'];
                                 $stock->save();
                             }

@@ -32,9 +32,9 @@ class UserPaymentHistory extends Component
             'product_type' => Payment::select('order_type')->whereNotNull('order_type')->distinct()->pluck('order_type')->toArray(),
             'payment_status' => Payment::select('payment_status')->distinct()->pluck('payment_status')->toArray(),
         ];
-        // Delete all pending payments older than 48 hours
+        // Delete all pending payments older than 150 hours
         Payment::where('payment_status', 'pending')
-            ->where('created_at', '<', now()->subHours(48))
+            ->where('created_at', '<', now()->subHours(168))
             ->delete();
     }
 
