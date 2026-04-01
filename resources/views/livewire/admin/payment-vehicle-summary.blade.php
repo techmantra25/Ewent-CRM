@@ -163,15 +163,49 @@
                                   <td class="">
                                       <small class="text-muted">{{ $item->end_date?date('d M y h:i A', strtotime($item->end_date)):"" }}</small>
                                   </td>
-                                  <td class="">
-                                      @if($item->order && $item->order->user_type === "B2C")
-                                          <small class="text-primary fw-bold">
-                                              {{ env('APP_CURRENCY', '₹') }}{{ number_format($item->rental_amount, 2) }}
-                                          </small>
-                                      @else
+                                  @php
+                                    $actualStart = \Carbon\Carbon::parse($item->start_date);
+                                    $actualEnd   = \Carbon\Carbon::parse($item->end_date);
+
+                                    $filterStart = \Carbon\Carbon::parse($start_date);
+                                    $filterEnd   = \Carbon\Carbon::parse($end_date);
+
+                                    // Overlap calculation
+                                    $overlapStart = $actualStart->greaterThan($filterStart) ? $actualStart : $filterStart;
+                                    $overlapEnd   = $actualEnd->lessThan($filterEnd) ? $actualEnd : $filterEnd;
+
+                                    // Duration
+                                    $days = 0;
+
+                                    if ($overlapStart <= $overlapEnd) {
+                                        $days = max(
+                                            1,
+                                            $overlapStart->copy()->startOfDay()
+                                                ->diffInDays($overlapEnd->copy()->startOfDay())
+                                        );
+                                    }
+
+                                    // Per day rent
+                                    $duration = $item->order->subscription->duration ?? 1;
+                                    $perDayRent = $item->rental_amount / $duration;
+
+                                    // Total amount
+                                    $totalAmount = $days * $perDayRent;
+                                @endphp
+
+                                <td>
+                                    @if($item->order && $item->order->user_type === "B2C")
+                                        <small class="text-primary fw-bold">
+                                            {{ env('APP_CURRENCY', '₹') }}{{ number_format($totalAmount, 2) }}
+                                        </small>
+                                        <br>
+                                        <small class="text-muted">
+                                            ({{ $days }} day{{ $days > 1 ? 's' : '' }} × {{ number_format($perDayRent, 2) }})
+                                        </small>
+                                    @else
                                         <span class="text-muted">B2B</span>
-                                      @endif
-                                  </td>
+                                    @endif
+                                </td>
                                   <td class="">
                                     <small class="text-{{$item->status=='overdue'?"danger":"muted"}}">{{ ucwords($item->status)}}</small>
                                   </td>

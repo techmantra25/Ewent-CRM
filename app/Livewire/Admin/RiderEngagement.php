@@ -178,7 +178,7 @@ class RiderEngagement extends Component
 
                 $startDate = Carbon::now();
                 $endDate = $startDate->copy()->addDays($order->rent_duration);
-
+                $isB2C = $order->user_type === 'B2C';
                 $log = AsignedVehicle::create([
                     'user_id' => $this->targetRiderId,
                     'order_id' => $this->targetOrderId,
@@ -187,7 +187,7 @@ class RiderEngagement extends Component
                     'end_date' => $order->user_type=="B2C"?$startDate->copy()->addDays($order->rent_duration):NULL,
                     'assigned_at' => $startDate,
                     'amount'     => $order->final_amount,
-                    'deposit_amount'  => $order->final_amount - $order->rental_amount,
+                    'deposit_amount'  => $isB2C ? max(0, $order->final_amount - $order->rental_amount) : 0,
                     'rental_amount'   => $order->rental_amount,
                     'assigned_by' => Auth::guard('admin')->user()->id, // Corrected Auth syntax
                 ]);

@@ -231,81 +231,121 @@
                                                 </a>
                                             </td>
                                           </tr>
+                                         
                                           @if(in_array($key, $expandedRows))
                                             <tr>
                                                 <td colspan="6" class="active_table_td">
+                                                  @php
+                                                      $lastIndex = count($ride_history) - 1;
+                                                  @endphp
+
                                                   <table class="table">
-                                                    <thead>
-                                                      <tr>
-                                                        <th class="h6">Vehicle</th>
-                                                        <th class="h6">Date</th>
-                                                        @if($user->user_type=='B2C')
-                                                          <th class="h6">Rent</th>
-                                                        @endif
-                                                        <th class="h6">Rent Status</th>
-                                                        <th class="h6">Action By</th>
-                                                      </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                      @foreach ($ride_history as $ride_item)
-                                                        <tr>
-                                                            <td>
-                                                                <small class="text-dark">
-                                                                    {{ optional($ride_item->stock)->vehicle_number ?? 'N/A' }}
-                                                                </small><br>
-                                                                <small>
-                                                                    <code>{{ optional(optional($ride_item->stock)->product)->title ?? 'N/A' }}</code>
-                                                                </small>
-                                                            </td>
+                                                      <thead>
+                                                          <tr>
+                                                              <th class="h6">Vehicle</th>
+                                                              <th class="h6">Date</th>
+                                                              @if($user->user_type=='B2C')
+                                                                  <th class="h6">Rent</th>
+                                                              @endif
+                                                              <th class="h6">Rent Status</th>
+                                                              <th class="h6">Action By</th>
+                                                          </tr>
+                                                      </thead>
+                                                      <tbody>
+                                                          @foreach ($ride_history as $ride_item_index => $ride_item)
+                                                              <tr>
+                                                                  <td>
+                                                                      <small class="text-dark">
+                                                                          {{ optional($ride_item->stock)->vehicle_number ?? 'N/A' }}
+                                                                      </small><br>
+                                                                      <small>
+                                                                          <code>{{ optional(optional($ride_item->stock)->product)->title ?? 'N/A' }}</code>
+                                                                      </small>
+                                                                  </td>
 
-                                                            <td>
-                                                                @if($ride_item->status == 'exchanged')
-                                                                    <small class="text-muted">
-                                                                        Exchanged Date : {{ date('d M y h:i A', strtotime($ride_item->exchanged_at)) }}
-                                                                    </small>
-                                                                @elseif($ride_item->status == 'returned')
-                                                                    <small class="text-muted">
-                                                                        Returned Date : {{ date('d M y h:i A', strtotime($ride_item->exchanged_at)) }}
-                                                                    </small>
-                                                                @else
-                                                                    <small class="text-muted">
+                                                                  <td>
+                                                                      
+                                                                      @if($ride_item->status == 'exchanged')
+                                                                          <small class="text-muted">
+                                                                              Exchanged Date : {{ date('d M y h:i A', strtotime($ride_item->exchanged_at)) }}
+                                                                          </small>
+                                                                      @elseif($ride_item->status == 'renewal')
+                                                                            <small class="text-muted">
+                                                                                Renewal Date : {{ date('d M y h:i A', strtotime($ride_item->end_date)) }}
+                                                                            </small>
+                                                                      @elseif($ride_item->status == 'returned')
+                                                                          <small class="text-muted">
+                                                                              Returned Date : {{ date('d M y h:i A', strtotime($ride_item->exchanged_at)) }}
+                                                                          </small>
+                                                                      @else
+                                                                          <small class="text-muted">
+                                                                              Assigned Date :
+                                                                              @if (!$ride_item->assigned_at || $ride_item->assigned_at == '1970-01-01 00:00:00')
+                                                                                  N/A
+                                                                              @else
+                                                                                  {{ date('d M y h:i A', strtotime($ride_item->assigned_at)) }}
+                                                                              @endif
+                                                                          </small>
+                                                                      @endif
 
-                                                                        Assigned Date : @if (!$ride_item->assigned_at || $ride_item->assigned_at == '1970-01-01 00:00:00')
-                                                                            N/A
-                                                                        @else
-                                                                            {{ date('d M y h:i A', strtotime($ride_item->assigned_at)) }}
-                                                                        @endif
-                                                                    </small>
-                                                                @endif
-                                                            </td>
-                                                            @if($user->user_type=='B2C')
-                                                            <td>
-                                                                <small class="text-muted">
-                                                                    {{ optional($ride_item->order)->rental_amount
-                                                                        ? env('APP_CURRENCY') . number_format($ride_item->rental_amount)
-                                                                        : env('APP_CURRENCY') . '0.00' }}
-                                                                </small>
-                                                            </td>
-                                                            @endif
-                                                            <td>
-                                                                <small class="text-muted">{{ ucwords($ride_item->status) }}</small>
-                                                            </td>
+                                                                      @if($ride_item_index == $lastIndex)
+                                                                          @if($ride_item->status=='exchanged')
+                                                                            <br><small class="text-success">
+                                                                                Start Date : {{ date('d M y h:i A', strtotime($ride_item->start_date)) }}
+                                                                            </small>
+                                                                          @elseif ($ride_item->status=='renewal')
+                                                                            <br><small class="text-success">
+                                                                                Start Date : {{ date('d M y h:i A', strtotime($ride_item->start_date)) }}
+                                                                            </small>
+                                                                          @elseif ($ride_item->status=='returned')
+                                                                            <br><small class="text-success">
+                                                                                Start Date : {{ date('d M y h:i A', strtotime($ride_item->start_date)) }}
+                                                                            </small>
+                                                                          @endif
+                                                                      @endif
+                                                                  </td>
 
-                                                            <td>
-                                                                @if(!empty($ride_item->exchanged_by) || !empty($ride_item->assigned_by))
-                                                                    <small class="text-primary">
-                                                                        {{ optional($ride_item->admin)->email ?? '....' }}
-                                                                    </small>
-                                                                @else
-                                                                    <small class="text-success">
-                                                                        {{ optional($ride_item->user)->email ?? 'N/A' }}
-                                                                    </small>
-                                                                @endif
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
+                                                                  @if($user->user_type=='B2C')
+                                                                      <td>
+                                                                          @if($ride_item->status == 'renewal')
+                                                                            <small class="text-muted">
+                                                                                {{ optional($ride_item->order)->rental_amount
+                                                                                    ? env('APP_CURRENCY') . number_format($ride_item->rental_amount)
+                                                                                    : env('APP_CURRENCY') . '0.00' }}
+                                                                            </small>
+                                                                          @endif
+                                                                      </td>
+                                                                  @endif
 
-                                                    </tbody>
+                                                                  <td>
+                                                                      @if($ride_item_index == $lastIndex)
+                                                                          @if($ride_item->status=='exchanged')
+                                                                            <small class="text-muted">{{ ucwords($ride_item->status) }}</small>
+                                                                          @elseif($ride_item->status=='returned')
+                                                                            <small class="text-muted">{{ ucwords($ride_item->status) }}</small>
+                                                                          @else
+                                                                            <small class="text-muted">Start</small>
+                                                                          @endif
+                                                                          
+                                                                      @else
+                                                                          <small class="text-muted">{{ ucwords($ride_item->status) }}</small>
+                                                                      @endif
+                                                                  </td>
+
+                                                                  <td>
+                                                                      @if(!empty($ride_item->exchanged_by) || !empty($ride_item->assigned_by))
+                                                                          <small class="text-primary">
+                                                                              {{ optional($ride_item->admin)->email ?? '....' }}
+                                                                          </small>
+                                                                      @else
+                                                                          <small class="text-success">
+                                                                              {{ optional($ride_item->user)->email ?? 'N/A' }}
+                                                                          </small>
+                                                                      @endif
+                                                                  </td>
+                                                              </tr>
+                                                          @endforeach
+                                                      </tbody>
                                                   </table>
                                                 </td>
                                             </tr>
