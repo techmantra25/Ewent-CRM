@@ -2540,7 +2540,7 @@ class AuthController extends Controller
         }
     }
 
-     protected function MobilizationRequest($value){
+    protected function MobilizationRequest($value){
         $stock = Stock::find($value);
         $vehiclesUrl = 'https://app.loconav.sensorise.net/integration/api/v1/vehicles/'.$stock->vehicle_track_id.'/immobilizer_requests';
         $payload = [
@@ -3739,7 +3739,7 @@ class AuthController extends Controller
                 $response['responseCode'] === '0000'
             ) {
                 DB::beginTransaction();
-                // ✅ Update payment record
+                //  Update payment record
                 $payment->update([
                     'payment_method'  => $response['paymentMode'] ?? 'ICICI',
                     'icici_txnID'     => $response['txnID'] ?? null,
@@ -3747,7 +3747,7 @@ class AuthController extends Controller
                     'payment_status'  => 'success',
                 ]);
 
-                // ✅ Update invoice (mark as paid)
+                //  Update invoice (mark as paid)
                 $organizationInvoice = OrganizationInvoice::find($payment->invoice_id);
                 if ($organizationInvoice) {
                     $organizationInvoice->update([
@@ -3756,7 +3756,7 @@ class AuthController extends Controller
                     ]);
                 }
 
-                // ✅ Log success
+                //  Log success
                 PaymentLog::create([
                     'gateway'          => 'ICICI',
                     'transaction_id'   => $response['txnID'] ?? null,
@@ -3845,15 +3845,16 @@ class AuthController extends Controller
                 $response['responseCode'] === '0000'
             ) {
                 DB::beginTransaction();
-                // ✅ Update payment record
+                //  Update payment record
                 $payment->update([
                     'payment_method'  => $response['paymentMode'] ?? 'ICICI',
                     'icici_txnID'     => $response['txnID'] ?? null,
                     'transaction_id'  => $response['txnID'] ?? null,
                     'payment_status'  => 'success',
+                    'payment_date'  => date('Y-m-d h:i:s', strtotime($response['paymentDateTime'])),
                 ]);
 
-                // ✅ Update invoice (mark as paid)
+                //  Update invoice (mark as paid)
                 $organizationInvoice = OrganizationDepositInvoice::find($payment->deposit_invoice_id);
                 if ($organizationInvoice) {
                     $organizationInvoice->update([
@@ -3862,7 +3863,7 @@ class AuthController extends Controller
                     ]);
                 }
 
-                // ✅ Log success
+                //  Log success
                 PaymentLog::create([
                     'gateway'          => 'ICICI',
                     'transaction_id'   => $response['txnID'] ?? null,
