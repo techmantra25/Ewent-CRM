@@ -279,7 +279,15 @@ class CustomerDetails extends Component
                 $item->model_type = 'exchange';
                 return $item;
             });
-
+        $renewalVehicles = ExchangeVehicle::with('stock')
+            ->where('user_id', $this->userId)
+            ->where('order_id', $order_id)
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->map(function ($item) {
+                $item->model_type = 'renewal';
+                return $item;
+            });
         $assignedVehicle = AsignedVehicle::whereIn('status', ['assigned', 'overdue'])
             ->where('user_id', $this->userId)
             ->where('order_id', $order_id)

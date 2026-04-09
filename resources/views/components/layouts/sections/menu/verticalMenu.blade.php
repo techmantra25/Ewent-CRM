@@ -321,6 +321,25 @@
           </ul>
         </li>
       @endif
+      @if (hasPermissionByParent('admin_internal_tools'))
+        <li class="menu-item {{ request()->is('admin/admin-internal-tool*') ? 'open' : '' }}">
+            
+            <a href="javascript:void(0)" class="menu-link menu-toggle waves-effect">
+                <i class="menu-icon tf-icons ri-tools-line"></i>
+                <div>Internal Tools</div>
+            </a>
+
+            <ul class="menu-sub">
+
+                {{-- Developer Settings --}}
+                <li class="menu-item {{ request()->is('admin/admin-internal-tool/developer-settings') ? 'active' : '' }}">
+                    <a href="{{ route('admin.admin_internal_tools.developer_settings') }}" class="menu-link">
+                        <div>Developer Settings</div>
+                    </a>
+                </li>
+            </ul>
+        </li>
+        @endif
 
     <div class="ps__rail-x" style="left: 0px; bottom: 0px;">
       <div class="ps__thumb-x" tabindex="0" style="left: 0px; width: 0px;"></div>

@@ -30,10 +30,10 @@ class VehicleSummaryExport implements FromArray, WithHeadings
         ->with(['stock.product', 'order', 'user.organization_details'])
         ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
         ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
-        ->whereBetween('start_date', [
-            Carbon::parse($this->start_date)->startOfDay(), // 00:00:00
-            Carbon::parse($this->end_date)->endOfDay(),     // 23:59:59
-        ])
+        ->where(function ($query) {
+            $query->where('start_date', '<=', Carbon::parse($this->end_date)->endOfDay())
+                ->where('end_date', '>=', Carbon::parse($this->start_date)->startOfDay());
+        })
         ->get();
 
         // --- 2. Fetch exchange vehicles ---
@@ -48,10 +48,10 @@ class VehicleSummaryExport implements FromArray, WithHeadings
                     ->whereRaw("TIMESTAMPDIFF(HOUR, start_date, end_date) > 24");
                 });
             })
-            ->whereBetween('start_date', [
-                Carbon::parse($this->start_date)->startOfDay(), // 00:00:00
-                Carbon::parse($this->end_date)->endOfDay(),     // 23:59:59
-            ])
+            ->where(function ($query) {
+                $query->where('start_date', '<=', Carbon::parse($this->end_date)->endOfDay())
+                    ->where('end_date', '>=', Carbon::parse($this->start_date)->startOfDay());
+            })
             ->orderBy('id', 'DESC')
             ->get();
 
@@ -73,7 +73,7 @@ class VehicleSummaryExport implements FromArray, WithHeadings
             }
         }
 
-        // ✅ Add any remaining assignedVehicles that didn't match any vehicle_id in grouped exchangeVehicles
+        //  Add any remaining assignedVehicles that didn't match any vehicle_id in grouped exchangeVehicles
         $remainingAssigned = $assignedVehicles->filter(fn($a) => !$finalCollection->contains(fn($item) => $item->vehicle_id == $a->vehicle_id));
         foreach ($remainingAssigned as $aVehicle) {
             $aVehicle->exchanged_by = $aVehicle->assigned_by;
@@ -82,39 +82,50 @@ class VehicleSummaryExport implements FromArray, WithHeadings
 
         // --- 4. Build rows for export ---
         $rows = [];
-        // dd($finalCollection);
         foreach ($finalCollection as $item) {
             if($item->order->user_type === 'B2C'){
+
                 // Safe handling: check if order exists and duration > 0
                 if ($item->order && $item->order->rent_duration > 0) {
-                    $item_per_day_price = $item->rental_amount / $item->order->rent_duration;
-                   
-                    $start = \Carbon\Carbon::parse($item->start_date);
-                    $today =  \Carbon\Carbon::parse($this->end_date)->format('Y-m-d H:i:s');
-                    
-                    $end = ($item->status=="assigned")?\Carbon\Carbon::parse($today):
-                     ($this->end_date < \Carbon\Carbon::parse($item->end_date) ? \Carbon\Carbon::parse($this->end_date)->endOfDay() : \Carbon\Carbon::parse($item->end_date));
-                   
-                    if ($start->isSameDay($end)) {
-                        $item_duration = 1;
-                    }else{
-                        if($start->diffInDays($end)<1){
-                            $item_duration = 1;
-                        }else{
-                            $item_duration = round($start->diffInDays($end));
-                        }
+
+                    // ================= OVERLAP LOGIC =================
+                    $actualStart = \Carbon\Carbon::parse($item->start_date);
+                    $actualEnd   = \Carbon\Carbon::parse($item->end_date);
+
+                    // if running (assigned), consider till filter end date
+                    if ($item->status == "assigned") {
+                        $actualEnd = \Carbon\Carbon::parse($this->end_date);
                     }
-                    // Final price
-                    if($item_duration > $item->order->rent_duration){
+
+                    $filterStart = \Carbon\Carbon::parse($this->start_date)->startOfDay();
+                    $filterEnd   = \Carbon\Carbon::parse($this->end_date)->endOfDay();
+
+                    $overlapStart = $actualStart->greaterThan($filterStart) ? $actualStart : $filterStart;
+                    $overlapEnd   = $actualEnd->lessThan($filterEnd) ? $actualEnd : $filterEnd;
+
+                    // ================= DURATION (FIXED) =================
+                    $item_duration = 0;
+
+                    if ($overlapStart <= $overlapEnd) {
+                        $item_duration = max(
+                            1,
+                            $overlapStart->copy()->startOfDay()
+                                ->diffInDays($overlapEnd->copy()->startOfDay())
+                        );
+                    }
+
+                    // ================= PER DAY PRICE =================
+                    $item_per_day_price = $item->rental_amount / $item->order->rent_duration;
+
+                    // ================= CAP BY PLAN =================
+                    if ($item_duration > $item->order->rent_duration) {
                         $item_duration = $item->order->rent_duration;
                     }
-                    $item_per_day_price = (float) $item_per_day_price;
-                    $item_duration      = (float) $item_duration;
 
+                    // ================= FINAL PRICE =================
                     $item_price = $item_per_day_price * $item_duration;
 
                 } else {
-
                     $item_per_day_price = 0.0;
                     $item_duration      = 0.0;
                     $item_price         = 0.0;
@@ -124,14 +135,18 @@ class VehicleSummaryExport implements FromArray, WithHeadings
                 $item_per_day_price = round($item_per_day_price, 2);
                 $item_duration      = round($item_duration, 2);
                 $item_price         = round($item_price, 2);
-               
-                $ExchangeVehicleData = ExchangeVehicle::where('order_id', $item->order_id)->where('vehicle_id', $item->vehicle_id)->orderBy('id', 'ASC')->first();
-                
+
+                $ExchangeVehicleData = ExchangeVehicle::where('order_id', $item->order_id)
+                    ->where('vehicle_id', $item->vehicle_id)
+                    ->orderBy('id', 'ASC')
+                    ->first();
+
                 if($ExchangeVehicleData){
                     $assignedValue = $ExchangeVehicleData->start_date;
                 }else{
                     $assignedValue = $item->start_date;
                 }
+
                 // Unassigned Value
                 if($item->status ==='returned'){
                     $unassignedValue = $this->formatUnassigned($item->end_date, $item->exchanged_at, $item->order->user_type);
@@ -148,57 +163,25 @@ class VehicleSummaryExport implements FromArray, WithHeadings
                     : null;
 
                 $rows[] = [
-                    // Vehicle No
                     $item->stock?->vehicle_number ?? 'N/A',
-
-                    // Chassis No
                     $item->stock?->chassis_number ?? 'N/A',
-
-                    // Creation Date
                     $item->stock?->created_at ? \Carbon\Carbon::parse($item->stock?->created_at)->format('d M y h:i A') : '----',
-
-                    // Last retreived location
                     '....',
-                    // Model
                     $item->stock?->product?->title ?? 'N/A',
-
-                    // Start Date
                     $item->start_date ? \Carbon\Carbon::parse($item->start_date)->format('d M y h:i A') : '----',
-
-                    // End Date
-                   
                     $endDate
                         ? $endDate->format('d M y h:i A') . ($item->status === "assigned" ? ' (Running)' : '')
                         : '----',
-
-                    // Duration
                     $item_duration,
-
-                    // Rent Type
                     $item->order?->user_type ?? 'N/A',
-
-                    // Rent Amount
                     ($item->order && $item->order->user_type === 'B2C')
-                    ? (float) round($item_price, 2)
-                    : '',
-    
-                    // Assigned at
+                        ? (float) $item_price
+                        : '',
                     $assignedValue ? \Carbon\Carbon::parse($assignedValue)->format('d M y h:i A') : '',
-                    // $item->start_date ? \Carbon\Carbon::parse($item->start_date)->format('d M y h:i A') : '----',
-
-                    // Unassigned at (with before/after days logic)
                     $unassignedValue,
-
-                    // Rider Name
                     $item->user?->name ?? 'N/A',
-
-                    // Mobile No
                     $item->user ? ($item->user->country_code . ' ' . $item->user->mobile) : 'N/A',
-
-                    // Email
                     $item->user?->email ?? 'N/A',
-
-                    // Organization
                     ($item->order && $item->order->user_type === 'B2B')
                         ? 'ORG: ' . optional($item->user->organization_details)->name
                         : '----',

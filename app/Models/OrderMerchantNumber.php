@@ -10,4 +10,9 @@ class OrderMerchantNumber extends Model
     protected $fillable = [
     'order_id', 'type','merchantTxnNo', 'redirect_url', 'secureHash', 'tranCtx', 'amount'
     ];
+
+    public function order(){
+        return $this->belongsTo(Order::class,'order_id', 'id');
+    }
+
 }

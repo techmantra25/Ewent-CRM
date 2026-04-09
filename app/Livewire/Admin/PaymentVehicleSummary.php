@@ -104,10 +104,10 @@ class PaymentVehicleSummary extends Component
         ->with(['stock.product', 'order', 'user.organization_details'])
         ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
         ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
-        ->whereBetween('start_date', [
-            Carbon::parse($this->start_date)->startOfDay(), // 00:00:00
-            Carbon::parse($this->end_date)->endOfDay(),     // 23:59:59
-        ])
+        ->where(function ($query) {
+            $query->where('start_date', '<=', Carbon::parse($this->end_date)->endOfDay())
+                ->where('end_date', '>=', Carbon::parse($this->start_date)->startOfDay());
+        })
         ->get();
         // --- 2. Fetch exchange vehicles ---
         $exchangeVehicles = ExchangeVehicle::with(['stock'])
@@ -121,10 +121,10 @@ class PaymentVehicleSummary extends Component
                     ->whereRaw("TIMESTAMPDIFF(HOUR, start_date, end_date) > 24");
                 });
             })
-           ->whereBetween('start_date', [
-                Carbon::parse($this->start_date)->startOfDay(), // 00:00:00
-                Carbon::parse($this->end_date)->endOfDay(),     // 23:59:59
-            ])
+           ->where(function ($query) {
+                $query->where('start_date', '<=', Carbon::parse($this->end_date)->endOfDay())
+                    ->where('end_date', '>=', Carbon::parse($this->start_date)->startOfDay());
+            })
             ->orderBy('id', 'DESC')
             ->get(); // using get() because we regroup manually
             // dd($exchangeVehicles);

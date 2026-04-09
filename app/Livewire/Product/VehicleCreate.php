@@ -18,32 +18,49 @@ class VehicleCreate extends Component
     public $branchs = [];
     public $vehicle_mapping = [];
     public $branch,$model,$vehicle_number,$vehicle_track_id,$imei_number,$chassis_number,$friendly_name;
-    public function mount(){
+    public function mount()
+    {
+        $perPage = 100;
+        $currentPage = 1;
+        $allVehicles = [];
 
-        $vehiclesUrl = 'https://app.loconav.sensorise.net/integration/api/v1/vehicles?perPage=1000';
+        do {
+            $vehiclesUrl = "https://app.loconav.sensorise.net/integration/api/v1/vehicles?page={$currentPage}&perPage={$perPage}";
 
-        $ch = curl_init($vehiclesUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "User-Authentication: " . env('LOCONAV_TOKEN'),
-            "Accept: application/json"
-        ]);
+            $ch = curl_init($vehiclesUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "User-Authentication: " . env('LOCONAV_TOKEN'),
+                "Accept: application/json"
+            ]);
 
-        $vehiclesResponse = curl_exec($ch);
-        curl_close($ch);
-
-        $vehiclesData = json_decode($vehiclesResponse, true);
-        if($vehiclesData){
-            if($vehiclesData['success']==true){
-                $this->vehicles = $vehiclesData['data']['vehicles'];
-                foreach ($this->vehicles as $vehicle) {
-                    $this->vehicle_mapping[$vehicle['number']] = $vehicle['vehicleUuid'];
-                }
-            }elseif($vehiclesData['success']==false){
-                session()->flash('error', $vehiclesData['data']['errors'][0]['message']);
+            $vehiclesResponse = curl_exec($ch);
+            curl_close($ch);
+            
+            $vehiclesData = json_decode($vehiclesResponse, true);
+            if (!$vehiclesData || !isset($vehiclesData['success']) || $vehiclesData['success'] === false) {
+                $errorMsg = $vehiclesData['data']['errors'][0]['message'] ?? 'Unknown error';
+                session()->flash('error', $errorMsg);
+                break;
             }
+
+            // Merge current page vehicles into allVehicles
+            $allVehicles = array_merge($allVehicles, $vehiclesData['data']['vehicles']);
+
+            // Check if we need to fetch the next page
+            $pagination = $vehiclesData['data']['pagination'];
+            $currentPage++;
+            $totalPages = ceil($pagination['totalCount'] / $pagination['perPage']);
+
+        } while ($currentPage <= $totalPages);
+
+        // Now you have all vehicles
+        $this->vehicles = $allVehicles;
+
+        // Map vehicle numbers to UUIDs
+        foreach ($this->vehicles as $vehicle) {
+            $this->vehicle_mapping[$vehicle['number']] = $vehicle['vehicleUuid'];
         }
-        
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
         $this->existing_stock = Stock::orderBy('vehicle_number', 'ASC')->get()->pluck('vehicle_number')->toArray();
         $this->branchs = Branch::whereIn('id', get_branches())
