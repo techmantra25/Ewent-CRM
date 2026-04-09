@@ -4021,17 +4021,16 @@ class AuthController extends Controller
         $end_date   = $request->end_date;
 
         $query = User::select([
-                'users.id as rider_id',
                 'users.name as rider_name',
                 'users.mobile as rider_phone',
                 'users.email as rider_email',
                 'users.address as rider_address',
                 'users.kyc_verified_at as rider_approved_date',
 
-                'payments.id as payment_id',
+                'payments.transaction_id',
                 'payments.payment_date',
 
-                'orders.id as order_id',
+                'orders.order_number',
 
                 DB::raw("
                     SUM(
@@ -4106,9 +4105,9 @@ class AuthController extends Controller
                 'users.email',
                 'users.address',
                 'users.kyc_verified_at',
-                'payments.id',
+                'payments.transaction_id', 
                 'payments.payment_date',
-                'orders.id',
+                'orders.order_number', 
                 'orders.created_at',
                 'orders.return_date',
                 'assigned_vehicles.id',
@@ -4117,46 +4116,46 @@ class AuthController extends Controller
             ->orderBy('users.id')
             ->get();
 
-        $groupedData = $data->groupBy('rider_id')->map(function ($items) {
+        // $groupedData = $data->groupBy('rider_id')->map(function ($items) {
 
-            $first = $items->first();
+        //     $first = $items->first();
 
-            return [
-                'rider_kyc_detail' => [
-                    'rider_id' => $first->rider_id,
-                    'name'     => $first->rider_name,
-                    'mobile'   => $first->rider_phone,
-                    'email'    => $first->rider_email,
-                    'address'  => $first->rider_address,
-                ],
+        //     return [
+        //         'rider_kyc_detail' => [
+        //             'rider_id' => $first->rider_id,
+        //             'name'     => $first->rider_name,
+        //             'mobile'   => $first->rider_phone,
+        //             'email'    => $first->rider_email,
+        //             'address'  => $first->rider_address,
+        //         ],
 
-                'rider_approved_date' => $first->rider_approved_date,
+        //         'rider_approved_date' => $first->rider_approved_date,
 
-                'payment_details' => $items->unique('payment_id')->map(function ($item) {
-                    return [
-                        'payment_id'       => $item->payment_id,
-                        'order_id'         => $item->order_id,
-                        'payment_date'     => $item->payment_date,
-                        'security_deposit' => (float) $item->security_deposit,
-                        'monthly_rental'   => (float) $item->rental_amount,
-                    ];
-                })->values(),
+        //         'payment_details' => $items->unique('payment_id')->map(function ($item) {
+        //             return [
+        //                 'payment_id'       => $item->payment_id,
+        //                 'order_id'         => $item->order_id,
+        //                 'payment_date'     => $item->payment_date,
+        //                 'security_deposit' => (float) $item->security_deposit,
+        //                 'monthly_rental'   => (float) $item->rental_amount,
+        //             ];
+        //         })->values(),
 
-                'assigned_unassigned_details' => $items->unique('order_id')->map(function ($item) {
-                    return [
-                        'order_id'        => $item->order_id,
-                        'assigned_date'   => $item->assigned_date,
-                        'unassigned_date' => $item->unassigned_date,
-                        'no_of_days'      => $item->no_of_days,
-                    ];
-                })->values(),
-            ];
-        })->values();
+        //         'assigned_unassigned_details' => $items->unique('order_id')->map(function ($item) {
+        //             return [
+        //                 'order_id'        => $item->order_id,
+        //                 'assigned_date'   => $item->assigned_date,
+        //                 'unassigned_date' => $item->unassigned_date,
+        //                 'no_of_days'      => $item->no_of_days,
+        //             ];
+        //         })->values(),
+        //     ];
+        // })->values();
 
             return response()->json([
             'status'  => true,
             'message' => 'KYC detail, approved rider payment list and assigned/unassigned date with days fetched successfully.',
-            'data'    => $groupedData
+            'data'    => $data
         ]);
 
     }
@@ -4195,24 +4194,54 @@ class AuthController extends Controller
                 'vehicle_number' => $v->vehicle_number,
             ]);
 
-        $assignedLogs = DB::table('assigned_vehicles')
+        // $assignedLogs = DB::table('assigned_vehicles')
+        //     ->select(
+        //         'vehicle_id',
+        //         'user_id',
+        //         'order_id',
+        //         'status',
+        //         'assigned_at as action_date',
+        //         DB::raw("'assigned' as log_type")
+        //     )
+        //     ->get();
+
+        // $exchangeLogs = DB::table('exchange_vehicles')
+        //     ->select(
+        //         'vehicle_id',
+        //         'user_id',
+        //         'order_id',
+        //         'status',
+        //         'exchanged_at as action_date',
+        //         DB::raw("'exchange' as log_type")
+        //     )
+        //     ->get();
+
+        $assignedLogs = DB::table('assigned_vehicles as av')
+            ->join('users as u', 'u.id', '=', 'av.user_id')
+            ->join('orders as o', 'o.id', '=', 'av.order_id') 
             ->select(
-                'vehicle_id',
-                'user_id',
-                'order_id',
-                'status',
-                'assigned_at as action_date',
+                'av.vehicle_id',
+                'av.user_id',
+                'u.name as user_name',
+                'av.order_id',
+                'o.order_number', 
+                'av.status',
+                'av.assigned_at as action_date',
                 DB::raw("'assigned' as log_type")
             )
             ->get();
 
-        $exchangeLogs = DB::table('exchange_vehicles')
+        $exchangeLogs = DB::table('exchange_vehicles as ev')
+            ->join('users as u', 'u.id', '=', 'ev.user_id')
+            ->join('orders as o', 'o.id', '=', 'ev.order_id')
             ->select(
-                'vehicle_id',
-                'user_id',
-                'order_id',
-                'status',
-                'exchanged_at as action_date',
+                'ev.vehicle_id',
+                'ev.user_id',
+                'u.name as user_name',
+                'ev.order_id',
+                'o.order_number', 
+                'ev.status',
+                'ev.exchanged_at as action_date',
                 DB::raw("'exchange' as log_type")
             )
             ->get();
@@ -4222,20 +4251,33 @@ class AuthController extends Controller
             ->sortByDesc('action_date')
             ->groupBy('vehicle_id');
 
-        $vehiclesWithLogs = $vehicles->map(function ($vehicle) use ($groupedLogs) {
-            return [
-                'vehicle_id'     => $vehicle->id,
-                'vehicle_number' => $vehicle->vehicle_number,
-                'logs' => ($groupedLogs[$vehicle->id] ?? collect())->map(function ($log) {
-                    return [
-                        'user_id'     => $log->user_id,
-                        'order_id'    => $log->order_id,
-                        'status'      => $log->status,
-                        'action_date' => $log->action_date,
-                        'log_type'    => $log->log_type,
-                    ];
-                })->values(),
-            ];
+        // $vehiclesWithLogs = $vehicles->map(function ($vehicle) use ($groupedLogs) {
+        //     return [
+        //         'vehicle_id'     => $vehicle->id,
+        //         'vehicle_number' => $vehicle->vehicle_number,
+        //         'logs' => ($groupedLogs[$vehicle->id] ?? collect())->map(function ($log) {
+        //             return [
+        //                 'user_id'     => $log->user_id,
+        //                 'order_id'    => $log->order_id,
+        //                 'status'      => $log->status,
+        //                 'action_date' => $log->action_date,
+        //                 'log_type'    => $log->log_type,
+        //             ];
+        //         })->values(),
+        //     ];
+        // })->values();
+
+        $vehiclesWithLogs = $vehicles->flatMap(function ($vehicle) use ($groupedLogs) {
+            return ($groupedLogs[$vehicle->id] ?? collect())->map(function ($log) use ($vehicle) {
+                return [
+                    'vehicle_number' => $vehicle->vehicle_number,
+                    'rider'          => $log->user_name,  
+                    'order_number'   => $log->order_number,
+                    'status'         => $log->status,
+                    'action_date'    => $log->action_date,
+                    'log_type'       => $log->log_type,
+                ];
+            });
         })->values();
 
         return response()->json([
@@ -4247,6 +4289,5 @@ class AuthController extends Controller
             ],
         ], 200);
     }
-
 
 }
