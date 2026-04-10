@@ -3991,7 +3991,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $data = $query->get();
+        $data = $query->paginate(100);
 
         return response()->json($data);
     }
@@ -4160,7 +4160,7 @@ class AuthController extends Controller
 
     }
 
-    public function unallocatedAndLogsVehicle(Request $request)
+    public function unallocatedVehicles(Request $request)
     {
         $start_date = $request->start_date;
         $end_date   = $request->end_date;
@@ -4168,7 +4168,6 @@ class AuthController extends Controller
         $vehiclesQuery = DB::table('stocks')
             ->where('status', 1);
 
-        // Apply date filter only if dates are present
         if ($start_date && $end_date) {
             $vehiclesQuery->whereBetween('created_at', [
                 $start_date . ' 00:00:00',
@@ -4194,37 +4193,23 @@ class AuthController extends Controller
                 'vehicle_number' => $v->vehicle_number,
             ]);
 
-        // $assignedLogs = DB::table('assigned_vehicles')
-        //     ->select(
-        //         'vehicle_id',
-        //         'user_id',
-        //         'order_id',
-        //         'status',
-        //         'assigned_at as action_date',
-        //         DB::raw("'assigned' as log_type")
-        //     )
-        //     ->get();
-
-        // $exchangeLogs = DB::table('exchange_vehicles')
-        //     ->select(
-        //         'vehicle_id',
-        //         'user_id',
-        //         'order_id',
-        //         'status',
-        //         'exchanged_at as action_date',
-        //         DB::raw("'exchange' as log_type")
-        //     )
-        //     ->get();
-
+        return response()->json([
+            // 'status'  => true,
+            // 'message' => 'Unallocated vehicles fetched successfully',
+            'data'    => $unallocatedVehicles
+        ], 200);
+    }
+    public function vehicleLogs(Request $request)
+    {
         $assignedLogs = DB::table('assigned_vehicles as av')
             ->join('users as u', 'u.id', '=', 'av.user_id')
-            ->join('orders as o', 'o.id', '=', 'av.order_id') 
+            ->join('orders as o', 'o.id', '=', 'av.order_id')
             ->select(
                 'av.vehicle_id',
                 'av.user_id',
                 'u.name as user_name',
                 'av.order_id',
-                'o.order_number', 
+                'o.order_number',
                 'av.status',
                 'av.assigned_at as action_date',
                 DB::raw("'assigned' as log_type")
@@ -4239,7 +4224,7 @@ class AuthController extends Controller
                 'ev.user_id',
                 'u.name as user_name',
                 'ev.order_id',
-                'o.order_number', 
+                'o.order_number',
                 'ev.status',
                 'ev.exchanged_at as action_date',
                 DB::raw("'exchange' as log_type")
@@ -4251,27 +4236,16 @@ class AuthController extends Controller
             ->sortByDesc('action_date')
             ->groupBy('vehicle_id');
 
-        // $vehiclesWithLogs = $vehicles->map(function ($vehicle) use ($groupedLogs) {
-        //     return [
-        //         'vehicle_id'     => $vehicle->id,
-        //         'vehicle_number' => $vehicle->vehicle_number,
-        //         'logs' => ($groupedLogs[$vehicle->id] ?? collect())->map(function ($log) {
-        //             return [
-        //                 'user_id'     => $log->user_id,
-        //                 'order_id'    => $log->order_id,
-        //                 'status'      => $log->status,
-        //                 'action_date' => $log->action_date,
-        //                 'log_type'    => $log->log_type,
-        //             ];
-        //         })->values(),
-        //     ];
-        // })->values();
+        $vehicles = DB::table('stocks')
+            ->where('status', 1)
+            ->select('id', 'vehicle_number')
+            ->get();
 
         $vehiclesWithLogs = $vehicles->flatMap(function ($vehicle) use ($groupedLogs) {
             return ($groupedLogs[$vehicle->id] ?? collect())->map(function ($log) use ($vehicle) {
                 return [
                     'vehicle_number' => $vehicle->vehicle_number,
-                    'rider'          => $log->user_name,  
+                    'rider'          => $log->user_name,
                     'order_number'   => $log->order_number,
                     'status'         => $log->status,
                     'action_date'    => $log->action_date,
@@ -4281,13 +4255,11 @@ class AuthController extends Controller
         })->values();
 
         return response()->json([
-            'status'  => true,
-            'message' => 'Unallocated vehicles and related logs fetched successfully',
-            'data' => [
-                'unallocated_vehicles' => $unallocatedVehicles,
-                'vehicles'             => $vehiclesWithLogs,
-            ],
+            // 'status'  => true,
+            // 'message' => 'Vehicle logs fetched successfully',
+            'data'    => $vehiclesWithLogs
         ], 200);
     }
+
 
 }

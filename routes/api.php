@@ -102,7 +102,8 @@ Route::prefix('customer')->group(function () {
         Route::get('/riders/e-signatures', [AuthController::class, 'RiderEsignList']);
         Route::get('/riders/payment-history', [AuthController::class, 'RiderPaymentHistory']);
         Route::get('/riders/kyc-approved-payment', [AuthController::class, 'kycApprovePaymentList']);
-        Route::get('/riders/unallocated-vehicle-logs', [AuthController::class, 'unallocatedAndLogsVehicle']);
+        Route::get('/riders/unallocated-vehicles', [AuthController::class, 'unallocatedVehicles']);
+        Route::get('/riders/vehicle-logs', [AuthController::class, 'vehicleLogs']);
     });
     
     
