@@ -8,10 +8,14 @@ use App\Models\User;
 use App\Models\UserKycLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\RiderExport;
 
 
 class CustomerIndex extends Component
 {
+    public $verification = 'all';
+    public $type = 'B2C';
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';
@@ -31,6 +35,20 @@ class CustomerIndex extends Component
     public function btn_search()
     {
         $this->resetPage(); // Reset to the first page
+    }
+
+    public function showExportModal()
+    {
+        $this->dispatch('show-export-modal');
+    }
+
+    public function export()
+    {
+        $this->dispatch('start-download');
+        return Excel::download(
+            new RiderExport($this->verification, $this->type),
+            'rider_export.xlsx'
+        );
     }
     public function updateLog($status,$field,$document_type,$id){
         // dd($status,$field,$document_type,$id);
@@ -211,6 +229,7 @@ class CustomerIndex extends Component
         $this->resetPage('rejected_users');
 
     }
+    
     public function render()
     {
         // Query users based on the search term

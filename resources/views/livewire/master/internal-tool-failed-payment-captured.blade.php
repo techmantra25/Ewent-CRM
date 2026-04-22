@@ -171,7 +171,7 @@
                         </div>
 
                         {{-- Merchant Ref --}}
-                        @if($payment_type)
+                        {{-- @if($payment_type) --}}
                         <div class="mb-3">
                             <label class="form-label">Merchant Ref *</label>
 
@@ -180,7 +180,7 @@
 
                             @error('merchant_ref') <span class="text-danger">{{ $message }}</span> @enderror
                         </div>
-                        @endif
+                        {{-- @endif --}}
 
                         {{-- Transaction ID --}}
                         @if($isactiveTransactionNumber)

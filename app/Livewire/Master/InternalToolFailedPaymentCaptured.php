@@ -36,14 +36,12 @@ class InternalToolFailedPaymentCaptured extends Component
     public $is_success = false;
     public $errorMessage = null;
     public $successMessage = null;
-    public $isactiveTransactionNumber = false;
+    public $isactiveTransactionNumber = true;
 
     // Reset when payment type changes
     public function updatedPaymentType()
     {
         $this->reset([
-            'merchant_ref',
-            'transaction_id',
             'result',
             'errorMessage',
             'successMessage',
@@ -75,14 +73,11 @@ class InternalToolFailedPaymentCaptured extends Component
         $rules = [
             'payment_type' => 'required',
             'merchant_ref' => 'required',
+            'transaction_id' => 'required',
         ];
 
-        if ($this->isactiveTransactionNumber) {
-            $rules['transaction_id'] = 'required';
-        }
-
         $this->validate($rules);
-
+        
         $ref = trim($this->merchant_ref);
 
         // Fetch Data
@@ -189,6 +184,7 @@ class InternalToolFailedPaymentCaptured extends Component
 
         //  Found
         $this->result = $data;
+        $this->errorMessage = null;
         $this->successMessage = "Data found for Merchant Ref: {$ref}";
 
         //  Enable Transaction ID field
@@ -207,6 +203,7 @@ class InternalToolFailedPaymentCaptured extends Component
             }
 
             //  SUCCESS → allow next step
+            $this->errorMessage = null;
             $this->successMessage = "Payment verified successfully.<br>Transaction ID: {$this->transaction_id}";
         }
     }
@@ -356,6 +353,7 @@ class InternalToolFailedPaymentCaptured extends Component
                         'is_success',
                         'finalStatus',
                     ]);
+                    $this->errorMessage = null;
                     $this->successMessage = "Payment has been successfully created.";
                     return;
                     
@@ -475,6 +473,7 @@ class InternalToolFailedPaymentCaptured extends Component
                                 'is_success',
                                 'finalStatus',
                             ]);
+                            $this->errorMessage = null;
                             $this->successMessage = "Payment completed and subscription renewed successfully.";
                             return;
                         }
@@ -548,6 +547,7 @@ class InternalToolFailedPaymentCaptured extends Component
                 'is_success',
                 'finalStatus',
             ]);
+            $this->errorMessage = null;
             $this->successMessage = "Payment has been successfully created.";
             return;
 
@@ -603,6 +603,7 @@ class InternalToolFailedPaymentCaptured extends Component
                 'is_success',
                 'finalStatus',
             ]);
+            $this->errorMessage = null;
             $this->successMessage = "Payment has been successfully created.";
             return;
 

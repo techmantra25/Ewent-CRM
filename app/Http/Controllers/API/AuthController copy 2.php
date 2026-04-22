@@ -4160,55 +4160,6 @@ class AuthController extends Controller
 
     }
 
-    public function allocatedVehicles(Request $request)
-    {
-        $start_date = $request->start_date;
-        $end_date   = $request->end_date;
-
-        //  Get all active vehicles (NO date filter here)
-        $vehicles = DB::table('stocks')
-            ->where('status', 1)
-            ->select('id', 'vehicle_number')
-            ->get()
-            ->keyBy('id');
-
-        //  Get allocated vehicles WITH start_date & end_date
-       $assignedVehicles = AsignedVehicle::with('user:id,name')
-            ->whereIn('status', ['assigned', 'overdue'])
-            ->when($start_date && $end_date, function ($query) use ($start_date, $end_date) {
-                $query->where(function ($q) use ($start_date, $end_date) {
-
-                    $q->whereBetween('start_date', [$start_date, $end_date])
-                    ->orWhereBetween('end_date', [$start_date, $end_date])
-                    ->orWhere(function ($q2) use ($start_date, $end_date) {
-                        $q2->where('start_date', '<=', $start_date)
-                            ->where('end_date', '>=', $end_date);
-                    })
-                    ->orWhere(function ($q3) use ($start_date) {
-                        $q3->where('start_date', '<=', $start_date)
-                            ->whereNull('end_date');
-                    });
-
-                });
-            })
-            ->get();
-
-        $allocatedVehicles = $assignedVehicles
-            ->filter(fn ($a) => isset($vehicles[$a->vehicle_id]))
-            ->map(fn ($a) => [
-                'vehicle_id'     => $a->vehicle_id,
-                'vehicle_number' => $vehicles[$a->vehicle_id]->vehicle_number ?? null,
-                'rider_name'     => $a->user->name ?? null,
-                'start_date'     => $a->start_date ? date('Y-m-d', strtotime($a->start_date)) : null,
-                'end_date'       => $a->end_date ? date('Y-m-d', strtotime($a->end_date)) : null,
-            ])
-            ->unique('vehicle_id') // optional
-            ->values();
-
-        return response()->json([
-            'data' => $allocatedVehicles
-        ], 200);
-    }
     public function unallocatedVehicles(Request $request)
     {
         $start_date = $request->start_date;
@@ -4246,38 +4197,6 @@ class AuthController extends Controller
             // 'status'  => true,
             // 'message' => 'Unallocated vehicles fetched successfully',
             'data'    => $unallocatedVehicles
-        ], 200);
-    }
-
-    public function allVehicles(Request $request)
-    {
-        $start_date = $request->start_date;
-        $end_date   = $request->end_date;
-
-        $vehicles = Stock::with('product:id,title')
-            ->where('status', 1)
-            ->when($start_date && $end_date, function ($query) use ($start_date, $end_date) {
-                $query->whereBetween('created_at', [
-                    $start_date . ' 00:00:00',
-                    $end_date . ' 23:59:59',
-                ]);
-            })->orderBy('product_id', 'ASC')
-            ->get();
-
-        $data = $vehicles->map(function ($v) {
-            return [
-                'vehicle_id'     => $v->id,
-                'model_name'     => $v->product->title ?? null,
-                'vehicle_number' => $v->vehicle_number,
-                'chassis_number' => $v->chassis_number,
-                'created_date'   => $v->created_at
-                    ? date('Y-m-d', strtotime($v->created_at))
-                    : null,
-            ];
-        });
-
-        return response()->json([
-            'data' => $data
         ], 200);
     }
     public function vehicleLogs(Request $request)
@@ -4341,4 +4260,6 @@ class AuthController extends Controller
             'data'    => $vehiclesWithLogs
         ], 200);
     }
+
+
 }

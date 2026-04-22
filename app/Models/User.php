@@ -110,4 +110,8 @@ class User extends Authenticatable
   public function organization_details(){
       return $this->belongsTo(Organization::class, 'organization_id', 'id');
   }
+  public function assignedVehicle()
+  {
+      return $this->hasMany(AsignedVehicle::class, 'user_id', 'id');
+  }
 }

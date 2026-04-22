@@ -93,6 +93,46 @@
                                         class="btn btn-outline-danger waves-effect mb-0 custom-input-sm ms-2">
                                     <span class="material-icons">Refresh</span>
                                 </button>
+                                <button type="button" wire:click="showExportModal"
+                                    class="btn btn-secondary text-white mb-0 custom-input-sm ms-2">
+                                    <span class="material-icons">Export</span>
+                                </button>
+                                <div class="modal fade" id="exportModal" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Rider Export</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+
+                                            <div class="modal-body">
+
+                                                <!-- Verification -->
+                                                <label>Verification</label>
+                                                <select wire:model="verification" class="form-control mb-3">
+                                                    <option value="all">All</option>
+                                                    <option value="verified">Verified</option>
+                                                    <option value="non_verified">Non Verified</option>
+                                                </select>
+
+                                                <!-- Type -->
+                                                <label>Rider Type</label>
+                                                <select wire:model="type" class="form-control mb-3">
+                                                    <option value="all">All</option>
+                                                    <option value="B2B">B2B</option>
+                                                    <option value="B2C">B2C</option>
+                                                </select>
+
+                                                <!-- Export -->
+                                                <button wire:click="export" class="btn btn-primary w-100">
+                                                    Export Excel
+                                                </button>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1065,5 +1105,16 @@
         const flashMessage = document.getElementById('flashMessage');
         if (flashMessage) flashMessage.remove();
     }, 3000); // Auto-hide flash message after 3 seconds
+
+    window.addEventListener('show-export-modal', () => {
+        let modal = new bootstrap.Modal(document.getElementById('exportModal'));
+        modal.show();
+    });
+
+    window.addEventListener('start-download', () => {
+        setTimeout(() => {
+            location.reload();
+        }, 2000); // wait for download to start
+    });
 </script>
 @endsection
