@@ -19,6 +19,7 @@ use App\Models\Order;
 use App\Models\PaymentLog;
 use App\Models\DigilockerDocument;
 use App\Models\AsignedVehicle;
+use App\Models\ExchangeVehicle;
 use App\Models\UserTermsConditions;
 use App\Models\Policy;
 use App\Models\Organization;
@@ -4340,5 +4341,230 @@ class AuthController extends Controller
             // 'message' => 'Vehicle logs fetched successfully',
             'data'    => $vehiclesWithLogs
         ], 200);
+    }
+
+    public function date_wise_vehicle_earning_history(Request $request)
+    {
+        //  Default date = current month
+        $startDate = $request->start_date
+            ? Carbon::parse($request->start_date)->startOfDay()
+            : Carbon::now()->startOfMonth();
+
+        $endDate = $request->end_date
+            ? Carbon::parse($request->end_date)->endOfDay()
+            : Carbon::now()->endOfMonth();
+
+        //  Vehicles (single / all)
+        $stocks = Stock::when($request->vehicle_number, function ($q) use ($request) {
+            $q->where('vehicle_number', $request->vehicle_number);
+        })->get();
+
+        if ($stocks->isEmpty()) {
+            return response()->json(['message' => 'No vehicles found'], 404);
+        }
+
+        $finalData = [];
+
+        foreach ($stocks as $stock) {
+
+            // =========================
+            //  Assigned (single active)
+            // =========================
+            $assigned = AsignedVehicle::with(['user', 'order.subscription'])
+                ->where('vehicle_id', $stock->id)
+                ->whereIn('status', ['assigned', 'overdue'])
+                ->latest()
+                ->first();
+
+            // =========================
+            //  Exchange history
+            // =========================
+            $exchanges = ExchangeVehicle::with(['user', 'order.subscription'])
+                ->where('vehicle_id', $stock->id)
+                ->get();
+
+            $exchangeEvents = collect();
+
+            foreach ($exchanges as $e) {
+
+                if (!$e->start_date || !$e->order) continue;
+
+                $start = Carbon::parse($e->start_date)->startOfDay();
+
+                $isB2B = $e->order->user_type === 'B2B';
+
+                // =========================
+                //  END DATE
+                // =========================
+                if ($isB2B) {
+                    $end = $e->end_date
+                        ? Carbon::parse($e->end_date)->endOfDay()
+                        : $endDate->copy()->endOfDay();
+                } else {
+                    if (!$e->end_date) continue;
+                    $end = Carbon::parse($e->end_date)->endOfDay();
+                }
+
+                //  ignore < 24h
+                if ($start->diffInHours($end) < 24) continue;
+
+                // =========================
+                //  DAYS
+                // =========================
+                if ($isB2B) {
+                    $days = $start->diffInDays($end);
+                } else {
+                    if (!$e->order->subscription) continue;
+                    $days = (int) $e->order->subscription->duration;
+                }
+                if ($days <= 0) continue;
+
+                // =========================
+                //  AMOUNT
+                // =========================
+                $totalAmount = (float) ($e->rental_amount ?? 0);
+
+                if ($isB2B) {
+                    // weekly → daily
+                    $dailyRate = $totalAmount / 7;
+                    $baseDaily = floor($dailyRate * 100) / 100;
+                    $totalAmount = $baseDaily * $days;
+                } else {
+                    $baseDaily = floor(($totalAmount / $days) * 100) / 100;
+                }
+
+                // =========================
+                //  DISTRIBUTE
+                // =========================
+                $distributed = [];
+                $sum = 0;
+
+                for ($i = 0; $i < $days; $i++) {
+
+                    $dateObj = $start->copy()->addDays($i);
+
+                    //  range filter
+                    if ($dateObj->lt($startDate) || $dateObj->gt($endDate)) continue;
+
+                    if ($i === $days - 1) {
+                        $price = round($totalAmount - $sum, 2);
+                    } else {
+                        $price = $baseDaily;
+                        $sum += $price;
+                    }
+
+                    $dateKey = $dateObj->format('Y-m-d');
+
+                    $distributed[$dateKey] = $price;
+                }
+
+                $exchangeEvents->push([
+                    'daily_map' => $distributed,
+                    'user' => $e->user,
+                    'order' => $e->order,
+                    'created_at' => $e->created_at
+                ]);
+            }
+
+            // =========================
+            //  Merge exchange (latest wins)
+            // =========================
+            $finalExchangeMap = [];
+
+            $exchangeEvents = $exchangeEvents->sortBy('created_at');
+
+            foreach ($exchangeEvents as $event) {
+                foreach ($event['daily_map'] as $date => $price) {
+                    $finalExchangeMap[$date] = [
+                        'price' => $price,
+                        'user' => $event['user'],
+                        'order' => $event['order'],
+                        'type' => 'exchange'
+                    ];
+                }
+            }
+
+            // =========================
+            //  Assigned daily
+            // =========================
+            $assignedDaily = 0;
+
+            if ($assigned && $assigned->order && $assigned->order->subscription) {
+                $sub = $assigned->order->subscription;
+                $assignedDaily = $sub->rental_amount / $sub->duration;
+            }
+
+            // =========================
+            //  DATE LOOP
+            // =========================
+            for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+
+                $dateKey = $date->format('Y-m-d');
+
+                $found = null;
+                $price = 0;
+
+                //  Exchange priority
+                if (isset($finalExchangeMap[$dateKey])) {
+
+                    $found = $finalExchangeMap[$dateKey];
+                    $price = $found['price'];
+
+                }
+                //  Assigned fallback
+                elseif ($assigned) {
+
+                    $start = Carbon::parse($assigned->start_date)->startOfDay();
+
+                    $end = $assigned->end_date
+                        ? Carbon::parse($assigned->end_date)->endOfDay()
+                        : $endDate->copy()->endOfDay(); //  FIXED
+
+                    if ($date->between($start, $end)) {
+
+                        $found = [
+                            'user' => $assigned->user,
+                            'order' => $assigned->order,
+                            'type' => 'assigned'
+                        ];
+
+                        $price = round($assignedDaily, 2);
+                    }
+                }
+
+                //  Final row
+                if ($found) {
+
+                    $finalData[] = [
+                        'vehicle' => $stock->vehicle_number,
+                        'date' => $dateKey,
+                        'rider' => $found['user']->name ?? '',
+                        'rider_mobile' => $found['user']->mobile ?? '',
+                        'rider_type' => $found['order']->user_type ?? '',
+                        'price' => $price,
+                        'status' => 'active'
+                    ];
+
+                } else {
+
+                    $finalData[] = [
+                        'vehicle' => $stock->vehicle_number,
+                        'date' => $dateKey,
+                        'rider' => '',
+                        'rider_mobile' => '',
+                        'rider_type' => '',
+                        'price' => 0,
+                        'status' => 'idle'
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            // 'start_date' => $startDate->toDateString(),
+            // 'end_date' => $endDate->toDateString(),
+            // 'total_rows' => count($finalData),
+            'data' => $finalData
+        ]);
     }
 }
