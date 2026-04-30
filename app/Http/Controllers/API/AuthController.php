@@ -4154,8 +4154,8 @@ class AuthController extends Controller
         // })->values();
 
             return response()->json([
-            'status'  => true,
-            'message' => 'KYC detail, approved rider payment list and assigned/unassigned date with days fetched successfully.',
+            // 'status'  => true,
+            // 'message' => 'KYC detail, approved rider payment list and assigned/unassigned date with days fetched successfully.',
             'data'    => $data
         ]);
 

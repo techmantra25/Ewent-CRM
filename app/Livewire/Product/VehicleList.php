@@ -16,7 +16,7 @@ class VehicleList extends Component
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';
-    public $model,$branch;
+    public $model,$branch,$overdue_days;
     public $search = '';
     public $active_tab = 1;
     public $models = [];
@@ -51,6 +51,9 @@ class VehicleList extends Component
     public function FilterModel($value){
         $this->model =$value;
     }
+    public function FilterOverdue($value){
+        $this->overdue_days =$value;
+    }
     public function FilterBranch($value){
         $this->branch =$value;
     }
@@ -59,7 +62,7 @@ class VehicleList extends Component
      * Refresh button click handler to reset the search input and reload data.
      */
     public function reset_search(){
-        $this->reset(['search','model']); // Reset the search term
+        $this->reset(['search','model','overdue_days']); // Reset the search term
     }
 
     public function tab_change($value){
@@ -74,7 +77,7 @@ class VehicleList extends Component
     public function exportOverdue()
     {
         return Excel::download(
-            new OverdueVehicleExport($this->branch,$this->model,$this->search),
+            new OverdueVehicleExport($this->branch,$this->model,$this->search,$this->overdue_days),
             'overdue_vehicles.xlsx'
         );
     }
@@ -190,59 +193,80 @@ class VehicleList extends Component
         ->paginate(20,['*'], 'unassigned_vehicles');
 
         $today = Carbon::today();
-        $overdue_vehicles = Stock::with([
-            'overdueVehicle.user'
-        ])
-        // ->when($this->branch, function ($query) {
-        //     // If specific branch selected
-        //     $query->where('branch_id', $this->branch);
-        // }, function ($query) {
-        //     // If no branch selected, filter by allowed branches
-        //     $query->whereIn('branch_id', $this->branches);
-        // })
-        ->whereHas('overdueVehicle') // Ensures only assigned vehicles are fetched
-        ->when($this->model, function ($query) {
-            $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
-        })
-         ->when($this->search, function ($query) use ($today) {
 
-            // 🔹 If search is numeric → treat as DAYS
-            if (is_numeric($this->search)) {
+$overdue_vehicles = Stock::with([
+        'overdueVehicle.user'
+    ])
+    ->whereHas('overdueVehicle')
 
-                $days = (int) $this->search;
+    ->when($this->model, function ($query) {
+        $query->where('product_id', $this->model);
+    })
 
-                $query->whereHas('overdueVehicle', function ($q) use ($today, $days) {
-                    $q->whereRaw(
-                        'ABS(DATEDIFF(?, end_date)) = ?',
-                        [$today, $days]
-                    );
-                });
+    // 🔥 ✅ OVERDUE DROPDOWN FILTER (ADDED)
+    ->when($this->overdue_days !== null && $this->overdue_days !== '', function ($query) use ($today) {
 
-            } 
-            // Else normal text search
-            else {
+        if ($this->overdue_days === '20+') {
 
-                $searchTerm = '%' . $this->search . '%';
+            // More than 20 days
+            $query->whereHas('overdueVehicle', function ($q) use ($today) {
+                $q->whereRaw(
+                    'DATEDIFF(?, end_date) > 20',
+                    [$today]
+                );
+            });
 
-                $query->where(function ($q) use ($searchTerm) {
+        } else {
 
-                    $q->where('vehicle_number', 'like', $searchTerm)
-                    ->orWhere('imei_number', 'like', $searchTerm)
-                    ->orWhere('chassis_number', 'like', $searchTerm)
-                    ->orWhere('friendly_name', 'like', $searchTerm)
+            $days = (int) $this->overdue_days;
 
-                    ->orWhereHas('overdueVehicle.user', function ($uq) use ($searchTerm) {
-                        $uq->where('name', 'like', $searchTerm)
-                        ->orWhere('mobile', 'like', $searchTerm)
-                        ->orWhere('email', 'like', $searchTerm);
-                    });
+            $query->whereHas('overdueVehicle', function ($q) use ($today, $days) {
+                $q->whereRaw(
+                    'ABS(DATEDIFF(?, end_date)) = ?',
+                    [$today, $days]
+                );
+            });
+        }
+    })
 
-                });
-            }
-        })
-        ->orderBy('id', 'DESC')
-        ->orderBy('product_id', 'DESC')
-        ->paginate(20,['*'], 'overdue_vehicles');
+    // 🔥 EXISTING SEARCH (NO CHANGE, just small condition add)
+    ->when($this->search, function ($query) use ($today) {
+
+        if (is_numeric($this->search) && empty($this->overdue_days)) {
+
+            $days = (int) $this->search;
+
+            $query->whereHas('overdueVehicle', function ($q) use ($today, $days) {
+                $q->whereRaw(
+                    'ABS(DATEDIFF(?, end_date)) = ?',
+                    [$today, $days]
+                );
+            });
+
+        } else {
+
+            $searchTerm = '%' . $this->search . '%';
+
+            $query->where(function ($q) use ($searchTerm) {
+
+                $q->where('vehicle_number', 'like', $searchTerm)
+                  ->orWhere('imei_number', 'like', $searchTerm)
+                  ->orWhere('chassis_number', 'like', $searchTerm)
+                  ->orWhere('friendly_name', 'like', $searchTerm)
+
+                  ->orWhereHas('overdueVehicle.user', function ($uq) use ($searchTerm) {
+                      $uq->where('name', 'like', $searchTerm)
+                         ->orWhere('mobile', 'like', $searchTerm)
+                         ->orWhere('email', 'like', $searchTerm);
+                  });
+
+            });
+        }
+    })
+
+    ->orderBy('id', 'DESC')
+    ->orderBy('product_id', 'DESC')
+    ->paginate(20, ['*'], 'overdue_vehicles');
 
         return view('livewire.product.vehicle-list', [
             'all_vehicles' => $all_vehicles,

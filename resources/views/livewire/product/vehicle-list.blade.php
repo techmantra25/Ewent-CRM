@@ -43,7 +43,7 @@
             <div class="col-12">
                 <div class="card mb-2 py-4 px-2">
                     <div class="row justify-content-end">
-                        @if(auth('admin')->user()->branch_id==1)
+                        {{-- @if(auth('admin')->user()->branch_id==1)
                             <div class="col-lg-3 col-6 my-auto mb-2">
                                 <select
                                     class="form-select border border-2 p-2 custom-input-sm" wire:model="branch" wire:change="FilterBranch($event.target.value)">
@@ -53,7 +53,7 @@
                                     @endforeach
                                 </select>
                             </div>
-                        @endif
+                        @endif --}}
                         <div class="col-lg-3 col-6 my-auto mb-2">
                             <select
                                 class="form-select border border-2 p-2 custom-input-sm" wire:model="model" wire:change="FilterModel($event.target.value)">
@@ -63,6 +63,28 @@
                                 @endforeach
                             </select>
                         </div>
+                        @if($active_tab == 4)
+                        <div class="col-lg-2 col-4 my-auto mb-2">
+                            <select
+                                class="form-select border border-2 p-2 custom-input-sm"
+                                wire:model="overdue_days"
+                                wire:change="FilterOverdue($event.target.value)"
+                            >
+                                <option value="" hidden>Select overdue</option>
+
+                                {{-- 0 to 20 days --}}
+                                @for($i = 0; $i <= 20; $i++)
+                                    <option value="{{ $i }}">
+                                        {{ $i }} Day{{ $i != 1 ? 's' : '' }}
+                                    </option>
+                                @endfor
+
+                                {{-- More than 20 --}}
+                                <option value="20+">More than 20 Days</option>
+
+                            </select>
+                        </div>
+                    @endif
                         <div class="col-lg-6 col-6 my-auto mb-2">
                             <div class="d-flex align-items-center justify-content-end">
                                 <input type="text" wire:model="search"

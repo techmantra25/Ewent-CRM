@@ -11,12 +11,14 @@ class OverdueVehicleExport implements FromCollection, WithHeadings
 {
     protected $branch;
     protected $model;
+    protected $overdue_days;
     protected $search;
 
-    public function __construct($branch,$model,$search)
+    public function __construct($branch,$model,$search,$overdue_days)
     {
         $this->branch = $branch;
         $this->model = $model;
+        $this->overdue_days = $overdue_days;
         $this->search = $search;
     }
 
@@ -31,12 +33,37 @@ class OverdueVehicleExport implements FromCollection, WithHeadings
             ->when($this->model, function ($q) {
                 $q->where('product_id',$this->model);
             })
-            ->whereHas('overdueVehicle');
+            ->whereHas('overdueVehicle')
 
+            // 🔥 ✅ OVERDUE DROPDOWN FILTER (ADDED)
+            ->when($this->overdue_days !== null && $this->overdue_days !== '', function ($query) use ($today) {
+
+                if ($this->overdue_days === '20+') {
+
+                    $query->whereHas('overdueVehicle', function ($q) use ($today) {
+                        $q->whereRaw(
+                            'DATEDIFF(?, end_date) > 20',
+                            [$today]
+                        );
+                    });
+
+                } else {
+
+                    $days = (int) $this->overdue_days;
+
+                    $query->whereHas('overdueVehicle', function ($q) use ($today, $days) {
+                        $q->whereRaw(
+                            'ABS(DATEDIFF(?, end_date)) = ?',
+                            [$today, $days]
+                        );
+                    });
+                }
+            });
+
+        // 🔥 EXISTING SEARCH (small condition added, rest same)
         if ($this->search) {
 
-            // If numeric → search by overdue days
-            if (is_numeric($this->search)) {
+            if (is_numeric($this->search) && empty($this->overdue_days)) {
 
                 $days = (int) $this->search;
 
@@ -47,9 +74,7 @@ class OverdueVehicleExport implements FromCollection, WithHeadings
                     );
                 });
 
-            } 
-            // Text search
-            else {
+            } else {
 
                 $searchTerm = '%'.$this->search.'%';
 
