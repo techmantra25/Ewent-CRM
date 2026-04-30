@@ -4209,6 +4209,7 @@ class AuthController extends Controller
             'data' => $allocatedVehicles
         ], 200);
     }
+    
     public function unallocatedVehicles(Request $request)
     {
         $start_date = $request->start_date;
@@ -4225,7 +4226,7 @@ class AuthController extends Controller
         }
 
         $vehicles = $vehiclesQuery
-            ->select('id', 'vehicle_number')
+            ->select('id', 'vehicle_number', 'chassis_number')
             ->get()
             ->keyBy('id');
 
@@ -4240,6 +4241,7 @@ class AuthController extends Controller
             ->map(fn ($v) => [
                 'vehicle_id'     => $v->id,
                 'vehicle_number' => $v->vehicle_number,
+                'chassis_number' => $v->chassis_number,
             ]);
 
         return response()->json([
