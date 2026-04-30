@@ -3900,7 +3900,24 @@ class AuthController extends Controller
         }
     }
 
+    public function OrganizationList()
+    {
+        $org = Organization::orderBy('name', 'ASC')->get();
 
+        if ($org->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No organization available.',
+                'data' => [],
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Organization fetched successfully.',
+            'data' => $org,
+        ], 200);
+    }                     
     public function RiderEsignList(Request $request)
     {
         $start_date = $request->start_date;
@@ -3995,25 +4012,6 @@ class AuthController extends Controller
         $data = $query->paginate(100);
 
         return response()->json($data);
-    }
-
-      public function OrganizationList()
-    {
-        $org = Organization::orderBy('name', 'ASC')->get();
-
-        if ($org->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No organization available.',
-                'data' => [],
-            ], 404);
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Organization fetched successfully.',
-            'data' => $org,
-        ], 200);
     }
     
     public function kycApprovePaymentList(Request $request)
@@ -4169,7 +4167,7 @@ class AuthController extends Controller
         //  Get all active vehicles (NO date filter here)
         $vehicles = DB::table('stocks')
             ->where('status', 1)
-            ->select('id', 'vehicle_number')
+            ->select('id', 'vehicle_number', 'chassis_number')
             ->get()
             ->keyBy('id');
 
@@ -4199,6 +4197,7 @@ class AuthController extends Controller
             ->map(fn ($a) => [
                 'vehicle_id'     => $a->vehicle_id,
                 'vehicle_number' => $vehicles[$a->vehicle_id]->vehicle_number ?? null,
+                'chassis_number' => $vehicles[$a->vehicle_id]->chassis_number ?? null,
                 'rider_name'     => $a->user->name ?? null,
                 'start_date'     => $a->start_date ? date('Y-m-d', strtotime($a->start_date)) : null,
                 'end_date'       => $a->end_date ? date('Y-m-d', strtotime($a->end_date)) : null,
@@ -4320,13 +4319,14 @@ class AuthController extends Controller
 
         $vehicles = DB::table('stocks')
             ->where('status', 1)
-            ->select('id', 'vehicle_number')
+            ->select('id', 'vehicle_number', 'chassis_number')
             ->get();
 
         $vehiclesWithLogs = $vehicles->flatMap(function ($vehicle) use ($groupedLogs) {
             return ($groupedLogs[$vehicle->id] ?? collect())->map(function ($log) use ($vehicle) {
                 return [
                     'vehicle_number' => $vehicle->vehicle_number,
+                    'chassis_number' => $vehicle->chassis_number,
                     'rider'          => $log->user_name,
                     'order_number'   => $log->order_number,
                     'status'         => $log->status,
@@ -4344,7 +4344,7 @@ class AuthController extends Controller
     }
 
     public function date_wise_vehicle_earning_history(Request $request)
-    {
+        {
         //  Default date = current month
         $startDate = $request->start_date
             ? Carbon::parse($request->start_date)->startOfDay()
@@ -4537,6 +4537,7 @@ class AuthController extends Controller
 
                     $finalData[] = [
                         'vehicle' => $stock->vehicle_number,
+                        'chassis_number' => $stock->chassis_number,
                         'date' => $dateKey,
                         'rider' => $found['user']->name ?? '',
                         'rider_mobile' => $found['user']->mobile ?? '',
@@ -4549,6 +4550,7 @@ class AuthController extends Controller
 
                     $finalData[] = [
                         'vehicle' => $stock->vehicle_number,
+                        'chassis_number' => $stock->chassis_number,
                         'date' => $dateKey,
                         'rider' => '',
                         'rider_mobile' => '',
