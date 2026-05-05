@@ -291,6 +291,8 @@ class InternalToolFailedPaymentCaptured extends Component
 
                     $order_type = $order->subscription?Str::snake($order->subscription->subscription_type):"";
                     
+                    $payment = Payment::where('icici_merchantTxnNo',$OrderMerchantNumber->merchantTxnNo)->first();
+                    
                     $payment->order_id = $order->id;
                     $payment->user_id = $order->user_id;
                     $payment->order_type = 'new_subscription_'.$order_type;

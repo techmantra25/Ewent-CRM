@@ -28,7 +28,7 @@ use App\Livewire\Product\{
 use App\Livewire\Master\{
     BannerIndex, FaqIndex, WhyEwentIndex, EmployeeManagementList, EmployeeManagementCreate,
     EmployeeManagementUpdate, DesignationIndex, DesignationPermissionList,
-    BranchIndex, BranchCreate, BranchUpdate,AdminInternalTool,InternalToolFailedPaymentCaptured
+    BranchIndex, BranchCreate, BranchUpdate,AdminInternalTool,InternalToolFailedPaymentCaptured,RiderChangeType
 };
 
 // Public Route for Login
@@ -171,7 +171,7 @@ Route::middleware(['auth:admin', 'admin.maintenance'])->prefix('admin')->group(f
     Route::group(['prefix'=>'admin-internal-tool'], function (){
         Route::get('/developer-settings', AdminInternalTool::class)->name('admin.admin_internal_tools.developer_settings')->middleware('check.permission');
         Route::get('/failed-payment-captured', InternalToolFailedPaymentCaptured::class)->name('admin.admin_internal_tools.failed_payment_captured')->middleware('check.permission');
-        Route::get('/rider-type-change', AdminInternalTool::class)->name('admin.admin_internal_tools.rider_type_change')->middleware('check.permission');
+        Route::get('/rider-type-change', RiderChangeType::class)->name('admin.admin_internal_tools.rider_type_change')->middleware('check.permission');
     });
 }); 
 

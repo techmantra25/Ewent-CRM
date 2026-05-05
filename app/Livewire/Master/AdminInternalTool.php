@@ -15,10 +15,10 @@ class AdminInternalTool extends Component
                 'title' => 'Failed Payment Captured',
                 'route' => 'admin.admin_internal_tools.failed_payment_captured',
             ],
-            // [
-            //     'title' => 'Rider Type Change',
-            //     'route' => 'admin.admin_internal_tools.rider_type_change',
-            // ],
+            [
+                'title' => 'Rider Type Change(B2B/B2C)',
+                'route' => 'admin.admin_internal_tools.rider_type_change',
+            ],
         ];
     }
 
