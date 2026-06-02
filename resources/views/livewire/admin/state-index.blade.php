@@ -133,6 +133,22 @@
                     <form wire:submit.prevent="save">
 
                         <div class="row">
+                        
+                            <div class="form-floating form-floating-outline mb-3">
+                                <input type="text"
+                                       wire:model="country"
+                                       class="form-control border border-2 p-2"
+                                       placeholder="Enter Country">
+
+                                <label>
+                                    Country
+                                    <span class="text-danger">*</span>
+                                </label>
+                            </div>
+
+                            @error('country')
+                                <p class="text-danger">{{ $message }}</p>
+                            @enderror
 
                             <div class="form-floating form-floating-outline mb-3">
                                 <input type="text"
@@ -150,21 +166,6 @@
                                 <p class="text-danger">{{ $message }}</p>
                             @enderror
 
-                            <div class="form-floating form-floating-outline mb-3">
-                                <input type="text"
-                                       wire:model="country"
-                                       class="form-control border border-2 p-2"
-                                       placeholder="Enter Country">
-
-                                <label>
-                                    Country
-                                    <span class="text-danger">*</span>
-                                </label>
-                            </div>
-
-                            @error('country')
-                                <p class="text-danger">{{ $message }}</p>
-                            @enderror
 
                             <div class="mb-2 text-end mt-4">
 

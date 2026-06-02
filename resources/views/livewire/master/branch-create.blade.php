@@ -63,21 +63,48 @@
                       <p class="text-danger inputerror">{{ $message }}</p>
                     @enderror
                 </div>
-
                 <div class="col-6">
                     <div class="form-floating form-floating-outline mb-3">
-                        <select wire:model="city_id" class="form-control border border-2 p-2" placeholder="Select City">
-                            <option value="">Select City</option>
-                            @foreach($cities as $city)
-                                <option value="{{ $city->id }}">{{ $city->name }}</option>
+                        <select wire:model.live="state_id"
+                            class="form-control border border-2 p-2">
+                            <option value="">Select State</option>
+
+                            @foreach($states as $state)
+                                <option value="{{ $state->id }}">
+                                    {{ $state->name }}
+                                </option>
                             @endforeach
                         </select>
-                        <label>City <span class="text-danger">*</span></label>
+
+                        <label>State <span class="text-danger">*</span></label>
                     </div>
-                    @error('city_id')
-                            <p class="text-danger inputerror">{{ $message }}</p>
+
+                    @error('state_id')
+                        <p class="text-danger inputerror">{{ $message }}</p>
                     @enderror
                 </div>
+                <div class="col-6">
+                  <div class="form-floating form-floating-outline mb-3">
+                      <select wire:model="city_id"
+                          class="form-control border border-2 p-2">
+
+                          <option value="">Select City</option>
+
+                          @foreach($cities as $city)
+                              <option value="{{ $city->id }}">
+                                  {{ $city->name }}
+                              </option>
+                          @endforeach
+
+                      </select>
+
+                      <label>City <span class="text-danger">*</span></label>
+                  </div>
+
+                  @error('city_id')
+                      <p class="text-danger inputerror">{{ $message }}</p>
+                  @enderror
+              </div>
 
                 <div class="col-12">
                     <div class="form-floating form-floating-outline mb-3">
