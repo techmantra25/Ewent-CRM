@@ -1,4 +1,48 @@
 <div>
+  <div class="row">
+        <div class="col-lg-12 d-flex justify-content-end">
+            <button type="button" class="btn btn-primary" wire:click="ModalImport(1)">
+                <i class="ri-add-line ri-16px me-0 me-sm-2 align-baseline"></i>
+                Import
+            </button>
+        </div>
+        <div class="modal fade {{$modal_activity_class==1?"show d-block":""}}" id="uploadStockModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Upload Cities via CSV</h5>
+                        <button type="button" class="btn-close" wire:click="ModalImport(0)"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form wire:submit.prevent="uploadFile">
+                            <div class="mb-3">
+                                <label for="csvFile" class="form-label">Select CSV File</label>
+                                <input class="form-control" type="file" id="csvFile" wire:model="csvFile" accept=".csv,.txt">
+                                @error('csvFile') <span class="text-danger">{{ $message }}</span> @enderror
+                            </div>
+                            <div class="mb-3">
+                                <a href="{{ asset('assets/csv/city-sample.csv') }}" class="btn btn-link" download>
+                                    <i class="ri-download-line"></i> Download Sample CSV File
+                                </a>
+                            </div>
+                            <div class="text-end">
+                                @if(session()->has('csv_error'))
+                                    <div class="alert alert-danger">
+                                        {{ session('csv_error') }}
+                                    </div>
+                                @endif
+                                <button type="submit" class="btn btn-primary">Upload</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+        @if($modal_activity_class == 1)
+            <div class="modal-backdrop fade show"></div>
+        @endif
+    </div>
     <div class="row mb-4">
       <div class="col-lg-8 col-md-6 mb-md-0 mb-4">
         <div class="row">
@@ -83,11 +127,11 @@
                                     title="Edit">
                                     <i class="ri-edit-box-line ri-20px text-info"></i>
                                 </button>
-                                {{-- <button wire:click="destroy({{ $city->id }})"
+                                 <button wire:click="destroy({{ $city->id }})"
                                     class="btn btn-sm btn-icon delete-record btn-text-secondary rounded-pill waves-effect"
                                     title="Delete">
                                     <i class="ri-delete-bin-7-line ri-20px text-danger"></i>
-                                </button> --}}
+                                </button>
                             </td>
                         </tr>
                         @endforeach

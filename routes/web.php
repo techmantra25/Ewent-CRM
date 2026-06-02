@@ -12,7 +12,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use App\Livewire\Organization\{OrgDashboard};
 use App\Livewire\Admin\{
     AdminForgotPassword, CustomerAdd, Dashboard, CustomerIndex, CustomerDetails,
-    OrderIndex, OfferIndex, PolicyDetails, OrderDetail, CityIndex, PincodeIndex,
+    OrderIndex, OfferIndex, PolicyDetails, OrderDetail, StateIndex, CityIndex, PincodeIndex,
     RiderEngagement, PaymentSummary, PaymentUserSummary, UserPaymentHistory,
     PaymentVehicleSummary, RefundSummary, ChangePassword,AdminOrganizationIndex,
     AdminOrganizationDashboard,AdminOrganizationInvoices,AdminOrganizationPayments,
@@ -151,6 +151,7 @@ Route::middleware(['auth:admin', 'admin.maintenance'])->prefix('admin')->group(f
     // Location Management
     Route::group(['prefix' => 'location'], function () {
         Route::get('/city', CityIndex::class)->name('admin.city.index');
+        Route::get('/state', StateIndex::class)->name('admin.state.index');
         Route::get('/pincodes', PincodeIndex::class)->name('admin.pincode.index');
     });
     // Organization Management
