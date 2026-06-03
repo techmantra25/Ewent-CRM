@@ -5,9 +5,17 @@ namespace App\Livewire\Admin;
 use Livewire\Component;
 use App\Models\State;
 use App\Models\City;
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class CityIndex extends Component
 {
+    use WithFileUploads;
+
+    public $csvFile;
+    public $modal_activity_class = 0;
     public $cities, $states;
     public $cityId, $name, $state_id, $status, $search;
 
@@ -40,25 +48,25 @@ class CityIndex extends Component
     // Create or Update City
     public function save()
     {
-        // Dynamically add the unique validation rule when saving
-        $rules = $this->rules;
-        
-        // Add the unique validation rule for title, if updating
-        if ($this->cityId) {
-            $rules['name'] .= '|unique:cities,name,' . $this->cityId;
-        } else {
-            $rules['name'] .= '|unique:cities,name';
-        }
-
-        // Validate with the dynamically created rules
-        $this->validate($rules);
+        $this->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('cities')
+                    ->where(function ($query) {
+                        return $query->where('state_id', $this->state_id);
+                    })
+                    ->ignore($this->cityId),
+            ],
+            'state_id' => 'required',
+        ]);
 
         // Create or update logic
         if ($this->cityId) {
             $city = City::findOrFail($this->cityId);
             $city->name = $this->name;
             $city->state_id = $this->state_id;
-
             
             $city->save();
             session()->flash('message', 'City updated successfully!');
@@ -66,6 +74,7 @@ class CityIndex extends Component
             $city = new City([
                 'name' => $this->name,
                 'state_id'=>$this->state_id,
+                'country' => 'India',
                 'status' => true,
             ]);
             
@@ -110,6 +119,111 @@ class CityIndex extends Component
     public function searchButtonClicked()
     {
         $this->cities = City::where('name', 'like', '%' . $this->search . '%')->get();
+    }
+
+    public function ModalImport($value)
+    {
+        $this->modal_activity_class = $value;
+    }
+
+    public function uploadFile()
+    {
+        $this->validate([
+            'csvFile' => 'required|mimes:csv,txt|max:5120',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+
+            $file = $this->csvFile;
+
+            $fileName = time().'.'.$file->getClientOriginalExtension();
+
+            $filePath = $file->storeAs(
+                'public/csv/city',
+                $fileName
+            );
+
+            $csvData = array_map(
+                'str_getcsv',
+                file(storage_path('app/'.$filePath))
+            );
+
+            // Remove header
+            $rows = array_slice($csvData, 1);
+
+            foreach ($rows as $row) {
+
+                if (empty($row[0]) || empty($row[1])) {
+                    continue;
+                }
+
+                $cityName = trim($row[0]);
+                $stateName = trim($row[1]);
+
+                $state = State::where(
+                    'name',
+                    $stateName
+                )->first();
+
+                if (!$state) {
+
+                    DB::rollBack();
+
+                    session()->flash(
+                        'csv_error',
+                        "State '{$stateName}' not found."
+                    );
+
+                    return;
+                }
+
+                City::updateOrCreate(
+                [
+                    'name'     => $cityName,
+                    'state_id' => $state->id,
+                ],
+                [
+                    'country' => 'India',
+                    'status'  => 1,
+                ]
+                );
+            }
+
+            DB::commit();
+
+            session()->flash(
+                'message',
+                'Cities imported successfully.'
+            );
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            session()->flash(
+                'csv_error',
+                $e->getMessage()
+            );
+        }
+
+        if (isset($filePath)) {
+
+            $deletePath = public_path(
+                'storage/csv/city/'.$fileName
+            );
+
+            if (file_exists($deletePath)) {
+                unlink($deletePath);
+            }
+        }
+
+        $this->reset('csvFile');
+
+        $this->modal_activity_class = 0;
+
+        $this->refresh();
     }
 
     public function render()

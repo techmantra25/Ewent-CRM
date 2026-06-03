@@ -7,6 +7,7 @@ use Livewire\WithFileUploads;
 use App\Models\Branch;
 use App\Models\Admin;
 use App\Models\City;
+use App\Models\State;
 use App\Models\Designation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -19,14 +20,30 @@ class BranchCreate extends Component
 
     public $name, $designation, $mobile, $email, $image;
 
+    public $states = [];
+    public $state_id;
     public $cities = [];
     public $designations = [];
 
     public function mount()
     {
-        $this->cities = City::orderBy('name','ASC')->get();
+        $this->states = State::where('status',1)
+            ->orderBy('name','ASC')
+            ->get();
+
+        $this->cities = [];
         $this->designations = Designation::orderBy('name','ASC')->get();
         $this->branch_code = $this->generateBranchCode();
+    }
+
+    public function updatedStateId($value)
+    {
+        $this->city_id = '';
+
+        $this->cities = City::where('state_id', $value)
+            ->where('status', 1)
+            ->orderBy('name', 'ASC')
+            ->get();
     }
 
     public function save()

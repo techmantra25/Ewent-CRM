@@ -35,7 +35,28 @@
                         </div>
                         <div class="row">
                             <div class="col-lg-12 d-flex justify-content-end my-auto">
-                                <div class="d-flex align-items-center">
+                               <div wire:ignore.self style="width:200px;">
+                                    <select id="state_filter" class="form-select">
+                                        <option value="">Select State</option>
+                                        @foreach($states as $state)
+                                            <option value="{{ $state->id }}" {{ $state->id == $state_id ? 'selected' : '' }}>
+                                                {{ $state->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div wire:ignore.self style="width:200px;">
+                                    <select id="city_filter" class="form-select">
+                                        <option value="">Select City</option>
+                                        @foreach($cities as $city)
+                                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                                {{ $city->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="ms-2 d-flex align-items-center">
                                     <input type="text" wire:model.debounce.300ms="search"
                                            class="form-control border border-2 p-2 custom-input-sm"
                                            placeholder="Search here...">
@@ -142,6 +163,8 @@
       </div>
 </div>
 @section('page-script')
+<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
+<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     window.addEventListener('showConfirm', function (event) {
@@ -156,11 +179,61 @@
             confirmButtonText: "Yes, delete it!"
         }).then((result) => {
             if (result.isConfirmed) {
-                @this.call('destroy', itemId); // Calls Livewire method directly
-                // Swal.fire("Deleted!", "Your item has been deleted.", "success");
+                @this.call('destroy', itemId);
             }
         });
     });
+</script>
+<script>
+var jq = $.noConflict();
+
+function initChosen() {
+    jq("#state_filter")
+        .off('change')
+        .chosen({width: "200px"})
+        .on('change', function () {
+            let state = jq(this).val();
+            @this.call('changeState', state);
+        });
+
+    jq("#city_filter")
+        .off('change')
+        .chosen({width: "200px"})
+        .on('change', function () {
+            let city = jq(this).val();
+            @this.set('city_id', city);
+        });
+}
+
+// Initialize Chosen on page load
+document.addEventListener("livewire:init", function () {
+    initChosen();
+});
+
+// Re-initialize Chosen whenever Livewire updates the city options
+document.addEventListener('livewire:navigated', () => {
+    initChosen();
+});
+
+// This listens directly to your PHP component's $this->dispatch('refreshChosen')
+window.addEventListener("refreshChosen", function () {
+    setTimeout(() => {
+        // Destroy old instances
+        if (jq("#city_filter").data('chosen')) {
+            jq("#city_filter").chosen("destroy");
+        }
+        if (jq("#state_filter").data('chosen')) {
+            jq("#state_filter").chosen("destroy");
+        }
+
+        // Re-initialize with new HTML layout options
+        initChosen();
+
+        // Force Chosen plugin visual interface update
+        jq("#city_filter").trigger("chosen:updated");
+        jq("#state_filter").trigger("chosen:updated");
+    }, 50);
+});
 </script>
 @endsection
 

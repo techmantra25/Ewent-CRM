@@ -13,10 +13,15 @@ class Admin extends Authenticatable
     protected $guarded = [];
 
     protected $fillable = [
+        'branch_id',
         'designation',
         'name',
         'email',
         'password',
+        'mobile',
+        'country_code',
+        'status',
+        'image'
     ];
 
     protected $hidden = [

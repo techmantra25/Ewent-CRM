@@ -52,6 +52,16 @@
                   <div>Policy Details</div>
                 </a>
               </li>
+              <li class="menu-item {{ (request()->is('admin/master/state*')) ? 'open' : '' }}">
+                <a href="{{route('admin.state.index')}}" class="menu-link">
+                  <div>States</div>
+                </a>
+              </li>
+              <li class="menu-item {{ (request()->is('admin/master/city*')) ? 'open' : '' }}">
+                <a href="{{route('admin.city.index')}}" class="menu-link">
+                  <div>Cities</div>
+                </a>
+              </li>
             </ul>
           </li>
       @endif

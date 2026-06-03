@@ -12,7 +12,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use App\Livewire\Organization\{OrgDashboard};
 use App\Livewire\Admin\{
     AdminForgotPassword, CustomerAdd, Dashboard, CustomerIndex, CustomerDetails,
-    OrderIndex, OfferIndex, PolicyDetails, OrderDetail, CityIndex, PincodeIndex,
+    OrderIndex, OfferIndex, PolicyDetails, OrderDetail, StateIndex, CityIndex, PincodeIndex,
     RiderEngagement, PaymentSummary, PaymentUserSummary, UserPaymentHistory,
     PaymentVehicleSummary, RefundSummary, ChangePassword,AdminOrganizationIndex,
     AdminOrganizationDashboard,AdminOrganizationInvoices,AdminOrganizationPayments,
@@ -130,6 +130,8 @@ Route::middleware(['auth:admin', 'admin.maintenance'])->prefix('admin')->group(f
         Route::get('/faq', FaqIndex::class)->name('admin.faq.index')->middleware('check.permission');
         Route::get('/why-ewent', WhyEwentIndex::class)->name('admin.why-ewent')->middleware('check.permission');
         Route::get('/policy-details', PolicyDetails::class)->name('admin.policy-details')->middleware('check.permission');
+        Route::get('/city', CityIndex::class)->name('admin.city.index');
+        Route::get('/state', StateIndex::class)->name('admin.state.index');
     });
 
      // Employee Management
@@ -149,10 +151,10 @@ Route::middleware(['auth:admin', 'admin.maintenance'])->prefix('admin')->group(f
     });
 
     // Location Management
-    Route::group(['prefix' => 'location'], function () {
-        Route::get('/city', CityIndex::class)->name('admin.city.index');
-        Route::get('/pincodes', PincodeIndex::class)->name('admin.pincode.index');
-    });
+    // Route::group(['prefix' => 'location'], function () {
+    //     Route::get('/city', CityIndex::class)->name('admin.city.index');
+    //     Route::get('/pincodes', PincodeIndex::class)->name('admin.pincode.index');
+    // });
     // Organization Management
     Route::group(['prefix'=>'organization'], function (){
         Route::get('/', AdminOrganizationIndex::class)->name('admin.organization.index')->middleware('check.permission');
