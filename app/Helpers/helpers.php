@@ -696,12 +696,16 @@ if (!function_exists('getB2BproductPrice')) {
 }
 if (!function_exists('createInvoiceForOrganization')) {
     function createInvoiceForOrganization($org_id, $type, $invoice_start_date, $invoice_end_date, $due_date){
+         // $invoice_end_date = Carbon::parse('2026-05-30');
         $org = Organization::with('user')->find($org_id);
         if (!$org) {
             return null; // return null if org or rental not found
         }
         DB::beginTransaction();
         try {
+            $latestInvoice = OrganizationInvoice::where('organization_id', $org_id)
+                            ->orderBy('id', 'desc')
+                            ->first();
             $invoice = new OrganizationInvoice;
             $invoice->organization_id = $org->id;
             $invoice->invoice_number = makeOrganizationInvoiceID();
@@ -731,6 +735,7 @@ if (!function_exists('createInvoiceForOrganization')) {
                          
                         foreach ($all_date_between_invoice_date as $k=>$invoice_date_item) {
                             // $invoice_date_item is a Carbon instance
+
                             $date = $invoice_date_item->toDateString();
                             $CurrentOrder = Order::where('user_id', $user->id)
                             ->whereDate('rent_start_date', '<=', $invoice_date_item->toDateString())
@@ -747,22 +752,51 @@ if (!function_exists('createInvoiceForOrganization')) {
                             })
                             ->orderByDesc('id')
                             ->first();
-
-                            // ⭐ your required condition
-                            $latestInvoice = OrganizationInvoice::where('organization_id', $user->organization_id)
-                            ->orderBy('id', 'desc')
-                            ->first();
+                            // your required condition
+                            if (!$CurrentOrder) continue;
                             if(!$latestInvoice){
                                 if ($k == 0 && $CurrentOrder) {
                                     $rentStartTime = \Carbon\Carbon::parse($CurrentOrder->rent_start_date)->format('H:i:s');
                                     if ($rentStartTime > '14:00:00') {
                                         continue; // skip this day
                                     }
+                                }elseif ($k > 0 && $CurrentOrder) {
+                                    $orderStartDate = \Carbon\Carbon::parse($CurrentOrder->rent_start_date)->toDateString();
+                                    if ($orderStartDate == $date) {
+                                        $rentStartTime = \Carbon\Carbon::parse($CurrentOrder->rent_start_date)->format('H:i:s');
+                                        if ($rentStartTime > '14:00:00') {
+                                            continue; // skip this day
+                                        }
+                                    }
+                                }
+                            }else{
+                                $orderStartDate = \Carbon\Carbon::parse($CurrentOrder->rent_start_date)->toDateString();
+                                if ($orderStartDate == $date && $CurrentOrder) {
+                                    // CHECK IF THIS DATE ALREADY EXISTS IN OLD INVOICES
+                                    $userExistingInvoice = OrganizationInvoiceItem::where('user_id', $user->id)
+                                        ->whereHas('details', function ($q) use ($invoice_date_item) {
+
+                                            $q->whereDate(
+                                                'date',
+                                                $invoice_date_item->toDateString()
+                                            );
+
+                                        })
+                                        ->exists();
+                                   
+                                    // IF DATE NOT EXISTS THEN APPLY 2PM RULE
+                                    if (!$userExistingInvoice) {
+                                        $rentStartTime = \Carbon\Carbon::parse($CurrentOrder->rent_start_date)->format('H:i:s');
+                                        if ($rentStartTime > '14:00:00') {
+                                            continue;
+                                        }
+                                    }
                                 }
                             }
                             // Skip this date if no order found
-                            if (!$CurrentOrder) continue;
+                           
                             $checkexistingData = OrganizationInvoiceItemDetail::where('date', $date)->where('order_id', $CurrentOrder->id)->first();
+
                             if($checkexistingData) continue;
                             // Safely get subscription
                             $subscription = $CurrentOrder->subscription;
@@ -777,7 +811,6 @@ if (!function_exists('createInvoiceForOrganization')) {
                             $subscription_rental_amount = $subscription->rental_amount / $subscription->duration;
 
                             $per_date_amount = $finalAmount / $subscription->duration;
-                           
                             $org_discount = OrganizationDiscount::where('organization_id', $org->id)
                             ->whereDate('start_date', '<=', $date)
                             ->where(function ($q) use ($date) {
@@ -801,6 +834,7 @@ if (!function_exists('createInvoiceForOrganization')) {
 
                             $invoice_item_total_day +=1;
                             $invoice_item_total_price +=$per_date_amount;
+                        
                         }
 
                         // ADDED: if invoice_item total price is zero or less, delete the item + its details and skip this user
@@ -820,6 +854,7 @@ if (!function_exists('createInvoiceForOrganization')) {
                     }
                     $total_amount +=$invoice_item->total_price;
                 }
+                
 
                 // ADDED: if total invoice amount is zero or less, remove the invoice and any leftover items/details
                 if ($total_amount <= 0) {

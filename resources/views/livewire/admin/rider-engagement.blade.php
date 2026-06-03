@@ -96,6 +96,14 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                <div class="col-lg-2">
+                                    <select
+                                        class="form-select border border-2 p-2 custom-input-sm" wire:model="rider_type" wire:change="FilterRiderType($event.target.value)">
+                                        <option value="" selected hidden>Rider Type</option>
+                                        <option value="B2C">B2C</option>
+                                        <option value="B2B">B2B</option>
+                                    </select>
+                                </div>
                                 <div>
                                     <input type="text" wire:model="search"
                                        class="form-control border border-2 p-2 custom-input-sm"
@@ -105,12 +113,6 @@
                                         class="btn btn-primary text-white mb-0 custom-input-sm ms-2">
                                     <span class="material-icons">Search</span>
                                 </button>
-
-                                <button type="button" wire:click="exportAll"
-                                        class="btn btn-secondary text-white mb-0 custom-input-sm ms-2">
-                                    <span class="material-icons">Export</span>
-                                </button>
-
                                 <!-- Refresh Button -->
                                 <button type="button" wire:click="reset_search"
                                         class="btn btn-outline-danger waves-effect mb-0 custom-input-sm ms-2">
@@ -1036,9 +1038,9 @@
         </div>
     </div>
 
-    <div class="loader-container" wire:loading>
+    {{-- <div class="loader-container" wire:loading>
         <div class="loader"></div>
-    </div>
+    </div> --}}
     <!-- Side Modal (Drawer) -->
     @if($isModalOpen)
     <div class="side-modal {{ $isModalOpen ? 'open' : '' }}">

@@ -16,7 +16,7 @@ class VehicleList extends Component
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';
-    public $model,$branch,$overdue_days;
+    public $model,$branch,$overdue_days,$rider_type;
     public $search = '';
     public $active_tab = 1;
     public $models = [];
@@ -51,6 +51,9 @@ class VehicleList extends Component
     public function FilterModel($value){
         $this->model =$value;
     }
+    public function FilterRiderType($value){
+        $this->rider_type = $value;
+    }
     public function FilterOverdue($value){
         $this->overdue_days =$value;
     }
@@ -62,7 +65,7 @@ class VehicleList extends Component
      * Refresh button click handler to reset the search input and reload data.
      */
     public function reset_search(){
-        $this->reset(['search','model','overdue_days']); // Reset the search term
+        $this->reset(['search','model','overdue_days','rider_type']); // Reset the search term
     }
 
     public function tab_change($value){
@@ -122,6 +125,21 @@ class VehicleList extends Component
                     ->orWhere('mobile', 'like', $searchTerm)
                     ->orWhere('email', 'like', $searchTerm);
                 });
+            });
+        })
+        ->when($this->rider_type, function ($query) {
+
+            $rider_type = $this->rider_type;
+
+            $query->where(function ($q) use ($rider_type) {
+
+                $q->whereHas('assignedVehicle.user', function ($aq) use ($rider_type) {
+                    $aq->where('user_type', $rider_type);
+                })
+
+                ->orWhereHas('overdueVehicle.user', function ($oq) use ($rider_type) {
+                    $oq->where('user_type', $rider_type);
+                });
 
             });
 
@@ -138,6 +156,19 @@ class VehicleList extends Component
         ->whereHas('assignedVehicle') // Ensures only assigned vehicles are fetched
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
+        })
+        ->when($this->rider_type, function ($query) {
+
+            $rider_type = $this->rider_type;
+
+            $query->where(function ($q) use ($rider_type) {
+
+                $q->whereHas('assignedVehicle.user', function ($aq) use ($rider_type) {
+                    $aq->where('user_type', $rider_type);
+                });
+
+            });
+
         })
         ->when($this->search, function ($query) {
 
@@ -202,8 +233,21 @@ $overdue_vehicles = Stock::with([
     ->when($this->model, function ($query) {
         $query->where('product_id', $this->model);
     })
+    ->when($this->rider_type, function ($query) {
 
-    // 🔥 ✅ OVERDUE DROPDOWN FILTER (ADDED)
+        $rider_type = $this->rider_type;
+
+        $query->where(function ($q) use ($rider_type) {
+            
+            $q->whereHas('overdueVehicle.user', function ($oq) use ($rider_type) {
+                $oq->where('user_type', $rider_type);
+            });
+
+        });
+
+    })
+
+    // OVERDUE DROPDOWN FILTER (ADDED)
     ->when($this->overdue_days !== null && $this->overdue_days !== '', function ($query) use ($today) {
 
         if ($this->overdue_days === '20+') {

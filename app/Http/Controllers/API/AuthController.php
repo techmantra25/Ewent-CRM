@@ -4166,7 +4166,7 @@ class AuthController extends Controller
 
         //  Get all active vehicles (NO date filter here)
         $vehicles = DB::table('stocks')
-            ->where('status', 1)
+            // ->where('status', 1)
             ->select('id', 'vehicle_number', 'chassis_number')
             ->get()
             ->keyBy('id');
@@ -4201,6 +4201,7 @@ class AuthController extends Controller
                 'rider_name'     => $a->user->name ?? null,
                 'start_date'     => $a->start_date ? date('Y-m-d', strtotime($a->start_date)) : null,
                 'end_date'       => $a->end_date ? date('Y-m-d', strtotime($a->end_date)) : null,
+                'status'         => $a->status=="assigned" ? "ACTIVE" : "OVERDUE",
             ])
             ->unique('vehicle_id') // optional
             ->values();
@@ -4216,7 +4217,7 @@ class AuthController extends Controller
         $end_date   = $request->end_date;
 
         $vehiclesQuery = DB::table('stocks')
-            ->where('status', 1);
+           ->whereIn('status', [1,0]);
 
         if ($start_date && $end_date) {
             $vehiclesQuery->whereBetween('created_at', [
@@ -4257,7 +4258,7 @@ class AuthController extends Controller
         $end_date   = $request->end_date;
 
         $vehicles = Stock::with('product:id,title')
-            ->where('status', 1)
+            // ->where('status', 1)
             ->when($start_date && $end_date, function ($query) use ($start_date, $end_date) {
                 $query->whereBetween('created_at', [
                     $start_date . ' 00:00:00',

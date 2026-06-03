@@ -97,7 +97,7 @@ class RiderChangeType extends Component
             // Modify old unique fields
             $this->rider->update([
                 'email' => $oldEmail ? $oldEmail . '_old_' . time() : null,
-                // 'mobile' => $oldMobile . '_old_' . time(),
+                'mobile' => $oldMobile . '_old_' . time(),
             ]);
 
             // Clone user

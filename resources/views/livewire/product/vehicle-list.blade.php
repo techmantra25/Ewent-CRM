@@ -54,12 +54,20 @@
                                 </select>
                             </div>
                         @endif --}}
-                        <div class="col-lg-3 col-6 my-auto mb-2">
+                        <div class="col-lg-2 col-6 my-auto mb-2">
+                            <select
+                                class="form-select border border-2 p-2 custom-input-sm" wire:model="rider_type" wire:change="FilterRiderType($event.target.value)">
+                                <option value="" selected hidden>Rider Type</option>
+                                <option value="B2C">B2C</option>
+                                <option value="B2B">B2B</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-6 my-auto mb-2">
                             <select
                                 class="form-select border border-2 p-2 custom-input-sm" wire:model="model" wire:change="FilterModel($event.target.value)">
-                                <option value="" selected hidden>Select vehicle type</option>
+                                <option value="" selected hidden>Select vehicle</option>
                                 @foreach($models as $model_item)
-                                <option value="{{ $model_item->id }}">{{$model_item->category->title}}|{{ $model_item->title }}</option>
+                                <option value="{{ $model_item->id }}">{{ $model_item->title }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -158,7 +166,7 @@
                               <span class="d-none d-sm-block">
                                 <i class="tf-icons ri-user-3-line me-1_5"></i>
                                 </i> Overdue <span
-                                  class="badge rounded-pill badge-center h-px-20 w-px-50 bg-label-danger ms-1_5 pt-50">{{count($overdue_vehicles)}}</span>
+                                  class="badge rounded-pill badge-center h-px-20 w-px-50 bg-label-danger ms-1_5 pt-50">{{$overdue_vehicles->total()}}</span>
                                 </span>
                                 <i class="ri-user-3-line ri-20px d-sm-none"></i>
                             </button>
@@ -542,9 +550,9 @@
         </div>
     </div>
 
-    <div class="loader-container" wire:loading>
+    {{-- <div class="loader-container" wire:loading>
         <div class="loader"></div>
-    </div>
+    </div> --}}
     <!-- Side Modal (Drawer) -->
 </div>
 @section('page-script')

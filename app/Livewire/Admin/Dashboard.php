@@ -49,6 +49,30 @@ class Dashboard extends Component
         $assigned_vehicles = Stock::with('assignedVehicle')
         ->whereHas('assignedVehicle')->get();
 
+        /*
+        |--------------------------------------------------------------------------
+        | B2B Assigned Vehicles
+        |--------------------------------------------------------------------------
+        */
+
+        $b2b_assigned_vehicles = Stock::whereHas('assignedVehicle.user', function ($q) {
+
+            $q->where('user_type', 'b2b');
+
+        })->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | B2C Assigned Vehicles
+        |--------------------------------------------------------------------------
+        */
+
+        $b2c_assigned_vehicles = Stock::whereHas('assignedVehicle.user', function ($q) {
+
+            $q->where('user_type', 'b2c');
+
+        })->count();
+
         // $unassigned_vehicles = Stock::whereDoesntHave('assignedVehicle', function ($query) {
         //     $query->whereIn('status1', ['assigned','sold']); // Ensure it's truly unassigned
         // })->get();
@@ -60,7 +84,8 @@ class Dashboard extends Component
         })
 
         ->orderBy('id', 'DESC')->get()->count();
-       $overdue_vehicles = Stock::with('overdueVehicle')
+
+        $overdue_vehicles = Stock::with('overdueVehicle')
         ->whereHas('overdueVehicle') // Ensures only assigned vehicles are fetched
 
         ->orderBy('id', 'DESC')->get()->count();
@@ -79,6 +104,8 @@ class Dashboard extends Component
             'data' => $this->data,
             'all_vehicles' => $total,
             'assigned_vehicles' => $assigned,
+            'b2c_assigned_vehicles' => $b2c_assigned_vehicles,
+            'b2b_assigned_vehicles' => $b2b_assigned_vehicles,
             'unassigned_vehicles' => $unassigned,
             'overdue_vehicles' => $overdue,
             'assigned_percent' => $assigned_percent,

@@ -13,8 +13,6 @@ use App\Models\AsignedVehicle;
 use App\Models\UserKycLog;
 use App\Models\Organization;
 use App\Models\CancelRequestHistory;
-use App\Exports\RiderEngagementExport;
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -28,7 +26,7 @@ class RiderEngagement extends Component
     protected $paginationTheme = 'bootstrap';
     public $page = 1;
     public $search = '';
-    public $remarks,$field,$document_type,$id,$vehicle_model;
+    public $remarks,$field,$document_type,$id,$vehicle_model,$rider_type;
     public $active_tab = 1;
     public $organizations = [];
     public $vehicles = [];
@@ -178,6 +176,7 @@ class RiderEngagement extends Component
 
                 $startDate = Carbon::now();
                 $endDate = $startDate->copy()->addDays($order->rent_duration);
+
                 $isB2C = $order->user_type === 'B2C';
                 $log = AsignedVehicle::create([
                     'user_id' => $this->targetRiderId,
@@ -415,7 +414,7 @@ class RiderEngagement extends Component
      * Refresh button click handler to reset the search input and reload data.
      */
     public function reset_search(){
-        $this->reset(['search','selected_organization']); // Reset the search term
+        $this->reset(['search','selected_organization','rider_type']); // Reset the search term
         $this->resetPage();     // Reset pagination
     }
     public function toggleStatus($id){
@@ -558,6 +557,7 @@ class RiderEngagement extends Component
     public function render()
     {
         $searchTerm = '%' . $this->search . '%';
+        
         // Await users
         $await_users = User::whereHas('accessToken')
             ->when($this->search, function ($query) use ($searchTerm) {
@@ -576,6 +576,9 @@ class RiderEngagement extends Component
             })
             ->when($this->selected_organization, function ($query){
                 $query->where('organization_id', $this->selected_organization);
+            })
+            ->when($this->rider_type, function ($query){
+                $query->where('user_type', $this->rider_type);
             })
             ->doesntHave('await_order')
             ->where('is_verified', 'verified')
@@ -600,6 +603,9 @@ class RiderEngagement extends Component
             })
             ->when($this->selected_organization, function ($query){
                 $query->where('organization_id', $this->selected_organization);
+            })
+            ->when($this->rider_type, function ($query){
+                $query->where('user_type', $this->rider_type);
             })
             ->whereHas('ready_to_assign_order')
             ->where('is_verified', 'verified')
@@ -638,6 +644,9 @@ class RiderEngagement extends Component
             ->when($this->selected_organization, function ($query){
                 $query->where('organization_id', $this->selected_organization);
             })
+            ->when($this->rider_type, function ($query){
+                $query->where('user_type', $this->rider_type);
+            })
             ->orderBy('id', 'DESC')
             ->paginate(20);
 
@@ -645,6 +654,9 @@ class RiderEngagement extends Component
         $all_users = User::with('doc_logs','latest_order','active_vehicle')
             ->when($this->selected_organization, function ($query){
                 $query->where('organization_id', $this->selected_organization);
+            })
+            ->when($this->rider_type, function ($query){
+                $query->where('user_type', $this->rider_type);
             })
             ->when($this->search, function ($query) {
                 $searchTerm = '%' . $this->search . '%';
@@ -716,6 +728,9 @@ class RiderEngagement extends Component
             ->when($this->selected_organization, function ($query){
                 $query->where('organization_id', $this->selected_organization);
             })
+            ->when($this->rider_type, function ($query){
+                $query->where('user_type', $this->rider_type);
+            })
             ->where('is_verified', 'verified')
             ->orderBy('id', 'DESC')
             ->paginate(20);
@@ -732,6 +747,9 @@ class RiderEngagement extends Component
             })
             ->when($this->selected_organization, function ($query){
                 $query->where('organization_id', $this->selected_organization);
+            })
+            ->when($this->rider_type, function ($query){
+                $query->where('user_type', $this->rider_type);
             })
             ->where('vehicle_assign_status', 'suspended')
             ->orderBy('id', 'DESC')
@@ -770,16 +788,19 @@ class RiderEngagement extends Component
             'cancel_requested_users' => $cancel_requested_users,
         ]);
     }
+    // public function exportAll()
+    // {
+    //     return Excel::download(
+    //             new RiderEngagementExport(
+    //                 $this->active_tab,        
+    //                 $this->search,     
+    //                 $this->selected_organization 
+    //             ),
+    //             'rider_engagement.xlsx'
+    //         );
+    // }
 
-    public function exportAll()
-    {
-        return Excel::download(
-                new RiderEngagementExport(
-                    $this->active_tab,        
-                    $this->search,     
-                    $this->selected_organization 
-                ),
-                'rider_engagement.xlsx'
-            );
+    public function FilterRiderType($value){
+        $this->rider_type = $value;
     }
 }
