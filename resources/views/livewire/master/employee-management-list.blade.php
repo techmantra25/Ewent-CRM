@@ -1,4 +1,3 @@
-
 <div class="row mb-4">
     <div class="col-lg-12 d-flex justify-content-between">
         <div>
@@ -35,34 +34,42 @@
                         </div>
                         <div class="row">
                             <div class="col-lg-12 d-flex justify-content-end my-auto">
-                                <div class="d-flex align-items-center gap-2">
-                                    <!-- Branch Filter -->
-                                    <div wire:ignore style="width:200px;">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    
+                                    <div wire:ignore class="list-chosen-wrapper" style="width:220px;">
+                                        <select id="city_filter" class="form-select">
+                                            <option value="">Search City or State...</option>
+                                            @foreach($cities as $city)
+                                                <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                                    {{ $city->name }} @if($city->state) ({{ $city->state->name }}) @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div class="list-chosen-wrapper" wire:key="branch-filter-container-{{ $city_id }}" style="width:200px;">
                                         <select id="branch_filter" class="form-select">
                                             <option value="">Select Branch</option>
-                                            @foreach(\App\Models\Branch::where('status',1)->orderBy('name')->get() as $branch)
-                                                <option value="{{ $branch->id }}"
-                                                    {{ $branch->id == $branch_id ? 'selected' : '' }}>
+                                            @foreach($branches as $branch)
+                                                <option value="{{ $branch->id }}" {{ $branch->id == $branch_id ? 'selected' : '' }}>
                                                     {{ $branch->name }}
                                                 </option>
                                             @endforeach
                                         </select>
                                     </div>
-                                    <!-- Search Input -->
+                                    
                                     <input type="text"
                                         wire:model.debounce.300ms="search"
                                         class="form-control border border-2 p-2 custom-input-sm"
                                         placeholder="Search here..."
-                                        style="width:200px;">
+                                        style="width:180px;">
 
-                                    <!-- Search Button -->
                                     <button type="button"
                                             wire:click="searchButtonClicked"
                                             class="btn btn-dark text-white custom-input-sm">
                                         <span class="material-icons">search</span>
                                     </button>
 
-                                    <!-- Refresh Button -->
                                     <button type="button"
                                             wire:click="resetSearch"
                                             class="btn btn-danger text-white custom-input-sm">
@@ -78,31 +85,19 @@
                         <table class="table align-items-center mb-0 product-list">
                             <thead>
                                 <tr>
-                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle">
-                                        SL
-                                    </th>
-                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle" width="25%">
-                                        Employee Details
-                                    </th>
-                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
-                                        Designation
-                                    </th>
-                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
-                                        Branch
-                                    </th>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
-                                        Status
-                                    </th>
-                                    <th class="text-end text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">
-                                        Actions
-                                    </th>
+                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle">SL</th>
+                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle" width="25%">Employee Details</th>
+                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">Designation</th>
+                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">Branch</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">Status</th>
+                                    <th class="text-end text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 align-middle px-4">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($employees as $k => $employee)
                                     @php
                                         $colors = ['bg-label-primary', 'bg-label-success', 'bg-label-info', 'bg-label-secondary', 'bg-label-danger', 'bg-label-warning'];
-                                        $colorClass = $colors[$k % count($colors)]; // Rotate colors based on index
+                                        $colorClass = $colors[$k % count($colors)];
                                     @endphp
                                     <tr>
                                         <td class="align-middle text-center">{{ $employees->firstItem()+$k }}</td>
@@ -120,11 +115,11 @@
                                                     </div>
                                                 </div>
                                                 <div class="d-flex flex-column">
-                                                    <a href="{{ route('admin.customer.details', $employee->id) }}"
-                                                        class="text-heading"><span class="fw-medium text-truncate">{{ ucwords($employee->name) }}</span>
+                                                    <a href="{{ route('admin.customer.details', $employee->id) }}" class="text-heading">
+                                                        <span class="fw-medium text-truncate">{{ ucwords($employee->name) }}</span>
                                                     </a>
                                                     <small class="text-truncate">{{$employee->country_code}} {{ $employee->mobile }}</small>
-                                                <div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="align-middle price-details text-center">
@@ -164,9 +159,21 @@
     </div>
     <div class="loader-container" wire:loading>
         <div class="loader"></div>
-      </div>
+    </div>
 </div>
+
 @section('page-script')
+<style>
+    /* Spacing alignments for Chosen objects in standard compact tables */
+    .list-chosen-wrapper .chosen-container-single .chosen-single {
+        height: 38px !important;
+        line-height: 30px !important;
+        background: #fff !important;
+        border: 2px solid #dee2e6 !important;
+        border-radius: 0.375rem !important;
+    }
+</style>
+
 <link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
 <script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -183,40 +190,41 @@
             confirmButtonText: "Yes, delete it!"
         }).then((result) => {
             if (result.isConfirmed) {
-                @this.call('destroy', itemId); // Calls Livewire method directly
-                // Swal.fire("Deleted!", "Your item has been deleted.", "success");
+                @this.call('destroy', itemId);
             }
         });
     });
 
-// chosen
     var jq = $.noConflict();
 
-    function initBranchChosen() {
-
-        if (jq("#branch_filter").data('chosen')) {
-            jq("#branch_filter").chosen("destroy");
-        }
-
-        jq("#branch_filter").chosen({
-            width: "200px"
+    function initFilterDropdowns() {
+        // City Input Init
+        let cityFilter = jq("#city_filter");
+        cityFilter.chosen({ width: "220px", search_contains: true });
+        cityFilter.trigger("chosen:updated");
+        cityFilter.off('change').on('change', function () {
+            @this.set('city_id', jq(this).val());
         });
 
-        jq("#branch_filter").off('change').on('change', function () {
-            let selected = jq(this).val();
-            @this.set('branch_id', selected);
+        // Branch Input Init
+        let branchFilter = jq("#branch_filter");
+        branchFilter.chosen({ width: "200px", search_contains: true });
+        branchFilter.trigger("chosen:updated");
+        branchFilter.off('change').on('change', function () {
+            @this.set('branch_id', jq(this).val());
         });
     }
 
     document.addEventListener("livewire:init", function () {
-
-        initBranchChosen();
+        initFilterDropdowns();
 
         Livewire.hook('morph.updated', () => {
-            initBranchChosen();
+            initFilterDropdowns();
         });
-
+        
+        window.addEventListener('reset-filters', () => {
+            jq("#city_filter, #branch_filter").val('').trigger('chosen:updated');
+        });
     });
 </script>
 @endsection
-

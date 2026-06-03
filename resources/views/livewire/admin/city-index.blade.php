@@ -57,19 +57,46 @@
                   @endif
                 </div>
                 <div class="row">
-                  <div class="col-lg-6 col-7">
+                  <div class="col-lg-2 col-7">
                     <h6>Cities</h6>
                   </div>
-                  <div class="col-lg-6 col-5 my-auto text-end">
-                    <div class="ms-md-auto d-flex align-items-center">
-                      <input type="text" wire:model.debounce.500ms="search"
-                        class="form-control border border-2 p-2 custom-input-sm" placeholder="Enter Name">
-                      <button type="button" wire:click="searchButtonClicked" class="btn btn-dark text-white mb-0 custom-input-sm">
-                        <span class="material-icons">search</span>
-                      </button>
-                      <!-- Optionally, add a search icon button -->
+                  <div class="col-lg-10 col-5 my-auto text-end">
+                    <div class="ms-md-auto d-flex align-items-center justify-content-end">
+
+                        <!-- State Filter -->
+                        <div wire:ignore.self style="width:400px;" class="me-2">
+                            <select id="state_filter" class="form-select">
+                                <option value="">State</option>
+                                @foreach($states as $state)
+                                    <option value="{{ $state->id }}"
+                                        {{ $state->id == $filter_state_id ? 'selected' : '' }}>
+                                        {{ $state->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Search -->
+                        <input type="text"
+                              wire:model.debounce.500ms="search"
+                              class="form-control border border-2 p-2 custom-input-sm"
+                              placeholder="Enter Name">
+
+                        <button type="button"
+                                wire:click="searchButtonClicked"
+                                class="btn btn-dark text-white mb-0 custom-input-sm">
+                            <span class="material-icons">search</span>
+                        </button>
+
+                        <!-- Reset -->
+                        <button type="button"
+                                wire:click="resetSearch"
+                                class="btn btn-danger text-white mb-0 custom-input-sm ms-2">
+                            <i class="ri-restart-line"></i>
+                        </button>
+
                     </div>
-                  </div>
+                </div>
                 </div>
               </div>
               <div class="card-body px-0 pb-2">
@@ -202,4 +229,49 @@
       <div class="loader"></div>
     </div>
     </div>
+
+    @section('page-script')
+
+<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
+<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
+
+<script>
+var jq = $.noConflict();
+
+function initChosen() {
+
+    jq("#state_filter")
+        .off('change')
+        .chosen({
+            width: "200px"
+        })
+        .on('change', function () {
+
+            let state = jq(this).val();
+
+            @this.call('changeState', state);
+        });
+}
+
+document.addEventListener("livewire:init", function () {
+    initChosen();
+});
+
+window.addEventListener("refreshChosen", function () {
+
+    setTimeout(() => {
+
+        if (jq("#state_filter").data('chosen')) {
+            jq("#state_filter").chosen("destroy");
+        }
+
+        initChosen();
+
+        jq("#state_filter").trigger("chosen:updated");
+
+    }, 50);
+});
+</script>
+
+@endsection
     
