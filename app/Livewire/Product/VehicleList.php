@@ -5,6 +5,7 @@ namespace App\Livewire\Product;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Stock;
+use App\Models\City;
 use App\Models\Branch;
 use App\Models\Product;
 use Carbon\Carbon;
@@ -20,9 +21,12 @@ class VehicleList extends Component
     public $search = '';
     public $active_tab = 1;
     public $models = [];
+    public $city_id;
+    public $cities = [];
     public $branches = [];
     public $branch_list = [];
     public $isModalOpen = false; // Track modal visibility
+    public $customer_type;
 
     /**
      * Search button click handler to reset pagination.
@@ -34,15 +38,40 @@ class VehicleList extends Component
             $this->branch = $this->branches[0];
         }
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
-        $this->branch_list = Branch::whereIn('id', get_branches())
-                        ->where('status', 1)
-                        ->get();
+        $this->cities = City::with('state')
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get();
+        $this->branch_list = [];
     }
     public function btn_search()
     {
         $this->resetPage();
     }
 
+    public function FilterCity($value)
+    {
+        $this->city_id = $value;
+
+        $this->branch = null;
+
+        $this->branch_list = Branch::where('city_id', $value)
+            ->where('status', 1)
+            ->get();
+
+        $this->resetPage();
+    }
+
+    public function FilterCustomerType($value)
+    {
+        $this->customer_type = $value;
+        $this->resetPage();
+    }
+
+    public function updatedSearch()
+    {
+        $this->resetPage();
+    }
 
     public function closeModal()
     {
@@ -62,7 +91,9 @@ class VehicleList extends Component
      * Refresh button click handler to reset the search input and reload data.
      */
     public function reset_search(){
-        $this->reset(['search','model','overdue_days']); // Reset the search term
+        $this->reset(['search','model','overdue_days', 'city_id', 'branch', 'customer_type']);
+        $this->branch_list = []; 
+         $this->dispatch('reset-chosen-filters');
     }
 
     public function tab_change($value){
@@ -90,15 +121,30 @@ class VehicleList extends Component
                 'assignedVehicle.user',
                 'overdueVehicle.user'
             ])
-        // ->when($this->branch, function ($query) {
-        //     // If specific branch selected
-        //     $query->where('branch_id', $this->branch);
-        // }, function ($query) {
-        //     // If no branch selected, filter by allowed branches
-        //     $query->whereIn('branch_id', $this->branches);
-        // })
+        ->when($this->branch, function ($query) {
+            // If specific branch selected
+            $query->where('branch_id', $this->branch);
+        }, function ($query) {
+            // If no branch selected, filter by allowed branches
+            $query->whereIn('branch_id', $this->branches);
+        })
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
+        })
+        ->when($this->customer_type, function ($query) {
+
+            $query->where(function ($q) {
+
+                $q->whereHas('assignedVehicle.user', function ($uq) {
+                    $uq->where('user_type', $this->customer_type);
+                })
+
+                ->orWhereHas('overdueVehicle.user', function ($uq) {
+                    $uq->where('user_type', $this->customer_type);
+                });
+
+            });
+
         })
         ->when($this->search, function ($query) {
 
@@ -134,10 +180,21 @@ class VehicleList extends Component
         $assigned_vehicles = Stock::with([
                 'assignedVehicle.user'
             ])
+        ->when($this->branch, function ($query) {
+            $query->where('branch_id', $this->branch);
+        }, function ($query) {
+            $query->whereIn('branch_id', $this->branches);
+        })
         // ->whereIn('branch_id',get_branches())
         ->whereHas('assignedVehicle') // Ensures only assigned vehicles are fetched
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
+        })
+        ->when($this->customer_type, function ($query) {
+            $query->whereHas('assignedVehicle.user', function ($uq) {
+                $uq->where('user_type', $this->customer_type);
+            });
+
         })
         ->when($this->search, function ($query) {
 
@@ -165,20 +222,23 @@ class VehicleList extends Component
 
 
         $unassigned_vehicles = Stock::
-        // when($this->branch, function ($query) {
-        //     // If specific branch selected
-        //     $query->where('branch_id', $this->branch);
-        // }, function ($query) {
-        //     // If no branch selected, filter by allowed branches
-        //     $query->whereIn('branch_id', $this->branches);
-        // })->
-        whereDoesntHave('assignedVehicle', function ($query) {
+        when($this->branch, function ($query) {
+            // If specific branch selected
+            $query->where('branch_id', $this->branch);
+        }, function ($query) {
+            // If no branch selected, filter by allowed branches
+            $query->whereIn('branch_id', $this->branches);
+        })
+        ->whereDoesntHave('assignedVehicle', function ($query) {
             $query->whereIn('status', ['assigned','sold']); // Ensure it's truly unassigned
         })->whereDoesntHave('overdueVehicle', function ($query) {
             $query->whereIn('status', ['overdue']); // Ensure it's truly unassigned
         })
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
+        })
+        ->when($this->customer_type, function ($query) {
+            $query->whereRaw('1 = 0');
         })
         ->when($this->search, function ($query) {
             $searchTerm = '%' . $this->search . '%';
@@ -197,13 +257,25 @@ class VehicleList extends Component
 $overdue_vehicles = Stock::with([
         'overdueVehicle.user'
     ])
+    ->when($this->branch, function ($query) {
+        $query->where('branch_id', $this->branch);
+    }, function ($query) {
+        $query->whereIn('branch_id', $this->branches);
+    })
     ->whereHas('overdueVehicle')
 
     ->when($this->model, function ($query) {
         $query->where('product_id', $this->model);
     })
+    ->when($this->customer_type, function ($query) {
 
-    // 🔥 ✅ OVERDUE DROPDOWN FILTER (ADDED)
+        $query->whereHas('overdueVehicle.user', function ($uq) {
+            $uq->where('user_type', $this->customer_type);
+        });
+
+    })
+
+    // OVERDUE DROPDOWN FILTER (ADDED)
     ->when($this->overdue_days !== null && $this->overdue_days !== '', function ($query) use ($today) {
 
         if ($this->overdue_days === '20+') {
@@ -229,7 +301,7 @@ $overdue_vehicles = Stock::with([
         }
     })
 
-    // 🔥 EXISTING SEARCH (NO CHANGE, just small condition add)
+    // EXISTING SEARCH (NO CHANGE, just small condition add)
     ->when($this->search, function ($query) use ($today) {
 
         if (is_numeric($this->search) && empty($this->overdue_days)) {

@@ -5,6 +5,7 @@ namespace App\Livewire\Product;
 use Livewire\Component;
 use App\Models\Product;
 use App\Models\Stock;
+use App\Models\City;
 use App\Models\Branch;
 use App\Models\BranchLog;
 use Illuminate\Support\Facades\Auth;
@@ -13,8 +14,11 @@ use Illuminate\Validation\Rule;
 class VehicleUpdate extends Component
 {
     public $models = [];
+    public $cities = [];
+    public $city_id = null;
     public $branchs = [];
     public $id, $branch, $model,$vehicle_number,$vehicle_track_id,$imei_number,$chassis_number,$friendly_name;
+    
     public function mount($id){
         $this->id = $id;
         $stock = Stock::find($id);
@@ -34,9 +38,26 @@ class VehicleUpdate extends Component
          $this->friendly_name = $stock->friendly_name;
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
 
-        $this->branchs = Branch::whereIn('id', get_branches())
-                        ->where('status', 1)
-                        ->get();
+        $this->cities = City::with('state')
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get();
+
+        $currentBranch = Branch::find($stock->branch_id);
+
+        if ($currentBranch) {
+
+            $this->city_id = $currentBranch->city_id;
+
+            $this->branchs = Branch::where('city_id', $this->city_id)
+                ->whereIn('id', get_branches())
+                ->where('status', 1)
+                ->orderBy('name')
+                ->get();
+        } else {
+
+            $this->branchs = collect();
+        }
     }
 
     public function rules()
@@ -50,6 +71,23 @@ class VehicleUpdate extends Component
             // 'imei_number' => ['required', 'string', Rule::unique('stocks', 'imei_number')->ignore($this->id)],
             'chassis_number' => ['required', 'string', Rule::unique('stocks', 'chassis_number')->ignore($this->id)],
         ];
+    }
+
+    public function updatedCityId($value)
+    {
+        $this->branch = null;
+
+        if ($value) {
+            $this->branchs = Branch::where('city_id', $value)
+                ->whereIn('id', get_branches())
+                ->where('status', 1)
+                ->orderBy('name')
+                ->get();
+        } else {
+            $this->branchs = collect();
+        }
+
+        $this->dispatch('vehicle-city-updated');
     }
     public function updateVehicle()
     {

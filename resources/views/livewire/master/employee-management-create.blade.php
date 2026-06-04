@@ -90,38 +90,47 @@
               </div>
 
               <div class="col-md-6 col-12 mt-2">
-                <div class="mb-2 form-floating form-floating-outline unified-chosen-parent" wire:ignore>
-                  <select id="city_select" class="form-select border border-2">
-                    <option value="">Search City or State...</option>
-                    @foreach($cities as $city)
-                      <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
-                          {{ $city->name }} @if($city->state) ({{ $city->state->name }}) @endif
-                      </option>
-                    @endforeach
-                  </select>
-                  <label class="form-label">City / State <span class="text-danger">*</span></label>
+                <div class="chosen-floating mb-3" wire:ignore>
+                    <select id="city_select" class="form-select">
+                        <option value=""></option>
+
+                        @foreach($cities as $city)
+                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                {{ $city->name }}
+                                @if($city->state)
+                                    ({{ $city->state->name }})
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <label class="chosen-label">
+                        City / State <span class="text-danger">*</span>
+                    </label>
                 </div>
-                @error('city_id')
-                <p class="text-danger inputerror mt-1">{{ $message }}</p>
-                @enderror
               </div>
 
-              <div class="col-md-6 col-12 mt-2">
-                <div class="mb-2 form-floating form-floating-outline unified-chosen-parent" wire:key="branch-select-container-{{ $city_id }}">
-                  <select id="branch_select" class="form-select border border-2">
-                    <option value="">Select Branch</option>
-                    @foreach($branches as $branch)
-                      <option value="{{ $branch->id }}" {{ $branch->id == $branch_id ? 'selected' : '' }}>
-                          {{ $branch->name }}
-                      </option>
-                    @endforeach
-                  </select>
-                  <label class="form-label">Branch <span class="text-danger">*</span></label>
+                <div class="col-md-6 col-12 mt-2">
+                  <div class="chosen-floating mb-3"
+                    wire:key="branch-select-container-{{ $city_id }}">
+
+                    <select id="branch_select" class="form-select">
+                        <option value=""></option>
+
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}"
+                                {{ $branch->id == $branch_id ? 'selected' : '' }}>
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <label class="chosen-label">
+                        Branch <span class="text-danger">*</span>
+                    </label>
+                  </div>
                 </div>
-                @error('branch_id')
-                <p class="text-danger inputerror mt-1">{{ $message }}</p>
-                @enderror
-              </div>
+
 
             </div>
           </div>
@@ -155,25 +164,34 @@
 
 @section('page-script')
 <style>
-  .unified-chosen-parent .chosen-container-single .chosen-single {
-      height: 50px !important;
-      line-height: 40px !important;
-      background: transparent !important;
-      border: 2px solid #dee2e6 !important;
-      border-radius: 0.375rem !important;
-      padding-left: 12px !important;
-  }
-  
-  .unified-chosen-parent.form-floating-outline label {
-      transform: scale(0.85) translateY(-1.4rem) !important;
-      background-color: #fff !important;
-      padding-left: 4px !important;
-      padding-right: 4px !important;
-      z-index: 5 !important;
-  }
+ .chosen-floating {
+    position: relative;
+}
+
+.chosen-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    z-index: 10;
+    background: #fff;
+    padding: 0 6px;
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.chosen-floating .chosen-container {
+    width: 100% !important;
+}
+
+.chosen-floating .chosen-container-single .chosen-single {
+    height: 50px !important;
+    line-height: 48px !important;
+    border: 2px solid #dee2e6 !important;
+    border-radius: 0.5rem !important;
+    background: #fff !important;
+}
 </style>
-<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
 <script>
   
   function updateImage(event, name) {

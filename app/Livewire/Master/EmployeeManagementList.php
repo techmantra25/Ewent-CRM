@@ -29,12 +29,10 @@ class EmployeeManagementList extends Component
     
     public function mount()
     {
-        // Eager load state definitions for advanced filtering queries
         $this->cities = City::with('state')->where('status', 1)->orderBy('name', 'ASC')->get();
         $this->branches = collect();
     }
 
-    // Triggered when Javascript Chosen sets city_id values
     public function updatedCityId($value)
     {
         if (!empty($value)) {
@@ -45,7 +43,14 @@ class EmployeeManagementList extends Component
         } else {
             $this->branches = collect();
         }
-        $this->branch_id = null; // Clear branch choice when parent city shifts
+        $this->branch_id = null; 
+        $this->resetPage();
+    }
+
+    // A reliable explicit wrapper to set branch filters
+    public function setBranchId($value)
+    {
+        $this->branch_id = $value ?: null;
         $this->resetPage();
     }
 
@@ -76,20 +81,28 @@ class EmployeeManagementList extends Component
         session()->flash('message', 'Employee status updated successfully!');
     }
     
+    public function setBranchFilter($value)
+    {
+        $this->branch_id = $value ?: null;
+        $this->resetPage();
+    }
+    
     public function render()
     {
         $employees = branchFilter(
                 Admin::with(['designationData','branchData'])
             )
-            // Filter by branch if selected; otherwise fallback filter by selected city
+            // 1. If branch selection exists, strictly isolate search results to that branch
             ->when($this->branch_id, function ($query) {
                 $query->where('branch_id', $this->branch_id);
             })
+            // 2. Only fallback to city filtering if branch has NOT been chosen
             ->when(!$this->branch_id && $this->city_id, function ($query) {
                 $query->whereHas('branchData', function($q) {
                     $q->where('city_id', $this->city_id);
                 });
             })
+            // 3. Search query filters matching string text conditions
             ->when($this->search, function ($query) {
                 $searchTerm = '%' . $this->search . '%';
                 $query->where(function ($q) use ($searchTerm) {

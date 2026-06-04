@@ -7,16 +7,13 @@ use App\Models\Admin;
 use App\Models\Branch;
 use Illuminate\Pagination\Paginator;
 use Livewire\WithPagination;
-use App\Models\State;
 use App\Models\City;
 
 class BranchIndex extends Component
 {   
     use WithPagination;
-    public $state_id = '';
     public $city_id = '';
 
-    public $states = [];
     public $cities = [];
     public $search = "";
 
@@ -27,11 +24,10 @@ class BranchIndex extends Component
 
     public function mount()
     {
-        $this->states = State::where('status', 1)
-            ->orderBy('name', 'ASC')
-            ->get();
-
-        $this->cities = [];
+            $this->cities = City::with('state')
+        ->where('status', 1)
+        ->orderBy('name')
+        ->get();
     }
     
     public function searchButtonClicked()
@@ -41,24 +37,15 @@ class BranchIndex extends Component
 
     public function resetSearch()
     {
-        $this->reset(['search', 'state_id', 'city_id']);
-        $this->cities = [];
+        $this->reset(['search', 'city_id']);
+        $this->cities = City::with('state')
+        ->where('status', 1)
+        ->orderBy('name')
+        ->get();
         $this->resetPage();
-    }
-
-    public function changeState($stateId)
-    {
-        $this->state_id = $stateId;
-        $this->city_id = '';
-
-        $this->cities = City::where('state_id', $stateId)
-            ->orderBy('name', 'ASC')
-            ->get();
-
-        $this->resetPage();
-
         $this->dispatch('refreshChosen');
     }
+
      public function toggleStatus($id)
     {
         $branch = Branch::findOrFail($id);

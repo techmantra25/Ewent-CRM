@@ -36,26 +36,35 @@
                             <div class="col-lg-12 d-flex justify-content-end my-auto">
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     
-                                    <div wire:ignore class="list-chosen-wrapper" style="width:220px;">
+                                    <div wire:ignore class="list-chosen-wrapper chosen-floating" style="width:220px;">
                                         <select id="city_filter" class="form-select">
-                                            <option value="">Search City or State...</option>
+                                            <option value=""></option>
                                             @foreach($cities as $city)
                                                 <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
-                                                    {{ $city->name }} @if($city->state) ({{ $city->state->name }}) @endif
+                                                    {{ $city->name }}
+                                                    @if($city->state) ({{ $city->state->name }}) @endif
                                                 </option>
                                             @endforeach
                                         </select>
+                                        <label class="chosen-label">City / State</label>
                                     </div>
 
-                                    <div class="list-chosen-wrapper" wire:key="branch-filter-container-{{ $city_id }}" style="width:200px;">
+                                    <div wire:ignore 
+                                        class="list-chosen-wrapper chosen-floating" 
+                                        id="branch-wrapper"
+                                        wire:key="branch-wrapper-context-{{ $city_id }}" 
+                                        style="width:200px;">
+
                                         <select id="branch_filter" class="form-select">
-                                            <option value="">Select Branch</option>
+                                            <option value=""></option>
                                             @foreach($branches as $branch)
-                                                <option value="{{ $branch->id }}" {{ $branch->id == $branch_id ? 'selected' : '' }}>
+                                                <option value="{{ $branch->id }}" {{ (string)$branch->id === (string)$branch_id ? 'selected' : '' }}>
                                                     {{ $branch->name }}
                                                 </option>
                                             @endforeach
                                         </select>
+
+                                        <label class="chosen-label">Branch</label>
                                     </div>
                                     
                                     <input type="text"
@@ -164,18 +173,13 @@
 
 @section('page-script')
 <style>
-    /* Spacing alignments for Chosen objects in standard compact tables */
-    .list-chosen-wrapper .chosen-container-single .chosen-single {
-        height: 38px !important;
-        line-height: 30px !important;
-        background: #fff !important;
-        border: 2px solid #dee2e6 !important;
-        border-radius: 0.375rem !important;
-    }
+/* Your existing styles remain identical */
+.chosen-floating { position: relative; }
+.chosen-label { position: absolute; top: -10px; left: 12px; z-index: 10; background: #fff; padding: 0 6px; font-size: 12px; color: #6c757d; font-weight: 500; }
+.list-chosen-wrapper .chosen-container-single .chosen-single { height: 40px !important; line-height: 40px !important; background: #fff !important; border: 2px solid #dee2e6 !important; border-radius: 0.375rem !important; }
+.list-chosen-wrapper .chosen-container-single .chosen-single div b { margin-top: 5px; }
 </style>
 
-<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     window.addEventListener('showConfirm', function (event) {
@@ -195,35 +199,52 @@
         });
     });
 
-    var jq = $.noConflict();
+   var jq = $.noConflict();
 
     function initFilterDropdowns() {
-        // City Input Init
+        // City Filter
         let cityFilter = jq("#city_filter");
-        cityFilter.chosen({ width: "220px", search_contains: true });
-        cityFilter.trigger("chosen:updated");
+        if (!cityFilter.data("chosen")) {
+            cityFilter.chosen({
+                width: "220px",
+                search_contains: true
+            });
+        }
         cityFilter.off('change').on('change', function () {
             @this.set('city_id', jq(this).val());
         });
 
-        // Branch Input Init
+        // Branch Filter
         let branchFilter = jq("#branch_filter");
-        branchFilter.chosen({ width: "200px", search_contains: true });
-        branchFilter.trigger("chosen:updated");
+        
+        // Always force re-build Chosen here because options changed based on city selection
+        if (branchFilter.data("chosen")) {
+            branchFilter.chosen("destroy");
+        }
+        
+        branchFilter.chosen({
+            width: "200px",
+            search_contains: true
+        });
+
         branchFilter.off('change').on('change', function () {
-            @this.set('branch_id', jq(this).val());
+            let currentBranchId = jq(this).val();
+            // Atomic component call to backend
+            @this.call('setBranchFilter', currentBranchId);
         });
     }
 
     document.addEventListener("livewire:init", function () {
         initFilterDropdowns();
 
+        // Hook cleanly into morph lifecycle hooks 
         Livewire.hook('morph.updated', () => {
             initFilterDropdowns();
         });
         
         window.addEventListener('reset-filters', () => {
-            jq("#city_filter, #branch_filter").val('').trigger('chosen:updated');
+            jq("#city_filter").val('').trigger('chosen:updated');
+            jq("#branch_filter").val('').trigger('chosen:updated');
         });
     });
 </script>

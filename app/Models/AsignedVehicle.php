@@ -25,4 +25,8 @@ class AsignedVehicle extends Model
     public function admin(){
         return $this->belongsTo(Admin::class,'assigned_by','id');
     }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

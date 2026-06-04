@@ -5,6 +5,7 @@ namespace App\Livewire\Product;
 use Livewire\Component;
 use App\Models\Product;
 use App\Models\Stock;
+use App\Models\City;
 use App\Models\Branch;
 use App\Models\BranchLog;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,9 @@ class VehicleCreate extends Component
     public $existing_stock = [];
     public $models = [];
     public $vehicles = [];
+    public $city_id = null;
+    public $cities = [];
+    public $branches = [];
     public $branchs = [];
     public $vehicle_mapping = [];
     public $branch,$model,$vehicle_number,$vehicle_track_id,$imei_number,$chassis_number,$friendly_name;
@@ -63,10 +67,31 @@ class VehicleCreate extends Component
         }
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
         $this->existing_stock = Stock::orderBy('vehicle_number', 'ASC')->get()->pluck('vehicle_number')->toArray();
-        $this->branchs = Branch::whereIn('id', get_branches())
-                        ->where('status', 1)
-                        ->get();
+        $this->cities = City::with('state')
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get();
+
+        $this->branches = collect();
+        $this->branchs = collect();
        
+    }
+
+    public function updatedCityId($value)
+    {
+        $this->branch = null;
+
+        if ($value) {
+            $this->branchs = Branch::where('city_id', $value)
+                ->whereIn('id', get_branches())
+                ->where('status', 1)
+                ->orderBy('name', 'ASC')
+                ->get();
+        } else {
+            $this->branchs = collect();
+        }
+
+        $this->dispatch('vehicle-city-updated');
     }
     public function selectVehicle($number)
     {

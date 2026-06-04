@@ -17,10 +17,7 @@
             <i class="ri-arrow-go-back-line ri-16px me-0 me-sm-2 align-baseline"></i>
             Back
           </a>
-          <button type="submit" class="btn btn-secondary btn-sm add-new btn-primary waves-effect waves-light"
-            wire:loading.attr="disabled">
-            <span> Create Branch</span>
-          </button>
+         
         </div>
       </div>
     </div>
@@ -40,7 +37,7 @@
 
     <div class="row">
       <!-- Left Card -->
-      <div class="col-lg-9">
+      <div class="col-lg-12">
         <div class="card card-plain p-4">
           <div class="card-body p-3">
             <div class="row">
@@ -63,49 +60,6 @@
                       <p class="text-danger inputerror">{{ $message }}</p>
                     @enderror
                 </div>
-                <div class="col-6">
-                    <div class="form-floating form-floating-outline mb-3">
-                        <select wire:model.live="state_id"
-                            class="form-control border border-2 p-2">
-                            <option value="">Select State</option>
-
-                            @foreach($states as $state)
-                                <option value="{{ $state->id }}">
-                                    {{ $state->name }}
-                                </option>
-                            @endforeach
-                        </select>
-
-                        <label>State <span class="text-danger">*</span></label>
-                    </div>
-
-                    @error('state_id')
-                        <p class="text-danger inputerror">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div class="col-6">
-                  <div class="form-floating form-floating-outline mb-3">
-                      <select wire:model="city_id"
-                          class="form-control border border-2 p-2">
-
-                          <option value="">Select City</option>
-
-                          @foreach($cities as $city)
-                              <option value="{{ $city->id }}">
-                                  {{ $city->name }}
-                              </option>
-                          @endforeach
-
-                      </select>
-
-                      <label>City <span class="text-danger">*</span></label>
-                  </div>
-
-                  @error('city_id')
-                      <p class="text-danger inputerror">{{ $message }}</p>
-                  @enderror
-              </div>
-
                 <div class="col-12">
                     <div class="form-floating form-floating-outline mb-3">
                         <textarea wire:model="address" class="form-control border border-2 p-2" placeholder="Enter Address"></textarea>
@@ -115,81 +69,86 @@
                       <p class="text-danger inputerror">{{ $message }}</p>
                     @enderror
                 </div>
-            
-            <h6 class="mb-3">Employee Information</h6>
+                <div class="col-6">
+                    <div wire:ignore class="chosen-floating mb-3 position-relative">
+                        
+                        <select id="city_filter_create" class="form-select">
+                            <option value=""></option>
 
-              <div class="col-8">
-                  <div class="form-floating form-floating-outline mb-3">
-                    <input type="text" wire:model="name" class="form-control border border-2 p-2"
-                      placeholder="Enter Name">
-                    <label>Employee Name <span class="text-danger">*</span></label>
-                  </div>
-                  @error('name')
-                  <p class="text-danger inputerror">{{ $message }}</p>
-                  @enderror
-              </div>
-              <div class="col-4">
-                <div class="mb-2 form-floating form-floating-outline">
-                  <select wire:model="designation"
-                    class="form-select border border-2">
-                    <option value="" selected hidden>Select Designation</option>
-                      @foreach($designations as $designation_item)
-                      <option value="{{ $designation_item->id }}">{{ $designation_item->name }}</option>
-                      @endforeach
-                  </select>
-                  <label class="form-label">Designation<span class="text-danger">*</span></label>
+                            @foreach($cities as $city)
+                                <option value="{{ $city->id }}"
+                                    {{ $city_id == $city->id ? 'selected' : '' }}>
+                                    {{ $city->name }}
+                                    @if($city->state)
+                                        ({{ $city->state->name }})
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <label class="chosen-label">
+                            City / State <span class="text-danger">*</span>
+                        </label>
+
+                    </div>
+
+                    @error('city_id')
+                        <p class="text-danger inputerror">{{ $message }}</p>
+                    @enderror
                 </div>
-                @error('designation')
-                <p class="text-danger inputerror">{{ $message }}</p>
-                @enderror
-              </div>
+                @if(count($city_branches))
+                <div class="col-12 mt-3">
 
-              <!-- Category Select -->
-              <div class="col-6">
-                <div class="form-floating form-floating-outline mb-3 mt-2">
-                    <input type="text" wire:model="email" class="form-control border border-2 p-2"
-                      placeholder="Enter Email">
-                    <label>Email <span class="text-danger">*</span></label>
-                  </div>
-                  @error('email')
-                  <p class="text-danger inputerror">{{ $message }}</p>
-                  @enderror
-              </div>
-              <div class="col-6">
-                <div class="form-floating form-floating-outline mb-3 mt-2">
-                    <input type="text" wire:model="mobile" class="form-control border border-2 p-2"
-                      placeholder="Enter Mobile">
-                    <label>Mobile <span class="text-danger">*</span></label>
-                  </div>
-                  @error('mobile')
-                  <p class="text-danger inputerror">{{ $message }}</p>
-                  @enderror
-              </div>
+                    <h6 class="fw-bold text-primary mb-2">
+                        Add Subscription
+                    </h6>
+
+                    <div class="d-flex flex-wrap gap-2">
+
+                        @foreach($city_branches as $branch)
+
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary btn-sm"
+                                wire:click="copySubscription({{ $branch->id }})">
+
+                                <i class="ri-file-copy-line me-1"></i>
+                                Same as {{ $branch->name }}
+
+                            </button>
+
+                        @endforeach
+
+                        <button
+                            type="button"
+                            class="btn btn-success btn-sm"
+                            wire:click="save">
+
+                            <i class="ri-building-line me-1"></i>
+                            Create Only Branch
+
+                        </button>
+
+                    </div>
+
+                </div>
+                @endif
+
+                
+                
+               @if(!count($city_branches))
+                <div class="col-12 text-end">
+                    <button type="submit"
+                        class="btn btn-secondary btn-sm add-new btn-primary waves-effect waves-light"
+                        wire:loading.attr="disabled">
+                        <span>Create Branch</span>
+                    </button>
+                </div>
+                @endif
               
             </div>
           </div>
         </div>
-      </div>
-      <!-- Right Card -->
-      <div class="col-lg-3">
-        <div class="card card-plain mb-3">
-          <div class="card-body p-3">
-            <h6>Employee Image</h6>
-            <!-- Product Image -->
-            <div class="mb-2 mt-2">
-              <input type="file" wire:model="image" id="image" accept="image/*"
-                class="form-control border border-2 p-2 d-none" onchange="updateImage(event, 'image')">
-              <img id="image-preview"
-                src="{{ $image ? $image->temporaryUrl() : asset('assets/img/profile-image.webp') }}"
-                alt="Selected Image" class="w-80 h-52 object-cover rounded-lg border border-gray-300"
-                style="width: 100%" onclick="document.getElementById('image').click()">
-            </div>
-            @error('image')
-            <p class="text-danger inputerror">{{ $message }}</p>
-            @enderror
-          </div>
-        </div>
-
       </div>
     </div>
   </form>
@@ -199,6 +158,36 @@
 </div>
 
 @section('page-script')
+<style>
+.chosen-floating {
+    position: relative;
+}
+
+.chosen-floating .chosen-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    z-index: 10;
+    background: #fff;
+    padding: 0 6px;
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.chosen-container-single .chosen-single {
+    height: 48px !important;
+    line-height: 48px !important;
+    border: 2px solid #d2d6da !important;
+    border-radius: 0.5rem !important;
+    background: #fff !important;
+}
+
+.chosen-container-single .chosen-single div b {
+    margin-top: 10px;
+}
+</style>
+
 <script>
   
   function updateImage(event, name) {
@@ -231,6 +220,43 @@
     }
 }
   
+</script>
+<script>
+var jq = $.noConflict();
+
+function initCityChosen() {
+
+    if (jq("#city_filter_create").length) {
+
+        if (jq("#city_filter_create").data('chosen')) {
+            jq("#city_filter_create").chosen('destroy');
+        }
+
+        jq("#city_filter_create")
+            .chosen({
+                width: "100%",
+                search_contains: true
+            })
+            .off("change")
+            .on("change", function () {
+                @this.set('city_id', jq(this).val());
+            });
+    }
+}
+
+document.addEventListener("livewire:init", function () {
+
+    initCityChosen();
+
+    Livewire.hook('request', ({ respond }) => {
+        respond(() => {
+            setTimeout(() => {
+                initCityChosen();
+                jq("#city_filter_create").trigger("chosen:updated");
+            }, 100);
+        });
+    });
+});
 </script>
 
 @endsection

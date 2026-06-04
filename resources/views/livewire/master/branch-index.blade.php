@@ -35,26 +35,27 @@
                         </div>
                         <div class="row">
                             <div class="col-lg-12 d-flex justify-content-end my-auto">
-                               <div wire:ignore.self style="width:200px;">
-                                    <select id="state_filter" class="form-select">
-                                        <option value="">Select State</option>
-                                        @foreach($states as $state)
-                                            <option value="{{ $state->id }}" {{ $state->id == $state_id ? 'selected' : '' }}>
-                                                {{ $state->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
 
-                                <div wire:ignore.self style="width:200px;">
+                                <div wire:ignore class="chosen-floating me-2" style="width:300px;">
+    
                                     <select id="city_filter" class="form-select">
-                                        <option value="">Select City</option>
+                                        <option value=""></option>
+
                                         @foreach($cities as $city)
-                                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                            <option value="{{ $city->id }}"
+                                                {{ $city->id == $city_id ? 'selected' : '' }}>
                                                 {{ $city->name }}
+                                                @if($city->state)
+                                                    ({{ $city->state->name }})
+                                                @endif
                                             </option>
                                         @endforeach
                                     </select>
+
+                                    <label class="chosen-label">
+                                        City / State
+                                    </label>
+
                                 </div>
                                 <div class="ms-2 d-flex align-items-center">
                                     <input type="text" wire:model.debounce.300ms="search"
@@ -163,8 +164,35 @@
       </div>
 </div>
 @section('page-script')
-<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
+<style>
+    .chosen-floating {
+    position: relative;
+}
+
+.chosen-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    z-index: 10;
+    background: #fff;
+    padding: 0 6px;
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.chosen-container-single .chosen-single {
+    height: 40px !important;
+    line-height: 40px !important;
+    border: 2px solid #d2d6da !important;
+    border-radius: 0.375rem !important;
+    background: #fff !important;
+}
+
+.chosen-container-single .chosen-single div b {
+    margin-top: 5px;
+}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     window.addEventListener('showConfirm', function (event) {
@@ -184,55 +212,48 @@
         });
     });
 </script>
+
 <script>
 var jq = $.noConflict();
 
 function initChosen() {
-    jq("#state_filter")
-        .off('change')
-        .chosen({width: "200px"})
-        .on('change', function () {
-            let state = jq(this).val();
-            @this.call('changeState', state);
-        });
+    var selectEl = jq("#city_filter");
+    
+    // Completely clear old chosen data if it exists
+    if (selectEl.data("chosen")) {
+        selectEl.chosen("destroy");
+    }
 
-    jq("#city_filter")
-        .off('change')
-        .chosen({width: "200px"})
-        .on('change', function () {
-            let city = jq(this).val();
-            @this.set('city_id', city);
+    selectEl
+        .chosen({
+            width: "300px",
+            search_contains: true,
+            allow_single_deselect: true
+        })
+        .off("change") // Remove duplicate event listeners
+        .on("change", function () {
+            // Send the updated value to Livewire backend
+            @this.set('city_id', jq(this).val());
         });
 }
 
-// Initialize Chosen on page load
+// Initializing hooks for Livewire v3
 document.addEventListener("livewire:init", function () {
     initChosen();
-});
-
-// Re-initialize Chosen whenever Livewire updates the city options
-document.addEventListener('livewire:navigated', () => {
-    initChosen();
-});
-
-// This listens directly to your PHP component's $this->dispatch('refreshChosen')
-window.addEventListener("refreshChosen", function () {
-    setTimeout(() => {
-        // Destroy old instances
-        if (jq("#city_filter").data('chosen')) {
-            jq("#city_filter").chosen("destroy");
-        }
-        if (jq("#state_filter").data('chosen')) {
-            jq("#state_filter").chosen("destroy");
-        }
-
-        // Re-initialize with new HTML layout options
+    
+    // CRITICAL: Re-initialize Chosen whenever Livewire updates the DOM
+    Livewire.hook('morph.updated', (el, component) => {
         initChosen();
-
-        // Force Chosen plugin visual interface update
         jq("#city_filter").trigger("chosen:updated");
-        jq("#state_filter").trigger("chosen:updated");
-    }, 50);
+    });
+});
+
+// Explicitly handle your custom clear button reset event
+window.addEventListener("refreshChosen", function () {
+    setTimeout(function () {
+        initChosen();
+        jq("#city_filter").trigger("chosen:updated");
+    }, 100);
 });
 </script>
 @endsection

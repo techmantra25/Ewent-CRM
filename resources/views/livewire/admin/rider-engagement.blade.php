@@ -112,9 +112,9 @@
                                 </button>
 
                                 <!-- Refresh Button -->
-                                <button type="button" wire:click="reset_search"
-                                        class="btn btn-outline-danger waves-effect mb-0 custom-input-sm ms-2">
-                                    <span class="material-icons">Refresh</span>
+
+                                <button type="button" wire:click="reset_search" class="btn btn-danger text-white mb-0 custom-input-sm ms-2">
+                                    <i class="ri-restart-line"></i>
                                 </button>
                             </div>
                         </div>
@@ -1766,8 +1766,6 @@
             });
         });
     </script>
-    <link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-    <script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
     <script>
         var jq = $.noConflict();
         console.log("Selected Organization:", jq);

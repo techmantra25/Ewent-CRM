@@ -91,38 +91,39 @@
               </div>
 
               <div class="col-6 mt-2">
-                <div class="mb-2 form-floating form-floating-outline unified-chosen-parent" wire:ignore>
-                  <select id="city_select" class="form-select border border-2">
-                    <option value="">Search City or State...</option>
-                    @foreach($cities as $city)
-                      <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
-                          {{ $city->name }} @if($city->state) ({{ $city->state->name }}) @endif
-                      </option>
-                    @endforeach
-                  </select>
-                  <label class="form-label">City / State <span class="text-danger">*</span></label>
+                <div class="chosen-floating mb-3" wire:ignore>
+                    <select id="city_select" class="form-select">
+                        <option value=""></option>
+                        @foreach($cities as $city)
+                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                {{ $city->name }}
+                                @if($city->state)
+                                    ({{ $city->state->name }})
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+                    <label class="chosen-label">
+                        City / State <span class="text-danger">*</span>
+                    </label>
                 </div>
-                @error('city_id')
-                <p class="text-danger inputerror mt-1">{{ $message }}</p>
-                @enderror
-              </div>
+            </div>
 
-              <div class="col-6 mt-2">
-                <div class="mb-2 form-floating form-floating-outline unified-chosen-parent" wire:key="branch-select-container-{{ $city_id }}">
-                  <select id="branch_select" class="form-select border border-2">
-                    <option value="">Select Branch</option>
-                    @foreach($branches as $branch)
-                      <option value="{{ $branch->id }}" {{ $branch->id == $branch_id ? 'selected' : '' }}>
-                          {{ $branch->name }}
-                      </option>
-                    @endforeach
-                  </select>
-                  <label class="form-label">Branch <span class="text-danger">*</span></label>
+            <div class="col-6 mt-2">
+                <div class="chosen-floating mb-3" wire:key="branch-select-container-{{ $city_id }}">
+                    <select id="branch_select" class="form-select">
+                        <option value=""></option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ $branch->id == $branch_id ? 'selected' : '' }}>
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <label class="chosen-label">
+                        Branch <span class="text-danger">*</span>
+                    </label>
                 </div>
-                @error('branch_id')
-                <p class="text-danger inputerror mt-1">{{ $message }}</p>
-                @enderror
-              </div>
+            </div>
               
             </div>
           </div>
@@ -156,26 +157,36 @@
 
 @section('page-script')
 <style>
-  /* Align chosen selectors exactly with floating outline designs */
-  .unified-chosen-parent .chosen-container-single .chosen-single {
-      height: 50px !important;
-      line-height: 40px !important;
-      background: transparent !important;
-      border: 2px solid #dee2e6 !important;
-      border-radius: 0.375rem !important;
-      padding-left: 12px !important;
-  }
-  .unified-chosen-parent.form-floating-outline label {
-      transform: scale(0.85) translateY(-1.4rem) !important;
-      background-color: #fff !important;
-      padding-left: 4px !important;
-      padding-right: 4px !important;
-      z-index: 5 !important;
-  }
+  .chosen-floating{
+    position: relative;
+}
+
+.chosen-floating .chosen-container{
+    width:100% !important;
+}
+
+.chosen-floating .chosen-container-single .chosen-single{
+    height:45px !important;
+    line-height:45px !important;
+    border:1px solid #d9dee3 !important;
+    border-radius:7px !important;
+    background:#fff !important;
+    padding-left:12px !important;
+}
+
+.chosen-floating .chosen-label{
+    position:absolute;
+    top:-10px;
+    left:12px;
+    background:#fff;
+    padding:0 5px;
+    font-size:.75rem;
+    color: #6c757d;
+    z-index:10;
+    pointer-events:none;
+}
 </style>
 
-<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
 <script>
   function updateImage(event, name) {
     const fileInput = event.target;
@@ -204,19 +215,28 @@
 
   var jq = $.noConflict();
 
-  function initDropdowns() {
-      // Initialize City + State search dropdown
+  function initCityDropdown() {
       let citySelect = jq("#city_select");
-      citySelect.chosen({ width: "100%", search_contains: true });
-      citySelect.trigger("chosen:updated");
-
+      
+      // Initialize if not already initialized
+      if (!citySelect.data("chosen")) {
+          citySelect.chosen({ width: "100%", search_contains: true });
+      }
+      
       citySelect.off('change').on('change', function () {
           let selectedCity = jq(this).val();
           @this.set('city_id', selectedCity);
       });
+  }
 
-      // Initialize Branch dropdown
+  function initBranchDropdown() {
       let branchSelect = jq("#branch_select");
+      
+      // Always clear out any dead Chosen instances lingering on re-rendered DOM elements
+      if (branchSelect.data("chosen")) {
+          branchSelect.chosen("destroy");
+      }
+
       branchSelect.chosen({ width: "100%", search_contains: true });
       branchSelect.trigger("chosen:updated");
 
@@ -227,11 +247,14 @@
   }
 
   document.addEventListener("livewire:init", function () {
-      initDropdowns();
+      // First Load execution
+      initCityDropdown();
+      initBranchDropdown();
 
-      // Catch subsequent virtual renders safely
+      // Trigger re-initialization securely when Livewire morphs structural options
       Livewire.hook('morph.updated', () => {
-          initDropdowns();
+          initCityDropdown();
+          initBranchDropdown();
       });
   });
 </script>

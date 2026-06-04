@@ -238,8 +238,6 @@
     </div>
 </div>
 @section('page-script')
-   <link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-  <script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
   <script>
     var jq = $.noConflict();
     console.log("Selected Rider:", jq);

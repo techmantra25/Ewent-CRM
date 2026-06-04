@@ -24,4 +24,8 @@ class ExchangeVehicle extends Model
     public function order(){
         return $this->belongsTo(Order::class,'order_id','id');
     }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

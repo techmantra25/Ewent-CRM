@@ -31,7 +31,10 @@ class MasterSubscription extends Component
 
     public $filterCities = [];
     public $filterBranches = [];
-    
+
+    public $preselectedBranchId = null;
+    public $preselectedTab = 1;
+
     protected function rules()
     {
         return [
@@ -67,6 +70,9 @@ class MasterSubscription extends Component
 
     public function mount()
     {
+        $this->preselectedBranchId = request()->branch_id;
+        $this->preselectedTab = request()->tab ?? 1;
+
         $this->models = Product::where('status', 1)
             ->orderBy('title')
             ->get();
@@ -80,6 +86,27 @@ class MasterSubscription extends Component
 
         $this->branches = collect();
         $this->filterBranches = collect();
+
+        if ($this->preselectedBranchId) {
+
+            $branch = Branch::with('city')->find($this->preselectedBranchId);
+
+            if ($branch) {
+
+                $this->active_tab = $this->preselectedTab;
+
+                $this->city_id = $branch->city_id;
+
+                $this->branches = Branch::where('city_id', $branch->city_id)
+                    ->where('status', 1)
+                    ->orderBy('name')
+                    ->get();
+
+                $this->branch_id = $branch->id;
+
+                $this->dispatch('subscription-edit-loaded');
+            }
+        }
     }
 
     public function updatedFilterCityId($value)

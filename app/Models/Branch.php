@@ -22,4 +22,9 @@ class Branch extends Model
     {
         return $this->hasMany(Admin::class, 'branch_id');
     }
+
+    public function rentalPrices()
+    {
+        return $this->hasMany(RentalPrice::class, 'branch_id');
+    }
 }

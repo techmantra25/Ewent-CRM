@@ -30,4 +30,8 @@ class Stock extends Model
     {
         return $this->hasMany(AsignedVehicle::class, 'vehicle_id', 'id');
     }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

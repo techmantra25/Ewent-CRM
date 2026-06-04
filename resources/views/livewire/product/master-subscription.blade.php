@@ -36,10 +36,11 @@
                         <div class="row">
 
                            {{-- City Filter --}}
-                            <div class="col-lg-3">
-                                <div wire:ignore class="chosen-wrapper">
+                           <div class="col-lg-3">
+                                <div wire:ignore class="chosen-floating">
                                     <select id="city_filter_search" class="form-select">
-                                        <option value="">Search City or State...</option>
+                                        <option value=""></option>
+
                                         @foreach($filterCities as $city)
                                             <option value="{{ $city->id }}" @if($filter_city_id == $city->id) selected @endif>
                                                 {{ $city->name }}
@@ -49,23 +50,34 @@
                                             </option>
                                         @endforeach
                                     </select>
+
+                                    <label class="chosen-label">
+                                        City / State
+                                    </label>
                                 </div>
                             </div>
-
                             {{-- Branch Filter --}}
-                            <div class="col-lg-3">
-                                <div wire:ignore class="chosen-wrapper" wire:key="branch-search-filter-container-{{ count($filterBranches) }}">
+                           <div class="col-lg-3">
+                                <div wire:ignore
+                                    wire:key="branch-search-filter-container-{{ count($filterBranches) }}"
+                                    class="chosen-floating">
+
                                     <select id="branch_filter_search" class="form-select">
-                                        <option value="">All Branches</option>
+                                        <option value=""></option>
+
                                         @foreach($filterBranches as $branch)
-                                            <option value="{{ $branch->id }}" @if($filter_branch_id == $branch->id) selected @endif>
+                                            <option value="{{ $branch->id }}"
+                                                @if($filter_branch_id == $branch->id) selected @endif>
                                                 {{ $branch->name }}
                                             </option>
                                         @endforeach
                                     </select>
+
+                                    <label class="chosen-label">
+                                        Branch
+                                    </label>
                                 </div>
                             </div>
-
                             {{-- Type --}}
                             <div class="col-lg-2">
                                 <div class="form-floating form-floating-outline mb-5 fv-plugins-icon-container">
@@ -166,9 +178,9 @@
 
                                     {{-- City --}}
                                     <div class="col-md-6">
-                                        <div wire:ignore class="chosen-wrapper">
+                                        <div wire:ignore class="chosen-floating">
                                             <select id="city_filter_create" class="form-select">
-                                                <option value="">Search City or State...</option>
+                                                <option value=""></option>
 
                                                 @foreach($cities as $city)
                                                     <option value="{{ $city->id }}"
@@ -180,21 +192,35 @@
                                                     </option>
                                                 @endforeach
                                             </select>
+
+                                            <label class="chosen-label">
+                                                City / State <span class="text-danger">*</span>
+                                            </label>
                                         </div>
                                     </div>
 
                                     {{-- Branch Create --}}
                                     <div class="col-md-6">
-                                        <div wire:ignore wire:key="branch-create-container-{{ count($branches) }}" class="chosen-wrapper">
+                                        <div wire:ignore
+                                            wire:key="branch-create-container-{{ count($branches) }}"
+                                            class="chosen-floating">
+
                                             <select id="branch_filter_create" class="form-select">
-                                                <option value="">Select Branch</option>
+                                                <option value=""></option>
+
                                                 @foreach($branches as $branch)
-                                                    <option value="{{ $branch->id }}" {{ $branch_id == $branch->id ? 'selected' : '' }}>
+                                                    <option value="{{ $branch->id }}"
+                                                        {{ $branch_id == $branch->id ? 'selected' : '' }}>
                                                         {{ $branch->name }}
                                                     </option>
                                                 @endforeach
                                             </select>
+
+                                            <label class="chosen-label">
+                                                Branch <span class="text-danger">*</span>
+                                            </label>
                                         </div>
+
                                         @error('branch_id')
                                             <span class="text-danger">{{ $message }}</span>
                                         @enderror
@@ -278,9 +304,9 @@
                             <div class="row">
                                 {{-- City --}}
                                 <div class="col-md-6">
-                                    <div wire:ignore class="chosen-wrapper">
+                                    <div wire:ignore class="chosen-floating">
                                         <select id="city_filter_edit" class="form-select">
-                                            <option value="">Search City or State...</option>
+                                            <option value=""></option>
 
                                             @foreach($cities as $city)
                                                 <option value="{{ $city->id }}"
@@ -292,21 +318,34 @@
                                                 </option>
                                             @endforeach
                                         </select>
+
+                                        <label class="chosen-label">
+                                            City / State <span class="text-danger">*</span>
+                                        </label>
                                     </div>
                                 </div>
-
                                 {{-- Branch Edit --}}
-                                <div class="col-md-6">
-                                    <div wire:ignore wire:key="branch-edit-container-{{ count($branches) }}" class="chosen-wrapper">
+                               <div class="col-md-6">
+                                    <div wire:ignore
+                                        wire:key="branch-edit-container-{{ count($branches) }}"
+                                        class="chosen-floating">
+
                                         <select id="branch_filter_edit" class="form-select">
-                                            <option value="">Select Branch</option>
+                                            <option value=""></option>
+
                                             @foreach($branches as $branch)
-                                                <option value="{{ $branch->id }}" {{ $branch_id == $branch->id ? 'selected' : '' }}>
+                                                <option value="{{ $branch->id }}"
+                                                    {{ $branch_id == $branch->id ? 'selected' : '' }}>
                                                     {{ $branch->name }}
                                                 </option>
                                             @endforeach
                                         </select>
+
+                                        <label class="chosen-label">
+                                            Branch <span class="text-danger">*</span>
+                                        </label>
                                     </div>
+
                                     @error('branch_id')
                                         <span class="text-danger">{{ $message }}</span>
                                     @enderror
@@ -381,8 +420,41 @@
     </div>
 </div>
 @section('page-script')
-<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
+<style>
+    .chosen-floating {
+        position: relative;
+    }
+
+    .chosen-floating .chosen-container {
+        width: 100% !important;
+    }
+
+    .chosen-floating .chosen-single {
+        height: 48px !important;
+        line-height: 48px !important;
+        border: 2px solid #d9dee3 !important;
+        border-radius: 7px !important;
+        background: #fff !important;
+        padding-left: 12px !important;
+        box-shadow: none !important;
+    }
+
+    .chosen-floating .chosen-label {
+        position: absolute;
+        top: -10px;
+        left: 12px;
+        background: #fff;
+        padding: 0 5px;
+        font-size: 12px;
+        color: #666;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .chosen-floating .chosen-search input {
+        height: 35px !important;
+    }
+</style>
 
 <script>
     var jq = $.noConflict();
