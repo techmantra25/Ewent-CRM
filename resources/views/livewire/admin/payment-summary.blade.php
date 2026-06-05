@@ -27,6 +27,27 @@
     .summary-card {
       min-height: 100px;
     }
+
+    .chosen-container {
+        min-width: 150px !important;
+    }
+
+    .chosen-container-single .chosen-single {
+        height: 40px !important;
+        line-height: 40px !important;
+        border: 2px solid #d2d6da !important;
+        border-radius: 0.5rem !important;
+        background: #fff !important;
+        box-shadow: none !important;
+    }
+
+    .chosen-container-single .chosen-single span {
+        font-size: 14px;
+    }
+
+    .chosen-container .chosen-drop {
+        border-radius: 0.5rem;
+    }
   </style>
 
   <!-- Summary Cards -->
@@ -113,11 +134,41 @@
         <div class="card my-4">
           <div class="card-header pb-0">
             <div class="row">
-                <div class="col-lg-2 col-2"></div>
-                
-                <div class="col-lg-10 col-10 my-auto text-end">
-                    <div class="d-flex align-items-center justify-content-end flex-wrap gap-2">
-                      <div style="max-width: 250px;
+                <div class="col-lg-12 col-12 my-auto">
+                    <div class="d-flex align-items-center justify-content-end flex-wrap gap-1">
+                      <div style="max-width: 180px; margin-bottom: 20px;"
+                          class="text-start"
+                          wire:ignore
+                          wire:key="payment-city-dropdown">
+                        <label class="form-label small mb-1">City / State </label>
+                        <select id="payment_city_filter"
+                            class="form-select border border-2 p-2 custom-input-sm">
+                            <option value="">Select</option>
+                            @foreach($cities as $city)
+                                <option value="{{ $city->id }}">
+                                     {{ $city->name }} ({{ $city->state->name ?? '' }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div style="max-width: 180px; margin-bottom: 20px;"
+                        class="text-start"
+                        wire:ignore
+                        wire:key="payment-branch-dropdown-{{ $city_id }}">
+                        <label class="form-label small mb-1">Branch</label>
+                        <select id="payment_branch_filter"
+                            class="form-select border border-2 p-2 custom-input-sm">
+                            <option value="">Select</option>
+
+                            @foreach($branch_list as $branch)
+                                <option value="{{ $branch->id }}">
+                                    {{ $branch->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                      <div style="max-width: 180px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
                                  <label for="startDate" class="form-label small mb-1">Models</label>
                             <select
@@ -129,13 +180,13 @@
                             </select>
                         </div>
                         <!-- Start Date -->
-                        <div style="max-width: 250px;
+                        <div style="max-width: 150px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
                             <label for="startDate" class="form-label small mb-1">Start Date</label>
                             <input type="date" id="startDate" wire:model="start_date" class="form-control border-2 p-2 custom-input-sm" wire:change="updateDate('start_date', $event.target.value)">
                         </div>
                             
-                        <div style="max-width: 250px;
+                        <div style="max-width: 150px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
                             <label for="endDate" class="form-label small mb-1">End Date</label>
                             <input type="date" id="endDate" wire:model="end_date" class="form-control border-2 p-2 custom-input-sm" wire:change="updateDate('end_date', $event.target.value)">
@@ -269,3 +320,42 @@
     <div class="loader"></div>
   </div>
 </div>
+@section('page-script')
+<script>
+  // Ensure we avoid conflicts if multiple jQuery versions exist
+  var jq = $.noConflict();
+
+  function initPaymentFilters() {
+      // Initialize City Filter
+      jq('#payment_city_filter').chosen({
+          width: '100%',
+          search_contains: true
+      }).off('change').on('change', function () {
+          // Explicitly grab the component instance and send data back to Livewire
+          @this.call('FilterCity', jq(this).val());
+      });
+
+      // Initialize Branch Filter
+      jq('#payment_branch_filter').chosen({
+          width: '100%',
+          search_contains: true
+      }).off('change').on('change', function () {
+          @this.call('FilterBranch', jq(this).val());
+      });
+  }
+
+  // Bind to Livewire hooks
+  document.addEventListener('livewire:init', function () {
+      
+      // First-time execution on page load
+      initPaymentFilters();
+
+      // Fire right after Livewire finishes updating any piece of the DOM
+      Livewire.hook('morph.updated', () => {
+          // Force Chosen to recognize newly rendered HTML select changes
+          jq('#payment_city_filter, #payment_branch_filter').trigger('chosen:updated');
+          initPaymentFilters();
+      });
+  });
+</script>
+@endsection

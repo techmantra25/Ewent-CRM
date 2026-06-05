@@ -46,10 +46,10 @@
                         
                         <div class="col-lg-2 col-6 my-auto mb-2 list-chosen-wrapper" wire:ignore>
                             <select id="vehicle_city_filter" class="form-select border border-2 p-2 custom-input-sm">
-                                <option value="">State / City</option>
+                                <option value="">City / State</option>
                                 @foreach($cities as $city)
                                     <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
-                                        {{ $city->state->name ?? '' }} ({{ $city->name }})
+                                         {{ $city->name }}  ({{ $city->state->name ?? '' }})
                                     </option>
                                 @endforeach
                             </select>

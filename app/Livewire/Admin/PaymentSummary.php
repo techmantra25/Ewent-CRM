@@ -4,6 +4,8 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use App\Models\Stock;
+use App\Models\City;
+use App\Models\Branch;
 use App\Models\Product;
 use App\Models\PaymentItem;
 use Maatwebsite\Excel\Facades\Excel;
@@ -16,8 +18,19 @@ class PaymentSummary extends Component
     public $data = [];
     public $expandedRows = [];
     public $model,$model_id,$vehicle_id,$start_date,$end_date;
+    public $city_id;
+    public $branch;
+    public $cities = [];
+    public $branch_list = [];
+    public $branches = [];
+
     public function mount($model_id = null,$vehicle_id = null){
-        
+
+        $this->branches = get_branches() ?? [];
+
+        if (count($this->branches) === 1) {
+            $this->branch = $this->branches[0];
+        }
         if($model_id){
             $this->model =Product::find($model_id);
             if(!$this->model){
@@ -35,6 +48,13 @@ class PaymentSummary extends Component
         }
         
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
+
+        $this->cities = City::with('state')
+            ->where('status',1)
+            ->orderBy('name')
+            ->get();
+
+        $this->branch_list = [];
     }
 
     public function FilterModel($value){
@@ -42,8 +62,34 @@ class PaymentSummary extends Component
         $this->model =Product::find($value);
         $this->model_id =$value;
     }
+    
+    public function FilterCity($value)
+    {
+        $this->city_id = $value;
+
+        $this->branch = null;
+
+        $this->branch_list = Branch::where('city_id', $value)
+            ->where('status',1)
+            ->get();
+
+        $this->dispatch('chosen-updated');
+    }
+
+    public function FilterBranch($value)
+    {
+        $this->branch = $value;
+    }
+
     public function resetPageField(){
-        $this->reset(['vehicle_id','model_id','data','model','vehicle', 'start_date', 'end_date']);
+        $this->reset(['vehicle_id','model_id','data','model','vehicle', 'start_date', 'end_date', 'branch', 'city_id']);
+        if (count($this->branches) === 1) {
+            $this->branch = $this->branches[0];
+        }
+
+        $this->branch_list = [];
+
+        $this->dispatch('chosen-updated');
     }
     public function toggleRow($key)
     {
@@ -71,6 +117,13 @@ class PaymentSummary extends Component
         ->when($this->model_id, function ($query) {
             return $query->where('product_id', $this->model_id);
         })
+       ->when($this->branch, function ($query) {
+            $query->whereHas('stock', function ($q) {
+                $q->where('branch_id', $this->branch);
+            });
+        }, function ($query) {
+            $query->whereIn('branch_id', $this->branches);
+        })
         ->where('type', 'deposit')
         ->sum('amount');
     }
@@ -87,6 +140,11 @@ class PaymentSummary extends Component
         ->when($this->model_id, function ($query) {
             return $query->where('product_id', $this->model_id);
         })
+       ->when($this->branch, function ($query) {
+            $query->where('branch_id', $this->branch);
+        }, function ($query) {
+            $query->whereIn('branch_id', $this->branches);
+        })
         ->where('type', 'rental')
         ->sum('amount');
     }
@@ -99,6 +157,11 @@ class PaymentSummary extends Component
                     $this->end_date . ' 23:59:59'
                 ]);
             }
+            if ($this->branch) {
+                $query->where('branch_id', $this->branch);
+            } else {
+                $query->whereIn('branch_id', $this->branches);
+            }
         })->when($this->model_id, function ($query) {
             return $query->where('id', $this->model_id);
         })->get();
@@ -106,41 +169,49 @@ class PaymentSummary extends Component
       $this->reset(['data']);
         foreach($results as $key=>$item){
        
-           $vehicles = $item->stock_item
+            $vehicles = $item->stock_item
+            ->when($this->branch, function ($query) {
+                $query->where('branch_id', $this->branch);
+            }, function ($query) {
+                $query->whereIn('branch_id', $this->branches);
+            })
             ->when($this->vehicle_id, function ($query) {
                 return $query->where('id', $this->vehicle_id);
             })->pluck('id')->toArray();
+
+            $modelPayments = PaymentItem::where('product_id', $item->id)
+                ->when($this->branch, function ($query) {
+                    $query->where('branch_id', $this->branch);
+                }, function ($query) {
+                    $query->whereIn('branch_id', $this->branches);
+                })
+                ->when($this->start_date && $this->end_date, function ($query) {
+                    $query->whereBetween('created_at', [
+                        $this->start_date . ' 00:00:00',
+                        $this->end_date . ' 23:59:59'
+                    ]);
+                })
+                ->get();
             
             $this->data[$key] =[
                 'model_id'=>$item->id,
                 'title'=>$item->title,
                 'types'=>$item->types,
                 'image'=>$item->image,
-                'deposit_amount'=>$item->payment_item->where('type', 'deposit')
-                ->when($this->start_date && $this->end_date, function ($query) {
-                    return $query->whereBetween('created_at', [
-                        $this->start_date . ' 00:00:00', 
-                        $this->end_date . ' 23:59:59'
-                    ]);
-                })
-                ->sum('amount'),
-                'rental_amount'=>$item->payment_item->where('type', 'rental')->when($this->start_date && $this->end_date, function ($query) {
-                    return $query->whereBetween('created_at', [
-                        $this->start_date . ' 00:00:00', 
-                        $this->end_date . ' 23:59:59'
-                    ]);
-                })->sum('amount'),
-                'total_amount'=>$item->payment_item->when($this->start_date && $this->end_date, function ($query) {
-                    return $query->whereBetween('created_at', [
-                        $this->start_date . ' 00:00:00', 
-                        $this->end_date . ' 23:59:59'
-                    ]);
-                })->sum('amount'),
+                'deposit_amount' => $modelPayments->where('type', 'deposit')->sum('amount'),
+                'rental_amount'  => $modelPayments->where('type', 'rental')->sum('amount'),
+                'total_amount'   => $modelPayments->sum('amount'),
                 'vehicles'=>[]
             ];
 
             foreach($vehicles as $k=>$vehicle){
-                $PaymentItem = PaymentItem::with('stock')->when($this->start_date && $this->end_date, function ($query) {
+                $PaymentItem = PaymentItem::with('stock')
+                ->when($this->branch, function ($query) {
+                    $query->where('branch_id', $this->branch);
+                }, function ($query) {
+                    $query->whereIn('branch_id', $this->branches);
+                })
+                ->when($this->start_date && $this->end_date, function ($query) {
                     return $query->whereBetween('created_at', [
                         $this->start_date . ' 00:00:00', 
                         $this->end_date . ' 23:59:59'
