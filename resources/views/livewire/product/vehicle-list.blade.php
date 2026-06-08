@@ -82,7 +82,7 @@
                             <select class="form-select border border-2 p-2 custom-input-sm"
                                     wire:model.live="customer_type"
                                     wire:change="FilterCustomerType($event.target.value)">
-                                <option value="">Type</option>
+                                <option value="">All Type</option>
                                 <option value="B2B">B2B</option>
                                 <option value="B2C">B2C</option>
                             </select>

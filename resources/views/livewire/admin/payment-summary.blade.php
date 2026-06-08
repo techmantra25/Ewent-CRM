@@ -136,41 +136,34 @@
             <div class="row">
                 <div class="col-lg-12 col-12 my-auto">
                     <div class="d-flex align-items-center justify-content-end flex-wrap gap-1">
-                      <div style="max-width: 180px; margin-bottom: 20px;"
+                      <div style="max-width: 230px; margin-bottom: 20px;"
                           class="text-start"
-                          wire:ignore
-                          wire:key="payment-city-dropdown">
-                        <label class="form-label small mb-1">City / State </label>
-                        <select id="payment_city_filter"
-                            class="form-select border border-2 p-2 custom-input-sm">
-                            <option value="">Select</option>
-                            @foreach($cities as $city)
-                                <option value="{{ $city->id }}">
-                                     {{ $city->name }} ({{ $city->state->name ?? '' }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                          wire:ignore>
+                          <label class="form-label small mb-1">Branch</label>
+                          <select id="payment_branch_filter"
+                              class="form-select border border-2 p-2 custom-input-sm">
+                              <option value="">Select</option>
 
-                    <div style="max-width: 180px; margin-bottom: 20px;"
-                        class="text-start"
-                        wire:ignore
-                        wire:key="payment-branch-dropdown-{{ $city_id }}">
-                        <label class="form-label small mb-1">Branch</label>
-                        <select id="payment_branch_filter"
-                            class="form-select border border-2 p-2 custom-input-sm">
-                            <option value="">Select</option>
-
-                            @foreach($branch_list as $branch)
-                                <option value="{{ $branch->id }}">
-                                    {{ $branch->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                              @foreach($branch_list as $branch)
+                                  <option value="{{ $branch->id }}">
+                                      {{ $branch->name }} | {{ $branch->branch_code }}
+                                  </option>
+                              @endforeach
+                          </select>
+                      </div>
+                      <div style="max-width: 200px;
+                            margin-bottom: 20px;" class="text-start text-uppercase">
+                                 <label class="form-label small mb-1">Type</label>
+                            <select
+                                class="form-select border border-2 p-2 custom-input-sm" wire:change="FilterType($event.target.value)">
+                                <option value="">Select Type</option>
+                                <option value="B2B">B2B</option>
+                                <option value="B2B">B2C</option>
+                            </select>
+                      </div>
                       <div style="max-width: 180px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
-                                 <label for="startDate" class="form-label small mb-1">Models</label>
+                                 <label class="form-label small mb-1">Models</label>
                             <select
                                 class="form-select border border-2 p-2 custom-input-sm" wire:model="model" wire:change="FilterModel($event.target.value)">
                                 <option value="" selected hidden>Select model</option>
@@ -322,20 +315,10 @@
 </div>
 @section('page-script')
 <script>
-  // Ensure we avoid conflicts if multiple jQuery versions exist
   var jq = $.noConflict();
 
   function initPaymentFilters() {
-      // Initialize City Filter
-      jq('#payment_city_filter').chosen({
-          width: '100%',
-          search_contains: true
-      }).off('change').on('change', function () {
-          // Explicitly grab the component instance and send data back to Livewire
-          @this.call('FilterCity', jq(this).val());
-      });
 
-      // Initialize Branch Filter
       jq('#payment_branch_filter').chosen({
           width: '100%',
           search_contains: true
@@ -344,16 +327,10 @@
       });
   }
 
-  // Bind to Livewire hooks
   document.addEventListener('livewire:init', function () {
-      
-      // First-time execution on page load
       initPaymentFilters();
-
-      // Fire right after Livewire finishes updating any piece of the DOM
       Livewire.hook('morph.updated', () => {
-          // Force Chosen to recognize newly rendered HTML select changes
-          jq('#payment_city_filter, #payment_branch_filter').trigger('chosen:updated');
+          jq('#payment_branch_filter').trigger('chosen:updated');
           initPaymentFilters();
       });
   });

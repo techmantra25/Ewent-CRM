@@ -16,6 +16,11 @@ class PaymentItem extends Model
     public function payment(){
         return $this->belongsTo(Product::class, 'product_id', 'id');
     }
+
+    public function paymentDetail()
+    {
+        return $this->belongsTo(Payment::class, 'payment_id', 'id');
+    }
     public function stock(){
         return $this->belongsTo(Stock::class, 'vehicle_id', 'id');
     }

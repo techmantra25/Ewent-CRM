@@ -4,7 +4,6 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use App\Models\Stock;
-use App\Models\City;
 use App\Models\Branch;
 use App\Models\Product;
 use App\Models\PaymentItem;
@@ -18,11 +17,11 @@ class PaymentSummary extends Component
     public $data = [];
     public $expandedRows = [];
     public $model,$model_id,$vehicle_id,$start_date,$end_date;
-    public $city_id;
     public $branch;
     public $cities = [];
     public $branch_list = [];
     public $branches = [];
+    public $user_type;
 
     public function mount($model_id = null,$vehicle_id = null){
 
@@ -48,13 +47,7 @@ class PaymentSummary extends Component
         }
         
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
-
-        $this->cities = City::with('state')
-            ->where('status',1)
-            ->orderBy('name')
-            ->get();
-
-        $this->branch_list = [];
+        $this->branch_list = Branch::where('status',1)->orderBy('name', 'ASC')->get();
     }
 
     public function FilterModel($value){
@@ -63,26 +56,19 @@ class PaymentSummary extends Component
         $this->model_id =$value;
     }
     
-    public function FilterCity($value)
-    {
-        $this->city_id = $value;
-
-        $this->branch = null;
-
-        $this->branch_list = Branch::where('city_id', $value)
-            ->where('status',1)
-            ->get();
-
-        $this->dispatch('chosen-updated');
-    }
 
     public function FilterBranch($value)
     {
         $this->branch = $value;
     }
 
+    public function FilterType($value)
+    {
+        $this->user_type = $value;
+    }
+
     public function resetPageField(){
-        $this->reset(['vehicle_id','model_id','data','model','vehicle', 'start_date', 'end_date', 'branch', 'city_id']);
+        $this->reset(['vehicle_id','model_id','data','model','vehicle', 'start_date', 'end_date', 'branch']);
         if (count($this->branches) === 1) {
             $this->branch = $this->branches[0];
         }
@@ -111,6 +97,11 @@ class PaymentSummary extends Component
                 $this->end_date . ' 23:59:59'
             ]);
         })
+       ->when($this->user_type, function ($query) {
+            $query->whereHas('paymentDetail.user', function ($q) {
+                $q->where('type', $this->user_type);
+            });
+        })
         ->when($this->vehicle_id, function ($query) {
             return $query->where('vehicle_id', $this->vehicle_id);
         })
@@ -133,6 +124,11 @@ class PaymentSummary extends Component
                 $this->start_date . ' 00:00:00', 
                 $this->end_date . ' 23:59:59'
             ]);
+        })
+        ->when($this->user_type, function ($query) {
+            $query->whereHas('paymentDetail.user', function ($q) {
+                $q->where('type', $this->user_type);
+            });
         })
         ->when($this->vehicle_id, function ($query) {
             return $query->where('vehicle_id', $this->vehicle_id);
@@ -157,6 +153,11 @@ class PaymentSummary extends Component
                     $this->end_date . ' 23:59:59'
                 ]);
             }
+            if ($this->user_type) {
+                $query->whereHas('paymentDetail.user', function ($q) {
+                    $q->where('type', $this->user_type);
+                });
+            }
             if ($this->branch) {
                 $query->where('branch_id', $this->branch);
             } else {
@@ -180,6 +181,11 @@ class PaymentSummary extends Component
             })->pluck('id')->toArray();
 
             $modelPayments = PaymentItem::where('product_id', $item->id)
+                ->when($this->user_type, function ($query) {
+                    $query->whereHas('paymentDetail.user', function ($q) {
+                        $q->where('type', $this->user_type);
+                    });
+                })
                 ->when($this->branch, function ($query) {
                     $query->where('branch_id', $this->branch);
                 }, function ($query) {
@@ -206,6 +212,11 @@ class PaymentSummary extends Component
 
             foreach($vehicles as $k=>$vehicle){
                 $PaymentItem = PaymentItem::with('stock')
+                ->when($this->user_type, function ($query) {
+                    $query->whereHas('paymentDetail.user', function ($q) {
+                        $q->where('type', $this->user_type);
+                    });
+                })
                 ->when($this->branch, function ($query) {
                     $query->where('branch_id', $this->branch);
                 }, function ($query) {

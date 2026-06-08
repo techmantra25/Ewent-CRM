@@ -119,7 +119,7 @@
                                                 <!-- Type -->
                                                 <label>Rider Type</label>
                                                 <select wire:model="type" class="form-control mb-3">
-                                                    <option value="all">All</option>
+                                                    <option value="">All Type</option>
                                                     <option value="B2B">B2B</option>
                                                     <option value="B2C">B2C</option>
                                                 </select>
