@@ -17,7 +17,7 @@ class VehicleList extends Component
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';
-    public $model,$branch,$overdue_days;
+    public $model,$branch,$overdue_days,$rider_type;
     public $search = '';
     public $active_tab = 1;
     public $models = [];
@@ -79,6 +79,9 @@ class VehicleList extends Component
     }
     public function FilterModel($value){
         $this->model =$value;
+    }
+    public function FilterRiderType($value){
+        $this->rider_type = $value;
     }
     public function FilterOverdue($value){
         $this->overdue_days =$value;
@@ -167,6 +170,21 @@ class VehicleList extends Component
                     $uq->where('name', 'like', $searchTerm)
                     ->orWhere('mobile', 'like', $searchTerm)
                     ->orWhere('email', 'like', $searchTerm);
+                });
+            });
+        })
+        ->when($this->rider_type, function ($query) {
+
+            $rider_type = $this->rider_type;
+
+            $query->where(function ($q) use ($rider_type) {
+
+                $q->whereHas('assignedVehicle.user', function ($aq) use ($rider_type) {
+                    $aq->where('user_type', $rider_type);
+                })
+
+                ->orWhereHas('overdueVehicle.user', function ($oq) use ($rider_type) {
+                    $oq->where('user_type', $rider_type);
                 });
 
             });

@@ -169,7 +169,7 @@
                               <span class="d-none d-sm-block">
                                 <i class="tf-icons ri-user-3-line me-1_5"></i>
                                 </i> Overdue <span
-                                  class="badge rounded-pill badge-center h-px-20 w-px-50 bg-label-danger ms-1_5 pt-50">{{count($overdue_vehicles)}}</span>
+                                  class="badge rounded-pill badge-center h-px-20 w-px-50 bg-label-danger ms-1_5 pt-50">{{$overdue_vehicles->total()}}</span>
                                 </span>
                                 <i class="ri-user-3-line ri-20px d-sm-none"></i>
                             </button>
@@ -559,9 +559,9 @@
         </div>
     </div>
 
-    <div class="loader-container" wire:loading>
+    {{-- <div class="loader-container" wire:loading>
         <div class="loader"></div>
-    </div>
+    </div> --}}
     <!-- Side Modal (Drawer) -->
 </div>
 @section('page-script')

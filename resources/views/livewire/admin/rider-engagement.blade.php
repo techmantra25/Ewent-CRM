@@ -1091,9 +1091,9 @@
         </div>
     </div>
 
-    <div class="loader-container" wire:loading>
+    {{-- <div class="loader-container" wire:loading>
         <div class="loader"></div>
-    </div>
+    </div> --}}
     <!-- Side Modal (Drawer) -->
     @if($isModalOpen)
     <div class="side-modal {{ $isModalOpen ? 'open' : '' }}">
