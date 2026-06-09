@@ -27,6 +27,16 @@
       .summary-card {
         min-height: 100px;
       }
+      .chosen-container {
+          min-width: 150px !important;
+      }
+
+      .chosen-container-single .chosen-single {
+          height: 40px !important;
+          line-height: 40px !important;
+          border: 2px solid #d2d6da !important;
+          border-radius: 0.5rem !important;
+      }
     </style>
   
     <!-- Summary Cards -->
@@ -87,6 +97,26 @@
                             <label for="vehicle" class="form-label small mb-1">Vehicle</label>
                             <input type="text" wire:model="vehicle_number" class="form-control border border-2 p-2 custom-input-sm" placeholder="Search by vehicle" wire:keyup="keyVehicle($event.target.value)">
                         </div>
+                        <div style="max-width:230px;margin-bottom:20px;"
+                              class="text-start"
+                              wire:ignore>
+
+                              <label class="form-label small mb-1">Branch</label>
+
+                              <select id="vehicle_branch_filter"
+                                      class="form-select border border-2 p-2 custom-input-sm">
+
+                                  <option value="">Select</option>
+
+                                  @foreach($branch_list as $branch)
+                                      <option value="{{ $branch->id }}">
+                                          {{ $branch->name }} | {{ $branch->branch_code }}
+                                      </option>
+                                  @endforeach
+
+                              </select>
+
+                          </div>
                           <div style="max-width: 250px;
                               margin-bottom: 20px;" class="text-start text-uppercase">
                                    <label for="startDate" class="form-label small mb-1">Models</label>
@@ -282,4 +312,37 @@
       <div class="loader"></div>
     </div>
   </div>
+@section('page-script')
+<script>
+
+var jq = $.noConflict();
+
+function initVehicleFilters() {
+
+    jq('#vehicle_branch_filter')
+        .chosen({
+            width: '100%',
+            search_contains: true
+        })
+        .off('change')
+        .on('change', function () {
+            @this.call('FilterBranch', jq(this).val());
+        });
+}
+
+document.addEventListener('livewire:init', function () {
+
+    initVehicleFilters();
+
+    Livewire.hook('morph.updated', () => {
+
+        jq('#vehicle_branch_filter')
+            .trigger('chosen:updated');
+
+        initVehicleFilters();
+    });
+});
+
+</script>
+@endsection
   

@@ -151,16 +151,6 @@
                               @endforeach
                           </select>
                       </div>
-                      <div style="max-width: 200px;
-                            margin-bottom: 20px;" class="text-start text-uppercase">
-                                 <label class="form-label small mb-1">Type</label>
-                            <select
-                                class="form-select border border-2 p-2 custom-input-sm" wire:change="FilterType($event.target.value)">
-                                <option value="">Select Type</option>
-                                <option value="B2B">B2B</option>
-                                <option value="B2B">B2C</option>
-                            </select>
-                      </div>
                       <div style="max-width: 180px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
                                  <label class="form-label small mb-1">Models</label>
