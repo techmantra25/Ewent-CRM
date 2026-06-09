@@ -7,6 +7,7 @@ use App\Models\Organization;
 use Livewire\WithFileUploads;
 use Illuminate\Pagination\Paginator;
 use Livewire\WithPagination;
+use App\Models\Branch;
 use App\Models\OrganizationLog;
 use App\Models\OrganizationDiscount;
 use Illuminate\Support\Facades\Hash;
@@ -28,13 +29,16 @@ class AdminOrganizationIndex extends Component
     public $renewal_day;
     public $renewal_day_of_month;
     public $renewal_interval_days;
-
+    public $branch_id;
+    public $branches = [];
+    public $branch_search = null;   
 
      public function boot()
     {
         Paginator::useBootstrap();
     }
     public function mount(){
+        $this->branches = Branch::orderBy('name')->get();
     }
     public function searchButtonClicked()
     {
@@ -42,7 +46,7 @@ class AdminOrganizationIndex extends Component
     }
      public function resetSearch()
     {
-        $this->reset('search');     // Reset pagination
+        $this->reset('search', 'branch_search');     // Reset pagination
     }
      public function toggleStatus($id)
     {
@@ -62,6 +66,7 @@ class AdminOrganizationIndex extends Component
    public function saveOrganization()
     {
         $rules = [
+            'branch_id' => 'required|exists:branches,id',
             'name'   => 'required|string|max:255',
             'organization_id'  => 'nullable|string|unique:organizations,organization_id,' . $this->edit_id,
             'email'  => 'required|email|unique:organizations,email,' . $this->edit_id,
@@ -71,7 +76,7 @@ class AdminOrganizationIndex extends Component
             'rider_visibility_percentage' => 'required|numeric|min:0|max:99',
         ];
 
-        // 🔥 Fetch existing organization if updating
+        // Fetch existing organization if updating
         $org = $this->edit_id ? Organization::find($this->edit_id) : null;
 
         /*
@@ -148,7 +153,7 @@ class AdminOrganizationIndex extends Component
             $org = new Organization();
             $org->organization_id = $this->organization_id ?: makeOrganizationID();
         }
-
+        $org->branch_id = $this->branch_id;
         $org->name = $this->name;
         $org->email = $this->email;
         $org->mobile = $this->mobile;
@@ -269,6 +274,7 @@ class AdminOrganizationIndex extends Component
    
         $org = Organization::findOrFail($org_id);
 
+        $this->branch_id = $org->branch_id;
         $this->edit_id = $org->id;
         $this->organization_id = $org->organization_id;
         $this->name = $org->name;
@@ -295,13 +301,13 @@ class AdminOrganizationIndex extends Component
         $this->pan_file = null;
 
         $this->activeTab = 'create'; // switch to form
+        $this->dispatch('set-branch-dropdown', branchId: $this->branch_id);
+
     }
-
-
 
     public function resetForm()
     {
-        $this->reset(['edit_id', 'organization_id', 'name', 'email', 'mobile', 'password', 'street_address', 'city', 'state', 'pincode', 'image','subscription_type','renewal_day','renewal_day_of_month','renewal_interval_days','discount_percentage','rider_visibility_percentage']);
+        $this->reset(['edit_id', 'organization_id', 'name', 'email', 'mobile', 'password', 'street_address', 'city', 'state', 'pincode', 'image','subscription_type','renewal_day','renewal_day_of_month','renewal_interval_days','discount_percentage','rider_visibility_percentage', 'branch_id']);
          $this->activeTab = 'list';
     }
 
@@ -329,6 +335,9 @@ class AdminOrganizationIndex extends Component
                 ->orWhere('mobile', 'like', $searchTerm)
                 ->orWhere('email', 'like', $searchTerm);
             });
+        })
+        ->when($this->branch_search, function ($query) {
+            $query->where('branch_id', $this->branch_search);
         })
         ->orderBy('id', 'DESC')
         ->paginate(20);

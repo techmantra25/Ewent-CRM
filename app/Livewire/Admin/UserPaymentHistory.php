@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use App\Models\User;
+use App\Models\Branch;
 use App\Models\Payment;
 use App\Models\Order;
 use App\Models\PaymentItem;
@@ -25,7 +26,20 @@ class UserPaymentHistory extends Component
     public $transaction_details = [];
      public $page = 1;
     public $selected_rider,$selected_product_type,$selected_payment_status = 'completed',$start_date,$end_date,$export_type;
+    public $branch;
+    public $branches = [];
+    public $branch_list = [];
     public function mount(){
+
+        $this->branches = get_branches() ?? [];
+
+        if (count($this->branches) === 1) {
+            $this->branch = $this->branches[0];
+        }
+
+        $this->branch_list = Branch::where('status', 1)
+            ->orderBy('name', 'ASC')
+            ->get();
 
         $this->filterData = [
             'rider' => User::select('id', 'name')->orderBy('name', 'ASC')->get()->toArray(),
@@ -51,8 +65,19 @@ class UserPaymentHistory extends Component
         $this->selected_rider = $value;
         $this->resetPage();
     }
+    public function FilterBranch($value)
+    {
+        $this->branch = $value ?: null;
+        $this->resetPage();
+    }
     public function resetPageField(){
-        $this->reset(['selected_rider','selected_product_type','selected_payment_status','start_date','end_date','export_type']);
+        $this->reset(['selected_rider','selected_product_type','selected_payment_status','start_date','end_date','export_type','branch']);
+
+        if (count($this->branches) === 1) {
+            $this->branch = $this->branches[0];
+        }
+
+        $this->dispatch('chosen-updated');
     }
 
    public function toggleRow($key, $merchantTxnNo,$amount)
@@ -316,12 +341,16 @@ class UserPaymentHistory extends Component
             session()->flash('error', 'Please select export type');
                 return false;
         }
-        return Excel::download(new UserPaymentSummaryExport($this->selected_rider, $this->selected_product_type, $this->selected_payment_status, $this->start_date, $this->end_date,$this->export_type), 'user_payment_history.xlsx');
+        return Excel::download(new UserPaymentSummaryExport($this->branch, $this->selected_rider, $this->selected_product_type, $this->selected_payment_status, $this->start_date, $this->end_date,$this->export_type), 'user_payment_history.xlsx');
     }
 
     public function render()
     {
-        $data = Payment::whereHas('B2C_order')->when($this->selected_rider, function ($query) {
+        $data = Payment::whereHas('B2C_order')
+        ->when($this->branch, function ($query) {
+            $query->where('branch_id', $this->branch);
+        })
+        ->when($this->selected_rider, function ($query) {
             $query->where('user_id', $this->selected_rider);
         })
         ->when($this->selected_product_type, function ($query) {

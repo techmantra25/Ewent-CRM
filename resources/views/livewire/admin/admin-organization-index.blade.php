@@ -9,6 +9,16 @@
             font-size: 10px;
             padding: 5px 5px;
         }
+       .chosen-container {
+            min-width: 150px !important;
+        }
+
+        .chosen-container-single .chosen-single {
+            height: 40px !important;
+            line-height: 40px !important;
+            border: 2px solid #d2d6da !important;
+            border-radius: 0.5rem !important;
+        }
     </style>
     <div class="col-lg-12 d-flex justify-content-between">
         <div>
@@ -57,6 +67,16 @@
                             <div class="row">
                                 <div class="col-lg-12 d-flex justify-content-end my-auto">
                                     <div class="d-flex align-items-center">
+                                        <div class="ms-2" wire:ignore>
+                                            <select id="branchSearchSelect" class="form-control form-control-sm chosen-select">
+                                                <option value="">Branch</option>
+                                                @foreach($branches as $branch)
+                                                    <option value="{{ $branch->id }}">
+                                                        {{ $branch->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                         <input type="text" wire:model.debounce.300ms="search"
                                             class="form-control border border-2 p-2 custom-input-sm"
                                             placeholder="Search here...">
@@ -162,8 +182,7 @@
                                         <td class="align-middle text-start">
                                                 <i class="fa-solid fa-location-dot text-primary mb-1"></i>
                                                 <div class="fw-semibold">{{ $organization->street_address }}</div>
-                                                <div>{{ $organization->city }}, {{ $organization->state }}</div>
-                                                <div>{{ $organization->pincode }}</div>
+                                                <small><strong>Branch: </strong> {{ $organization->branch->name }}</small>
                                             </td>
 
                                             <td class="align-middle text-sm text-center">
@@ -292,6 +311,22 @@
                                         <div class="col-md-4 mb-3">
                                             <label class="form-label">Pincode</label>
                                             <input type="text" class="form-control form-control-sm" wire:model.defer="pincode" placeholder="Enter pincode here">
+                                        </div>
+                                        <div class="col-md-4 mb-3" wire:ignore>
+                                            <label class="form-label">Branch</label>
+
+                                            <select class="form-control form-control-sm chosen-select"
+                                                    id="branchSelect"
+                                                    wire:model="branch_id"
+                                                    wire:change="$set('branch_id', $event.target.value)">
+
+                                                <option value="">Select Branch</option>
+                                                @foreach($branches as $branch)
+                                                    <option value="{{ $branch->id }}" {{ (string)$branch->id === (string)$branch_id ? 'selected' : '' }}>
+                                                        {{ $branch->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -494,7 +529,107 @@
         }
     }
 }
-  
+ </script>
+<script>
+    var jq = $.noConflict();
+
+function initChosen() {
+    let $select = jq("#branchSelect");
+
+    if ($select.next('.chosen-container').length) {
+        $select.chosen("destroy");
+    }
+
+    $select.chosen({
+        width: "100%",
+        search_contains: true
+    });
+
+    // Sync changes back to Livewire
+    $select.off("change").on("change", function () {
+        @this.set('branch_id', jq(this).val());
+    });
+}
+
+document.addEventListener("livewire:init", function () {
+    let $select = jq("#branchSelect");
+
+    // Initialize on first load
+    initChosen();
+
+    // 1. Re-initialize and sync after ANY DOM morph change (handles tab switching)
+    Livewire.hook('morph.updated', () => {
+        let currentSelect = jq("#branchSelect");
+        
+        // If the tab changed and Chosen was stripped, re-init it
+        if (currentSelect.length && !currentSelect.next('.chosen-container').length) {
+            initChosen();
+        }
+        
+        // Keep Chosen UI synced with the component's backend state
+        let backendValue = @this.get('branch_id');
+        if (currentSelect.val() !== backendValue) {
+            currentSelect.val(backendValue).trigger("chosen:updated");
+        }
+    });
+
+    // 2. Catch the edit event with a tiny timeout to let the tab render
+    Livewire.on('set-branch-dropdown', (event) => {
+        // Livewire 3 safely extracts named parameters into an array or object structure
+        let data = Array.isArray(event) ? event[0] : event;
+        let targetId = data.branchId;
+
+        setTimeout(() => {
+            let currentSelect = jq("#branchSelect");
+            
+            // Re-init if missing due to tab switch
+            if (!currentSelect.next('.chosen-container').length) {
+                initChosen();
+            }
+            
+            currentSelect.val(targetId).trigger("chosen:updated");
+        }, 100); // 100ms allows the activeTab DOM morphing to complete
+    });
+});
+
+// branch search
+function initBranchSearchChosen() {
+    let $el = jq("#branchSearchSelect");
+
+    if ($el.next('.chosen-container').length) {
+        $el.chosen("destroy");
+    }
+
+    $el.chosen({
+        width: "180px",
+        search_contains: true
+    });
+
+    $el.off("change").on("change", function () {
+        @this.set('branch_search', jq(this).val());
+    });
+}
+
+document.addEventListener("livewire:init", function () {
+
+    initBranchSearchChosen();
+
+    Livewire.hook('commit', () => {
+        setTimeout(() => {
+            let $el = jq("#branchSearchSelect");
+
+            if (!$el.next('.chosen-container').length) {
+                initBranchSearchChosen();
+            }
+
+            let val = @this.get('branch_search');
+            if ($el.val() !== val) {
+                $el.val(val).trigger("chosen:updated");
+            }
+        }, 50);
+    });
+
+});
 </script>
 
 @endsection

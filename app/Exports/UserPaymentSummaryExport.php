@@ -12,10 +12,11 @@ class UserPaymentSummaryExport implements FromCollection, WithHeadings
     /**
     * @return \Illuminate\Support\Collection
     */
-    protected $selected_rider, $selected_product_type, $selected_payment_status, $start_date, $end_date, $export_type;
+    protected $branch, $selected_rider, $selected_product_type, $selected_payment_status, $start_date, $end_date, $export_type;
 
-    public function __construct($selected_rider, $selected_product_type, $selected_payment_status, $start_date, $end_date,$export_type)
+    public function __construct($branch,$selected_rider, $selected_product_type, $selected_payment_status, $start_date, $end_date,$export_type)
     {
+        $this->branch = $branch;
         $this->selected_rider = $selected_rider;
         $this->selected_product_type = $selected_product_type;
         $this->selected_payment_status = $selected_payment_status;
@@ -25,7 +26,11 @@ class UserPaymentSummaryExport implements FromCollection, WithHeadings
     }
     public function collection()
     {
-        $data = Payment::whereHas('B2C_order')->when($this->selected_rider, function ($query) {
+        $data = Payment::whereHas('B2C_order')
+            ->when($this->branch, function ($query) {
+                $query->where('branch_id', $this->branch);
+            })
+            ->when($this->selected_rider, function ($query) {
                 $query->where('user_id', $this->selected_rider);
             })
             ->when($this->export_type=="deposit", function ($query) {
@@ -53,6 +58,7 @@ class UserPaymentSummaryExport implements FromCollection, WithHeadings
             ->get()->map(function ($payment) {
             return [
                 'user_name' => $payment->user ? $payment->user->name : 'N/A', // User Name
+                'branch' => $payment->branch_id ? $payment->branch->name : 'N/A',
                 'product_name' => optional(optional($payment->order)->product)->title ?? 'N/A',
                 'order_type' => ucwords(str_replace('_', ' ', $payment->order_type)),
                 'payment_method' => ucwords($payment->payment_method),
@@ -155,6 +161,7 @@ class UserPaymentSummaryExport implements FromCollection, WithHeadings
         }else{
             return [
                 'Rider Name',
+                'Branch',
                 'Product',
                 'Order Type',
                 'Payment Method',

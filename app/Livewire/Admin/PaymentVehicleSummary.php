@@ -115,6 +115,7 @@ class PaymentVehicleSummary extends Component
     {
         return Excel::download(
             new VehicleSummaryExport(
+                $this->branch,
                 $this->vehicle_id,
                 $this->model_id,
                 $this->start_date,
@@ -130,8 +131,6 @@ class PaymentVehicleSummary extends Component
         ->with(['stock.product', 'order', 'user.organization_details'])
         ->when($this->branch, function ($query) {
             $query->where('branch_id', $this->branch);
-        }, function ($query) {
-            $query->whereIn('branch_id', $this->branches);
         })
         ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
         ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
@@ -144,8 +143,6 @@ class PaymentVehicleSummary extends Component
         $exchangeVehicles = ExchangeVehicle::with(['stock'])
             ->when($this->branch, function ($query) {
                 $query->where('branch_id', $this->branch);
-            }, function ($query) {
-                $query->whereIn('branch_id', $this->branches);
             })
             ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
             ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))

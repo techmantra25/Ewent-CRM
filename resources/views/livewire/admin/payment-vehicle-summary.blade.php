@@ -106,7 +106,7 @@
                               <select id="vehicle_branch_filter"
                                       class="form-select border border-2 p-2 custom-input-sm">
 
-                                  <option value="">Select</option>
+                                  <option value="">Select Branch</option>
 
                                   @foreach($branch_list as $branch)
                                       <option value="{{ $branch->id }}">
@@ -171,6 +171,7 @@
                           <thead>
                               <tr>
                                 <th class="h6">Vehicle</th>
+                                <th class="h6">Branch</th>
                                 <th class="h6">Start Date</th>
                                 <th class="h6">End Date</th>
                                 <th class="h6">Rent</th>
@@ -187,6 +188,11 @@
                                       <small><code>{{ $item->stock && $item->stock->product ? $item->stock->product->title : "N/A" }}</code></small>
 
                                   </td>
+                                  <td>
+                                    <small class="text-dark">{{ $item->branch->name ?? 'N/A' }}</small>
+                                    <br>
+                                    <small class="text-muted">{{ $item->branch->branch_code ?? '' }}</small>
+                                </td>
                                   <td class="">
                                       <small class="text-muted">{{ date('d M y h:i A', strtotime($item->start_date)) }}</small>
                                   </td>

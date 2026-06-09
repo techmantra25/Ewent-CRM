@@ -20,7 +20,7 @@ class PaymentSummary extends Component
     public $branch;
     public $cities = [];
     public $branch_list = [];
-    public $branches = [];
+    public $branches = [];  
 
     public function mount($model_id = null,$vehicle_id = null){
 
@@ -99,10 +99,8 @@ class PaymentSummary extends Component
         ->when($this->model_id, function ($query) {
             return $query->where('product_id', $this->model_id);
         })
-       ->when($this->branch, function ($query) {
-            $query->whereHas('stock', function ($q) {
-                $q->where('branch_id', $this->branch);
-            });
+        ->when($this->branch, function ($query) {
+            $query->where('branch_id', $this->branch);
         })
         ->where('type', 'deposit')
         ->sum('amount');
