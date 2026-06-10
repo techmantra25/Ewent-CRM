@@ -35,7 +35,8 @@
                         <div class="row">
                             <div class="col-lg-12 d-flex justify-content-end my-auto">
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    
+
+                                    @if(auth('admin')->user()->branch_id == 1)
                                     <div wire:ignore class="list-chosen-wrapper chosen-floating" style="width:220px;">
                                         <select id="city_filter" class="form-select">
                                             <option value=""></option>
@@ -66,6 +67,7 @@
 
                                         <label class="chosen-label">Branch</label>
                                     </div>
+                                    @endif
                                     
                                     <input type="text"
                                         wire:model.debounce.300ms="search"
