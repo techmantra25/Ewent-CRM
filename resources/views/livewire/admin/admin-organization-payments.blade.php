@@ -4,6 +4,16 @@
             background: #fff;
             color: #000;
         }
+        /* Match Bootstrap small inputs */
+        .chosen-container-single .chosen-single {
+            height: 42px !important;
+            line-height: 42px !important;
+            padding: 0 .75rem !important;
+            border: 2px solid #d9dee3 !important;
+            border-radius: .375rem !important;
+            background: #fff !important;
+        }
+
     </style>
     <div class="col-lg-12 d-flex justify-content-between">
         <div>
@@ -39,6 +49,23 @@
                     <div class="card-body mt-2">
                         <div class="row g-3 align-items-end justify-content-end mb-2">
                             <!-- Start Date -->
+                            @if(auth('admin')->user()->branch_id == 1)
+
+                             <div class="col-12 col-sm-6 col-md-2"
+                              wire:ignore>
+                                <label class="form-label text-uppercase small fw-bold">Branch</label>
+
+                              <select id="branch_filter"
+                                      class="form-select border border-2 p-2 custom-input-sm">
+                                  <option value="">Select Branch</option>
+                                  @foreach($branch_list as $branch)
+                                      <option value="{{ $branch->id }}">
+                                          {{ $branch->name }} | {{ $branch->branch_code }}
+                                      </option>
+                                  @endforeach
+                              </select>
+                            </div>
+                            @endif
                             <div class="col-12 col-sm-6 col-md-2">
                                 <label class="form-label text-uppercase small fw-bold">Start Date</label>
                                 <input type="date" 
@@ -71,7 +98,7 @@
                             </div>
 
                             <!-- Search -->
-                            <div class="col-12 col-sm-6 col-md-3">
+                            <div class="col-12 col-sm-6 col-md-2">
                                 <label class="form-label text-uppercase small fw-bold">Search</label>
                                 <input type="text" 
                                     wire:model="search" 
@@ -100,6 +127,7 @@
                                     <tr>
                                         <th>#</th>
                                         <th>Organization</th>
+                                        <th>Branch</th>
                                         <th>Invoice</th>
                                         <th>Payment Method</th>
                                         <th>Status</th>
@@ -124,7 +152,9 @@
                                                     <span class="text-muted">N/A</span>
                                                 @endif
                                             </td>
-
+                                            <td>
+                                                {{ $payment->branch->name ?? 'N/A' }}
+                                            </td>
                                             <td>
                                                 @if($payment->invoice)
                                                     {{ $payment->invoice->invoice_number }}
@@ -279,6 +309,35 @@
         Livewire.on('openReceiptModal', () => {
             let modal = new bootstrap.Modal(document.getElementById('receiptModal'));
             modal.show();
+        });
+    });
+
+       // branch search
+    var jq = $.noConflict();
+
+    function initBranchFilters() {
+
+        jq('#branch_filter')
+            .chosen({
+                width: '100%',
+                search_contains: true
+            })
+            .off('change')
+            .on('change', function () {
+                @this.call('FilterBranch', jq(this).val());
+            });
+    }
+
+    document.addEventListener('livewire:init', function () {
+
+        initBranchFilters();
+
+        Livewire.hook('morph.updated', () => {
+
+            jq('#branch_filter')
+                .trigger('chosen:updated');
+
+            initBranchFilters();
         });
     });
 </script>

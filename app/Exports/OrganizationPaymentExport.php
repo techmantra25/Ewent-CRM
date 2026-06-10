@@ -11,16 +11,20 @@ class OrganizationPaymentExport implements FromCollection, WithHeadings
     /**
     * @return \Illuminate\Support\Collection
     */
-    protected $search,$status,$start_date,$end_date;
-    public function __construct($search,$status,$start_date,$end_date){
+    protected $search,$status,$start_date,$end_date,$branch_id;
+    public function __construct($search,$status,$start_date,$end_date,$branch_id){
         $this->search = $search;
         $this->status = $status;
         $this->start_date = $start_date;
         $this->end_date = $end_date;
+        $this->branch = $branch_id;
     }
     public function collection()
     {
          $query = OrganizationPayment::with(['organization', 'invoice'])
+            ->when($this->branch, function ($q) {
+                $q->where('branch_id', $this->branch);
+            })
             ->when($this->search, function ($query) {
                 $searchTerm = '%' . $this->search . '%';
                 $query->where(function ($q) use ($searchTerm) {
@@ -69,6 +73,7 @@ class OrganizationPaymentExport implements FromCollection, WithHeadings
         return $query->map(function ($payment) {
             return [
                 $payment->organization->name ?? '',  // Organization Name
+                $payment->branch->name ?? '',  
                 $payment->invoice->invoice_number ?? '', // Invoice Number
                 $payment->amount ?? 0,              // Amount
                 $payment->transaction_id ?? '',     // Transaction ID
@@ -80,6 +85,7 @@ class OrganizationPaymentExport implements FromCollection, WithHeadings
     public function headings(): array{
         return [
             'Organization Name',
+            'Branch',
             'Invoice Number',
             'Amount',
             'Transaction ID',

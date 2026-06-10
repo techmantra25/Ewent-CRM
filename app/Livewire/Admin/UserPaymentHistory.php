@@ -33,11 +33,9 @@ class UserPaymentHistory extends Component
 
         $this->branches = get_branches() ?? [];
 
-        if (count($this->branches) === 1) {
-            $this->branch = $this->branches[0];
-        }
+        $this->branch = current_branch();
 
-        $this->branch_list = Branch::where('status', 1)
+        $this->branch_list = Branch::whereIn('id', get_branches())
             ->orderBy('name', 'ASC')
             ->get();
 
@@ -73,9 +71,7 @@ class UserPaymentHistory extends Component
     public function resetPageField(){
         $this->reset(['selected_rider','selected_product_type','selected_payment_status','start_date','end_date','export_type','branch']);
 
-        if (count($this->branches) === 1) {
-            $this->branch = $this->branches[0];
-        }
+        $this->branch = current_branch();
 
         $this->dispatch('chosen-updated');
     }

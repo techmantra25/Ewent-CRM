@@ -5,23 +5,27 @@
             <div class="col-auto">
               <h6 class="mb-0">Payment Summary</h6>
             </div>
+
             <div class="col-auto">
                 <div class="row justify-content-between">
-                  <div class="col-auto" wire:ignore>
-                    <label class="form-label text-uppercase small">Branch</label>
+                  @if(auth('admin')->user()->branch_id == 1)
+                    <div class="col-auto" wire:ignore>
+                      <label class="form-label text-uppercase small">Branch</label>
 
-                    <select id="branch_filter"
-                            class="form-select border border-2 p-2 custom-input-sm">
+                      <select id="branch_filter"
+                              class="form-select border border-2 p-2 custom-input-sm">
 
-                        <option value="">Select Branch</option>
+                          <option value="">Select Branch</option>
 
-                        @foreach($branch_list as $branch)
-                            <option value="{{ $branch->id }}">
-                                {{ $branch->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                  </div>
+                          @foreach($branch_list as $branch)
+                              <option value="{{ $branch->id }}">
+                                  {{ $branch->name }}
+                              </option>
+                          @endforeach
+                      </select>
+                    </div>
+                  @endif
+
                     @if(session()->has('error'))
                       <div class="col-auto alert alert-danger mt-3">
                           {{ session('error') }}

@@ -43,19 +43,18 @@
             <div class="col-12">
                 <div class="card mb-2 py-4 px-2">
                     <div class="row justify-content-end">
-                        
-                        <div class="col-lg-2 col-6 my-auto mb-2 list-chosen-wrapper" wire:ignore>
-                            <select id="vehicle_city_filter" class="form-select border border-2 p-2 custom-input-sm">
-                                <option value="">City / State</option>
-                                @foreach($cities as $city)
-                                    <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
-                                         {{ $city->name }}  ({{ $city->state->name ?? '' }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
 
-                        @if(auth('admin')->user()->branch_id == 1)
+                         @if(auth('admin')->user()->branch_id == 1)
+                            <div class="col-lg-2 col-6 my-auto mb-2 list-chosen-wrapper" wire:ignore>
+                                <select id="vehicle_city_filter" class="form-select border border-2 p-2 custom-input-sm">
+                                    <option value="">City / State</option>
+                                    @foreach($cities as $city)
+                                        <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                            {{ $city->name }}  ({{ $city->state->name ?? '' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="col-lg-2 col-6 my-auto mb-2 list-chosen-wrapper" 
                                 wire:ignore 
                                 wire:key="branch-dropdown-context-{{ $city_id }}">

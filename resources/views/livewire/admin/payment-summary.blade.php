@@ -136,21 +136,23 @@
             <div class="row">
                 <div class="col-lg-12 col-12 my-auto">
                     <div class="d-flex align-items-center justify-content-end flex-wrap gap-1">
-                      <div style="max-width: 230px; margin-bottom: 20px;"
-                          class="text-start"
-                          wire:ignore>
-                          <label class="form-label small mb-1">Branch</label>
-                          <select id="payment_branch_filter"
-                              class="form-select border border-2 p-2 custom-input-sm">
-                              <option value="">Select</option>
+                        @if(auth('admin')->user()->branch_id == 1)
+                          <div style="max-width: 230px; margin-bottom: 20px;"
+                              class="text-start"
+                              wire:ignore>
+                              <label class="form-label small mb-1">Branch</label>
+                              <select id="payment_branch_filter"
+                                  class="form-select border border-2 p-2 custom-input-sm">
+                                  <option value="">Select</option>
 
-                              @foreach($branch_list as $branch)
-                                  <option value="{{ $branch->id }}">
-                                      {{ $branch->name }} | {{ $branch->branch_code }}
-                                  </option>
-                              @endforeach
-                          </select>
-                      </div>
+                                  @foreach($branch_list as $branch)
+                                      <option value="{{ $branch->id }}">
+                                          {{ $branch->name }} | {{ $branch->branch_code }}
+                                      </option>
+                                  @endforeach
+                              </select>
+                          </div>
+                        @endif
                       <div style="max-width: 180px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
                                  <label class="form-label small mb-1">Models</label>

@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use App\Models\OrganizationInvoice;
+use App\Models\Branch;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use App\Models\OrganizationPayment;
@@ -21,11 +22,29 @@ class AdminOrganizationInvoices extends Component
     public $utr_number;
     public $payment_date;
     public $receipt;
+    public $branch = null;
+    public $branch_list = [];
+    public function mount()
+    {
+        $this->branch_list = Branch::where('status', 1)
+            ->orderBy('name', 'ASC')
+            ->get();
 
+        $branches = get_branches();
+
+        if (count($branches) === 1) {
+            $this->branch = $branches[0];
+        }
+    }
     public function gotoPage($value, $pageName = 'page')
     {
         $this->setPage($value, $pageName);
         $this->page = $value;
+    }
+    public function FilterBranch($value)
+    {
+        $this->resetPage();
+        $this->branch = $value ?: null;
     }
     public function FilterRider($value)
     {
@@ -39,7 +58,15 @@ class AdminOrganizationInvoices extends Component
         $this->resetPage();
     }
     public function resetPageField(){
-        $this->reset(['search','status']);
+        $this->reset(['search','status','branch']);
+        $branches = get_branches();
+
+        if (count($branches) === 1) {
+            $this->branch = $branches[0];
+        }
+
+        $this->dispatch('resetBranchSelect');
+        $this->resetPage();
     }
 
     public function openPaymentModal($invoiceId)
@@ -125,6 +152,9 @@ class AdminOrganizationInvoices extends Component
             'items.details',    // load day-wise breakdown
             'organization'
         ])
+         ->when($this->branch, function ($q) {
+                $q->where('branch_id',$this->branch);
+            })
         ->when($this->search, function ($query) {
             $searchTerm = '%' . $this->search . '%';
 

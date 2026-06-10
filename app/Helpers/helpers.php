@@ -1027,23 +1027,13 @@ if (!function_exists('get_branches')) {
 
 //     }           
 // }
-
-if (!function_exists('branchFilter')) {
-
-    function branchFilter(Builder $query)
+if (!function_exists('current_branch')) {
+    function current_branch()
     {
-        $user = Auth::guard('admin')->user();
+        $admin = Auth::guard('admin')->user();
 
-        if ($user && $user->branch_id != 1) {
-            $query->where('branch_id', $user->branch_id);
-        }
-
-        return $query;
+        return ($admin && $admin->branch_id != 1)
+            ? $admin->branch_id
+            : null;
     }
 }
-
-
-
-
-
-

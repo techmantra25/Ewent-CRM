@@ -35,11 +35,10 @@ class PaymentVehicleSummary extends Component
     public function mount($model_id = null,$vehicle_id = null){
         $this->branches = get_branches() ?? [];
 
-        if (count($this->branches) === 1) {
-            $this->branch = $this->branches[0];
-        }
+        $this->branch = current_branch();
 
-        $this->branch_list = Branch::where('status', 1)
+        $this->branch_list = Branch::whereIn('id', get_branches())
+            ->where('status', 1)
             ->orderBy('name', 'ASC')
             ->get();
 
@@ -95,9 +94,7 @@ class PaymentVehicleSummary extends Component
     }
     public function resetPageField(){
         $this->reset(['vehicle_id','model_id','model','vehicle', 'vehicle_number', 'branch']);
-        if (count($this->branches) === 1) {
-            $this->branch = $this->branches[0];
-        }
+        $this->branch = current_branch();
 
         $this->resetPage();
     }

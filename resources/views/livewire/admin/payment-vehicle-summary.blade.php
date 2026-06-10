@@ -97,7 +97,8 @@
                             <label for="vehicle" class="form-label small mb-1">Vehicle</label>
                             <input type="text" wire:model="vehicle_number" class="form-control border border-2 p-2 custom-input-sm" placeholder="Search by vehicle" wire:keyup="keyVehicle($event.target.value)">
                         </div>
-                        <div style="max-width:230px;margin-bottom:20px;"
+                        @if(auth('admin')->user()->branch_id == 1)
+                            <div style="max-width:230px;margin-bottom:20px;"
                               class="text-start"
                               wire:ignore>
 
@@ -116,7 +117,9 @@
 
                               </select>
 
-                          </div>
+                            </div>
+                        @endif
+
                           <div style="max-width: 250px;
                               margin-bottom: 20px;" class="text-start text-uppercase">
                                    <label for="startDate" class="form-label small mb-1">Models</label>
@@ -158,7 +161,7 @@
                               <i class="ri-download-2-line me-1"></i> Export All
                           </button>
                   
-                      </div>
+                        </div>
                   </div>
               </div>
                 

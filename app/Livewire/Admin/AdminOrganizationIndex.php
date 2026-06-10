@@ -38,7 +38,13 @@ class AdminOrganizationIndex extends Component
         Paginator::useBootstrap();
     }
     public function mount(){
-        $this->branches = Branch::orderBy('name')->get();
+        $this->branches = get_branches();
+
+        $this->branch_search = current_branch();
+
+        if (auth('admin')->user()->branch_id == 1) {
+            $this->branches = Branch::orderBy('name')->get();
+        }
     }
     public function searchButtonClicked()
     {
@@ -66,7 +72,6 @@ class AdminOrganizationIndex extends Component
    public function saveOrganization()
     {
         $rules = [
-            'branch_id' => 'required|exists:branches,id',
             'name'   => 'required|string|max:255',
             'organization_id'  => 'nullable|string|unique:organizations,organization_id,' . $this->edit_id,
             'email'  => 'required|email|unique:organizations,email,' . $this->edit_id,
@@ -141,19 +146,31 @@ class AdminOrganizationIndex extends Component
             $rules['password'] = 'string|min:6';
         }
 
+        if (auth('admin')->user()->branch_id == 1) {
+            $rules['branch_id'] = 'required|exists:branches,id';
+        }
+
         $this->validate($rules);
 
         // Track old data if updating
         $oldData = [];
         if ($this->edit_id) {
-            $org = Organization::findOrFail($this->edit_id);
+            $org = Organization::whereIn('branch_id', get_branches())->findOrFail($this->edit_id);
             $oldData = $org->toArray();
         } else {
             $oldData = null; // nothing before create
             $org = new Organization();
             $org->organization_id = $this->organization_id ?: makeOrganizationID();
         }
-        $org->branch_id = $this->branch_id;
+
+        // $admin = auth('admin')->user();
+
+        // $branchId = $admin->branch_id == 1
+        //     ? $this->branch_id
+        //     : $admin->branch_id;
+
+        // $org->branch_id = $branchId;
+        $org->branch_id = $this->branch_id ?: current_branch();
         $org->name = $this->name;
         $org->email = $this->email;
         $org->mobile = $this->mobile;
@@ -272,7 +289,7 @@ class AdminOrganizationIndex extends Component
     public function editOrganization($org_id)
     {
    
-        $org = Organization::findOrFail($org_id);
+        $org = Organization::whereIn('branch_id', get_branches())->findOrFail($org_id);
 
         $this->branch_id = $org->branch_id;
         $this->edit_id = $org->id;
@@ -327,7 +344,12 @@ class AdminOrganizationIndex extends Component
     public function render()
     {
       
-        $organizations = Organization::when($this->search, function ($query) {
+        $organizations = Organization::when($this->branch_search, function ($query) {
+                $query->where('branch_id', $this->branch_search);
+            }, function ($query) {
+                $query->whereIn('branch_id', get_branches());
+            })
+        ->when($this->search, function ($query) {
             $searchTerm = '%' . $this->search . '%';
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('name', 'like', $searchTerm)
@@ -335,9 +357,6 @@ class AdminOrganizationIndex extends Component
                 ->orWhere('mobile', 'like', $searchTerm)
                 ->orWhere('email', 'like', $searchTerm);
             });
-        })
-        ->when($this->branch_search, function ($query) {
-            $query->where('branch_id', $this->branch_search);
         })
         ->orderBy('id', 'DESC')
         ->paginate(20);

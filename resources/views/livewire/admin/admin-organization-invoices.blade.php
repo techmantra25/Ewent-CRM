@@ -4,6 +4,16 @@
             background: #fff;
             color: #000;
         }
+        .chosen-container {
+            min-width: 180px !important;
+        }
+
+        .chosen-container-single .chosen-single {
+            height: 40px !important;
+            line-height: 40px !important;
+            border: 2px solid #d2d6da !important;
+            border-radius: 0.5rem !important;
+        }
     </style>
     <div class="col-lg-12 d-flex justify-content-between">
         <div>
@@ -36,6 +46,20 @@
                     </div>
                     <div class="card-body mt-2">
                         <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
+                            @if(auth('admin')->user()->branch_id == 1)
+                            <div style="max-width:250px;"
+                              wire:ignore>
+                              <select id="branch_filter"
+                                      class="form-select border border-2 p-2 chosen-select">
+                                  <option value="">Select Branch</option>
+                                  @foreach($branch_list as $branch)
+                                      <option value="{{ $branch->id }}">
+                                          {{ $branch->name }} | {{ $branch->branch_code }}
+                                      </option>
+                                  @endforeach
+                              </select>
+                            </div>
+                            @endif
                             <!-- Status Filter -->
                             <div style="max-width: 200px;">
                                 <select wire:model="status" class="form-select form-select-sm border border-2" wire:change="statusFilter">
@@ -69,6 +93,7 @@
                                         <th>Invoice No/Type</th>
                                         <th>Organization</th>
                                         <th>Billing Period</th>
+                                        <th>Branch</th>
                                         <th>Status</th>
                                         <th>Amount</th>
                                         <th>Invoice Date</th>
@@ -125,7 +150,8 @@
                                                 {{ \Carbon\Carbon::parse($invoice->billing_start_date)->format('d M Y') }} <br>
                                                 <i class="ri-calendar-line text-danger"></i>
                                                 {{ \Carbon\Carbon::parse($invoice->billing_end_date)->format('d M Y') }}
-                                                </td>
+                                            </td>
+                                            <td>{{ $invoice->branch->name }}</td>
                                             <td>
                                                 @php
                                                     $statusColors = [
@@ -404,6 +430,36 @@
         });
 
     });
+
+    // branch search
+    var jq = $.noConflict();
+
+    function initBranchFilters() {
+
+        jq('#branch_filter')
+            .chosen({
+                width: '100%',
+                search_contains: true
+            })
+            .off('change')
+            .on('change', function () {
+                @this.call('FilterBranch', jq(this).val());
+            });
+    }
+
+    document.addEventListener('livewire:init', function () {
+
+        initBranchFilters();
+
+        Livewire.hook('morph.updated', () => {
+
+            jq('#branch_filter')
+                .trigger('chosen:updated');
+
+            initBranchFilters();
+        });
+    });
+
 </script>
 @endsection
 

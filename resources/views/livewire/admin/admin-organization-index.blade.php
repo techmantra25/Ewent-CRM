@@ -67,16 +67,19 @@
                             <div class="row">
                                 <div class="col-lg-12 d-flex justify-content-end my-auto">
                                     <div class="d-flex align-items-center">
-                                        <div class="ms-2" wire:ignore>
-                                            <select id="branchSearchSelect" class="form-control form-control-sm chosen-select">
-                                                <option value="">Branch</option>
-                                                @foreach($branches as $branch)
-                                                    <option value="{{ $branch->id }}">
-                                                        {{ $branch->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
+                                        @if(auth('admin')->user()->branch_id == 1)
+
+                                            <div class="ms-2" wire:ignore>
+                                                <select id="branchSearchSelect" class="form-control form-control-sm chosen-select">
+                                                    <option value="">Branch</option>
+                                                    @foreach($branches as $branch)
+                                                        <option value="{{ $branch->id }}">
+                                                            {{ $branch->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        @endif
                                         <input type="text" wire:model.debounce.300ms="search"
                                             class="form-control border border-2 p-2 custom-input-sm"
                                             placeholder="Search here...">
@@ -312,6 +315,8 @@
                                             <label class="form-label">Pincode</label>
                                             <input type="text" class="form-control form-control-sm" wire:model.defer="pincode" placeholder="Enter pincode here">
                                         </div>
+                                        @if(auth('admin')->user()->branch_id == 1)
+
                                         <div class="col-md-4 mb-3" wire:ignore>
                                             <label class="form-label">Branch</label>
 
@@ -328,6 +333,7 @@
                                                 @endforeach
                                             </select>
                                         </div>
+                                        @endif
                                     </div>
                                 </div>
                                 <div class="col-md-3">
