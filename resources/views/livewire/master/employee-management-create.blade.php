@@ -88,27 +88,28 @@
                   <p class="text-danger inputerror">{{ $message }}</p>
                   @enderror
               </div>
+              @if(auth('admin')->user()->branch_id == 1)
 
-              <div class="col-md-6 col-12 mt-2">
-                <div class="chosen-floating mb-3" wire:ignore>
-                    <select id="city_select" class="form-select">
-                        <option value=""></option>
+                <div class="col-md-6 col-12 mt-2">
+                  <div class="chosen-floating mb-3" wire:ignore>
+                      <select id="city_select" class="form-select">
+                          <option value=""></option>
 
-                        @foreach($cities as $city)
-                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
-                                {{ $city->name }}
-                                @if($city->state)
-                                    ({{ $city->state->name }})
-                                @endif
-                            </option>
-                        @endforeach
-                    </select>
+                          @foreach($cities as $city)
+                              <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                  {{ $city->name }}
+                                  @if($city->state)
+                                      ({{ $city->state->name }})
+                                  @endif
+                              </option>
+                          @endforeach
+                      </select>
 
-                    <label class="chosen-label">
-                        City / State <span class="text-danger">*</span>
-                    </label>
+                      <label class="chosen-label">
+                          City / State <span class="text-danger">*</span>
+                      </label>
+                  </div>
                 </div>
-              </div>
 
                 <div class="col-md-6 col-12 mt-2">
                   <div class="chosen-floating mb-3"
@@ -130,6 +131,7 @@
                     </label>
                   </div>
                 </div>
+              @endif
 
 
             </div>
