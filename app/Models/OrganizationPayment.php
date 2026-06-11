@@ -9,6 +9,7 @@ class OrganizationPayment extends Model
     protected $table = 'organization_payments';
 
     protected $fillable = [
+        'branch_id',
         'organization_id',
         'invoice_id',
         'invoice_type',
@@ -40,5 +41,9 @@ class OrganizationPayment extends Model
     public function capturedByAdmin()
     {
         return $this->belongsTo(\App\Models\Admin::class, 'captured_by');
+    }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 }

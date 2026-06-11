@@ -10,13 +10,15 @@ use Carbon\Carbon;
 
 class VehicleSummaryExport implements FromArray, WithHeadings
 {
+    protected $branch;
     protected $vehicle_id;
     protected $model_id;
     protected $start_date;
     protected $end_date;
 
-    public function __construct($vehicle_id = null, $model_id = null, $start_date = null, $end_date = null)
+    public function __construct($branch = null, $vehicle_id = null, $model_id = null, $start_date = null, $end_date = null)
     {
+        $this->branch = $branch;
         $this->vehicle_id = $vehicle_id;
         $this->model_id   = $model_id;
         $this->start_date = $start_date;
@@ -28,6 +30,7 @@ class VehicleSummaryExport implements FromArray, WithHeadings
         // --- 1. Fetch assigned vehicle (only one, tied to vehicle_id if provided) ---
         $assignedVehicles = AsignedVehicle::whereIn('status', ['assigned', 'overdue'])
         ->with(['stock.product', 'order', 'user.organization_details'])
+        ->when($this->branch, fn($query) => $query->where('branch_id', $this->branch))
         ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
         ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
         ->where(function ($query) {
@@ -38,6 +41,7 @@ class VehicleSummaryExport implements FromArray, WithHeadings
 
         // --- 2. Fetch exchange vehicles ---
         $exchangeVehicles = ExchangeVehicle::with(['stock.product', 'order', 'user.organization_details'])
+            ->when($this->branch, fn($query) => $query->where('branch_id', $this->branch))
             ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
             ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
             ->whereIn('status', ['returned', 'renewal','exchanged'])
@@ -164,6 +168,7 @@ class VehicleSummaryExport implements FromArray, WithHeadings
 
                 $rows[] = [
                     $item->stock?->vehicle_number ?? 'N/A',
+                    $item->branch->name ?? 'N/A',
                     $item->stock?->chassis_number ?? 'N/A',
                     $item->stock?->created_at ? \Carbon\Carbon::parse($item->stock?->created_at)->format('d M y h:i A') : '----',
                     '....',
@@ -199,6 +204,7 @@ class VehicleSummaryExport implements FromArray, WithHeadings
     {
         return [
             'Vehicle No',
+            'Branch',
             'Chassis No',
             'Creation Date',
             'Last Retreived Location',

@@ -8,7 +8,7 @@ class OrganizationInvoice extends Model
 {
     protected $table = 'organization_invoices';
     protected $fillable = [
-        'organization_id', 'invoice_number', 'type', 'billing_start_date', 'billing_end_date', 'status', 'amount', 'payment_date', 'due_date'
+        'branch_id', 'organization_id', 'invoice_number', 'type', 'billing_start_date', 'billing_end_date', 'status', 'amount', 'payment_date', 'due_date'
     ];
 
     public function organization(){
@@ -17,5 +17,9 @@ class OrganizationInvoice extends Model
     public function items()
     {
         return $this->hasMany(OrganizationInvoiceItem::class, 'invoice_id');
+    }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 }

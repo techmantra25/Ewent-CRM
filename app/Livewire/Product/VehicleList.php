@@ -34,9 +34,7 @@ class VehicleList extends Component
     public function mount(){
         $this->branches = get_branches() ?? [];
 
-        if (count($this->branches) === 1) {
-            $this->branch = $this->branches[0];
-        }
+        $this->branch = current_branch();
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
         $this->cities = City::with('state')
             ->where('status', 1)
@@ -57,6 +55,7 @@ class VehicleList extends Component
 
         $this->branch_list = Branch::where('city_id', $value)
             ->where('status', 1)
+            ->orderBy('name')
             ->get();
 
         $this->resetPage();
@@ -94,7 +93,9 @@ class VehicleList extends Component
      * Refresh button click handler to reset the search input and reload data.
      */
     public function reset_search(){
-        $this->reset(['search','model','overdue_days', 'city_id', 'branch', 'customer_type']);
+        $this->reset(['search','model','overdue_days', 'city_id', 'customer_type']);
+
+         $this->branch = current_branch();
         $this->branch_list = []; 
          $this->dispatch('reset-chosen-filters');
     }
@@ -125,11 +126,7 @@ class VehicleList extends Component
                 'overdueVehicle.user'
             ])
         ->when($this->branch, function ($query) {
-            // If specific branch selected
             $query->where('branch_id', $this->branch);
-        }, function ($query) {
-            // If no branch selected, filter by allowed branches
-            $query->whereIn('branch_id', $this->branches);
         })
         ->when($this->model, function ($query) {
             $query->where('product_id', $this->model); // Assuming `model_id` is the column for filtering
@@ -200,8 +197,6 @@ class VehicleList extends Component
             ])
         ->when($this->branch, function ($query) {
             $query->where('branch_id', $this->branch);
-        }, function ($query) {
-            $query->whereIn('branch_id', $this->branches);
         })
         // ->whereIn('branch_id',get_branches())
         ->whereHas('assignedVehicle') // Ensures only assigned vehicles are fetched
@@ -277,8 +272,6 @@ $overdue_vehicles = Stock::with([
     ])
     ->when($this->branch, function ($query) {
         $query->where('branch_id', $this->branch);
-    }, function ($query) {
-        $query->whereIn('branch_id', $this->branches);
     })
     ->whereHas('overdueVehicle')
 

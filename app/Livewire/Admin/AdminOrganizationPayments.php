@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Models\Branch;
 use App\Models\OrganizationPayment;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\OrganizationPaymentExport;
@@ -21,12 +22,30 @@ class AdminOrganizationPayments extends Component
     public $selectedPayment;
     public $receiptImage;
     public $isPdf = false;
+    public $branch = null;
+    public $branch_list = [];
+    public function mount()
+    {
+        $this->branch_list = Branch::where('status', 1)
+            ->orderBy('name', 'ASC')
+            ->get();
 
+        $branches = get_branches();
 
+        if (count($branches) === 1) {
+            $this->branch = $branches[0];
+        }
+    }
     public function gotoPage($value, $pageName = 'page')
     {
         $this->setPage($value, $pageName);
         $this->page = $value;
+    }
+
+    public function FilterBranch($value)
+    {
+        $this->resetPage();
+        $this->branch = $value ?: null;
     }
 
     public function updateFilters($value,$field){
@@ -49,11 +68,19 @@ class AdminOrganizationPayments extends Component
 
     public function resetPageField()
     {
-        $this->reset(['search', 'status','start_date','end_date']);
+        $this->reset(['search', 'status','start_date','end_date','branch']);
+        $branches = get_branches();
+
+        if (count($branches) === 1) {
+            $this->branch = $branches[0];
+        }
+
+        $this->dispatch('resetBranchSelect');
+        $this->resetPage();     
     }
 
     public function exportAll(){
-        return Excel::download(new OrganizationPaymentExport($this->search, $this->status, $this->start_date, $this->end_date), 'organization_payment_history.xlsx');
+        return Excel::download(new OrganizationPaymentExport($this->search, $this->status, $this->start_date, $this->end_date, $this->branch), 'organization_payment_history.xlsx');
     }
 
     public function viewReceipt($paymentId)
@@ -73,6 +100,9 @@ class AdminOrganizationPayments extends Component
     {
         // Build the base query
         $query = OrganizationPayment::with('organization')
+            ->when($this->branch, function ($q) {
+                $q->where('branch_id', $this->branch);
+            })
             ->when($this->search, function ($query) {
                 $searchTerm = '%' . $this->search . '%';
                 $query->where(function ($q) use ($searchTerm) {

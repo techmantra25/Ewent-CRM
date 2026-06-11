@@ -30,6 +30,7 @@ class EmployeeManagementList extends Component
     public function mount()
     {
         $this->cities = City::with('state')->where('status', 1)->orderBy('name', 'ASC')->get();
+        $this->branch_id = current_branch();
         $this->branches = collect();
     }
 
@@ -67,6 +68,7 @@ class EmployeeManagementList extends Component
     public function resetSearch()
     {
         $this->reset(['search', 'city_id', 'branch_id']);
+        $this->branch_id = current_branch();
         $this->branches = collect();
         $this->resetPage();
         
@@ -89,9 +91,7 @@ class EmployeeManagementList extends Component
     
     public function render()
     {
-        $employees = branchFilter(
-                Admin::with(['designationData','branchData'])
-            )
+        $employees = Admin::with(['designationData','branchData'])
             // 1. If branch selection exists, strictly isolate search results to that branch
             ->when($this->branch_id, function ($query) {
                 $query->where('branch_id', $this->branch_id);

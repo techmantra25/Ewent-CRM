@@ -60,9 +60,7 @@ class RiderEngagement extends Component
 
         $this->branches = get_branches() ?? [];
 
-        if (count($this->branches) === 1) {
-            $this->branch = $this->branches[0];
-        }
+        $this->branch = current_branch();
 
         $this->cities = City::with('state')
             ->where('status', 1)

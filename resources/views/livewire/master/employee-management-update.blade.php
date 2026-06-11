@@ -89,41 +89,42 @@
                   <p class="text-danger inputerror">{{ $message }}</p>
                   @enderror
               </div>
-
-              <div class="col-6 mt-2">
-                <div class="chosen-floating mb-3" wire:ignore>
-                    <select id="city_select" class="form-select">
-                        <option value=""></option>
-                        @foreach($cities as $city)
-                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
-                                {{ $city->name }}
-                                @if($city->state)
-                                    ({{ $city->state->name }})
-                                @endif
-                            </option>
-                        @endforeach
-                    </select>
-                    <label class="chosen-label">
-                        City / State <span class="text-danger">*</span>
-                    </label>
+              @if(auth('admin')->user()->branch_id == 1)
+                <div class="col-6 mt-2">
+                  <div class="chosen-floating mb-3" wire:ignore>
+                      <select id="city_select" class="form-select">
+                          <option value=""></option>
+                          @foreach($cities as $city)
+                              <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                  {{ $city->name }}
+                                  @if($city->state)
+                                      ({{ $city->state->name }})
+                                  @endif
+                              </option>
+                          @endforeach
+                      </select>
+                      <label class="chosen-label">
+                          City / State <span class="text-danger">*</span>
+                      </label>
+                  </div>
                 </div>
-            </div>
 
-            <div class="col-6 mt-2">
-                <div class="chosen-floating mb-3" wire:key="branch-select-container-{{ $city_id }}">
-                    <select id="branch_select" class="form-select">
-                        <option value=""></option>
-                        @foreach($branches as $branch)
-                            <option value="{{ $branch->id }}" {{ $branch->id == $branch_id ? 'selected' : '' }}>
-                                {{ $branch->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <label class="chosen-label">
-                        Branch <span class="text-danger">*</span>
-                    </label>
+                <div class="col-6 mt-2">
+                    <div class="chosen-floating mb-3" wire:key="branch-select-container-{{ $city_id }}">
+                        <select id="branch_select" class="form-select">
+                            <option value=""></option>
+                            @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}" {{ $branch->id == $branch_id ? 'selected' : '' }}>
+                                    {{ $branch->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <label class="chosen-label">
+                            Branch <span class="text-danger">*</span>
+                        </label>
+                    </div>
                 </div>
-            </div>
+              @endif
               
             </div>
           </div>

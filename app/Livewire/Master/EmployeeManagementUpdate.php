@@ -78,14 +78,19 @@ class EmployeeManagementUpdate extends Component
 
     public function saveProduct()
     {
-         $this->validate([
+        $rules = [
             'designation' => 'required|exists:designations,id',
             'name' => 'required|string|max:255',
             'mobile' => 'required|string|max:15|unique:admins,mobile,' . $this->id . '|regex:/^[0-9]{10,15}$/',
             'email' => 'required|email|max:255|unique:admins,email,' . $this->id,
             'image' => 'nullable|image|max:2048|mimes:jpg,jpeg,png,webp',
-            'branch_id' => 'required|exists:branches,id',
-        ]);
+        ];
+
+        if (auth('admin')->user()->branch_id == 1) {
+            $rules['branch_id'] = 'required|exists:branches,id';
+        }
+
+        $this->validate($rules);
 
         DB::beginTransaction();
 
@@ -104,8 +109,8 @@ class EmployeeManagementUpdate extends Component
             $store->designation = $this->designation;
             $store->mobile = $this->mobile;
             $store->email = $this->email;
-            $store->branch_id = $this->branch_id;   
-            
+            $store->branch_id = $this->branch_id ?: current_branch();
+             
             if ($this->image) {
                 $store->image = $imagePath;
             }

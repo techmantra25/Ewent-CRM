@@ -7,6 +7,7 @@ use App\Models\Stock;
 use App\Models\Product;
 use App\Models\PaymentItem;
 use App\Models\AsignedVehicle;
+use App\Models\Branch;
 use App\Models\User;
 use App\Models\ExchangeVehicle;
 use Livewire\WithPagination;
@@ -27,8 +28,20 @@ class PaymentVehicleSummary extends Component
     public $model,$vehicle,$model_id,$vehicle_id,$vehicle_number;
     public $start_date = null;
     public $end_date = null;
+    public $branch;
+    public $branches = [];
+    public $branch_list = [];
+
     public function mount($model_id = null,$vehicle_id = null){
-        
+        $this->branches = get_branches() ?? [];
+
+        $this->branch = current_branch();
+
+        $this->branch_list = Branch::whereIn('id', get_branches())
+            ->where('status', 1)
+            ->orderBy('name', 'ASC')
+            ->get();
+
         if($model_id){
             $this->model =Product::find($model_id);
             if(!$this->model){
@@ -72,8 +85,18 @@ class PaymentVehicleSummary extends Component
         }
         
     }
+    public function FilterBranch($value)
+    {
+        $this->resetPage();
+        $this->page = 1;
+
+        $this->branch = $value ?: null;
+    }
     public function resetPageField(){
-        $this->reset(['vehicle_id','model_id','model','vehicle', 'vehicle_number']);
+        $this->reset(['vehicle_id','model_id','model','vehicle', 'vehicle_number', 'branch']);
+        $this->branch = current_branch();
+
+        $this->resetPage();
     }
     public function updateStartDate($value){
         $this->resetPage();
@@ -89,6 +112,7 @@ class PaymentVehicleSummary extends Component
     {
         return Excel::download(
             new VehicleSummaryExport(
+                $this->branch,
                 $this->vehicle_id,
                 $this->model_id,
                 $this->start_date,
@@ -102,6 +126,9 @@ class PaymentVehicleSummary extends Component
         // --- 1. Fetch assigned vehicle (only one, tied to vehicle_id if provided) ---
         $assignedVehicles = AsignedVehicle::whereIn('status', ['assigned', 'overdue'])
         ->with(['stock.product', 'order', 'user.organization_details'])
+        ->when($this->branch, function ($query) {
+            $query->where('branch_id', $this->branch);
+        })
         ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
         ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
         ->where(function ($query) {
@@ -111,6 +138,9 @@ class PaymentVehicleSummary extends Component
         ->get();
         // --- 2. Fetch exchange vehicles ---
         $exchangeVehicles = ExchangeVehicle::with(['stock'])
+            ->when($this->branch, function ($query) {
+                $query->where('branch_id', $this->branch);
+            })
             ->when($this->vehicle_id, fn($query) => $query->where('vehicle_id', $this->vehicle_id))
             ->when($this->model_id, fn($query) => $query->whereHas('order', fn($q) => $q->where('product_id', $this->model_id)))
             ->whereIn('status', ['returned', 'renewal','exchanged'])

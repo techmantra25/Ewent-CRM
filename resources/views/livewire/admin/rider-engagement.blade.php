@@ -95,18 +95,19 @@
                             <div class="d-flex align-items-center justify-content-end flex-wrap gap-1">
 
                                 {{-- City Selector --}}
-                               <div wire:ignore>
-                                    <select id="filter_city" class="form-select border border-2 p-2 custom-input-sm">
-                                        <option value="">City / State</option>
-                                        @foreach($cities as $city)
-                                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
-                                                {{ $city->name }}  ({{ $city->state->name ?? '' }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
                                 @if(auth('admin')->user()->branch_id == 1)
+
+                                    <div wire:ignore>
+                                        <select id="filter_city" class="form-select border border-2 p-2 custom-input-sm">
+                                            <option value="">City / State</option>
+                                            @foreach($cities as $city)
+                                                <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                                    {{ $city->name }}  ({{ $city->state->name ?? '' }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
                                     <div
                                         wire:ignore 
                                         wire:key="branch-dropdown-context-{{ $city_id }}">
@@ -148,15 +149,16 @@
                                     <span class="material-icons">Search</span>
                                 </button>
 
-                                <button type="button" wire:click="exportAll"
-                                        class="btn btn-secondary text-white mb-0 custom-input-sm ms-2">
+                                <button type="button"
+                                        wire:click="exportAll"
+                                        class="btn btn-secondary text-white mb-0 custom-input-sm">
                                     <span class="material-icons">Export</span>
                                 </button>
 
-                                <!-- Refresh Button -->
-                                <button type="button" wire:click="reset_search"
-                                        class="btn btn-outline-danger waves-effect mb-0 custom-input-sm ms-2">
-                                    <span class="material-icons">Refresh</span>
+                                <button type="button"
+                                        wire:click="reset_search"
+                                        class="btn btn-danger text-white mb-0 custom-input-sm">
+                                    <i class="ri-restart-line"></i>
                                 </button>
 
                             </div>

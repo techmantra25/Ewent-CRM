@@ -5,13 +5,33 @@
             <div class="col-auto">
               <h6 class="mb-0">Payment Summary</h6>
             </div>
+
             <div class="col-auto">
                 <div class="row justify-content-between">
+                  @if(auth('admin')->user()->branch_id == 1)
+                    <div class="col-auto" wire:ignore>
+                      <label class="form-label text-uppercase small">Branch</label>
+
+                      <select id="branch_filter"
+                              class="form-select border border-2 p-2 custom-input-sm">
+
+                          <option value="">Select Branch</option>
+
+                          @foreach($branch_list as $branch)
+                              <option value="{{ $branch->id }}">
+                                  {{ $branch->name }}
+                              </option>
+                          @endforeach
+                      </select>
+                    </div>
+                  @endif
+
                     @if(session()->has('error'))
                       <div class="col-auto alert alert-danger mt-3">
                           {{ session('error') }}
                       </div>
                   @endif
+                  
                 <div class="col-auto">
                   <label class="form-label text-uppercase small mb-1">Export Type</label>
                   <select 
@@ -29,7 +49,6 @@
           </div>
 
           <div class="row mb-3 g-2 align-items-end">
-            
             <!-- Rider Filter -->
             <div class="col-md-2" wire:ignore>
                 <label for="selected_rider" class="form-label text-uppercase small">Select Riders</label>
@@ -96,6 +115,7 @@
                 <tr>
                   <th>SL</th>
                   <th>Rider Name / Mobile</th>
+                  <th>Branch</th>
                   <th>Product Type</th>
                   <th class="text-center">Vehicle Type</th>
                   <th class="text-center">Amount</th>
@@ -137,6 +157,11 @@
                         @else
                           N/A
                         @endif
+                    </td>
+                    <td>  
+                      <small class="text-dark">{{ $item->branch->name ?? 'N/A' }}</small>
+                        <br>
+                      <small class="text-muted">{{ $item->branch->branch_code ?? '' }}</small>
                     </td>
                     <td>{{ucwords(str_replace('_', ' ', $item->order_type))}}</td>
                     <td class="text-center">{{ optional($item->order->product)->title ?? 'N/A' }}</td>
@@ -260,10 +285,42 @@
 
     // Rebind after Livewire DOM updates
     window.addEventListener('bind-chosen', () => {
-        setTimeout(() => {
-            initChosen();
-        }, 100);
-    });
+          setTimeout(() => {
+              initChosen();
+          }, 100);
+      });
+
+      // branch chosen
+    function initBranchChosen() {
+
+      jq("#branch_filter").chosen({
+          width: "100%"
+      });
+
+      jq("#branch_filter")
+          .off("change")
+          .on("change", function () {
+
+              @this.call(
+                  "FilterBranch",
+                  jq(this).val()
+              );
+
+          });
+  }
+
+  document.addEventListener('livewire:init', function () {
+
+      initBranchChosen();
+
+      Livewire.hook('morph.updated', () => {
+
+          jq("#branch_filter").trigger('chosen:updated');
+
+          initBranchChosen();
+      });
+
+  });
   </script>
 
 @endsection

@@ -45,61 +45,64 @@
                 <form wire:submit.prevent="updateVehicle">
                     <div class="row">
                         <!-- Product Title -->
-                        <div class="col-4">
-                            <div wire:ignore class="mb-2 mt-2 form-floating form-floating-outline">
+                         @if(auth('admin')->user()->branch_id == 1)
 
-                                <select id="city_filter_update"
-                                    class="form-select border border-2 p-2">
+                            <div class="col-4">
+                                <div wire:ignore class="mb-2 mt-2 form-floating form-floating-outline">
 
-                                    <option value="">Search City or State...</option>
+                                    <select id="city_filter_update"
+                                        class="form-select border border-2 p-2">
 
-                                    @foreach($cities as $city)
-                                        <option value="{{ $city->id }}"
-                                            {{ $city_id == $city->id ? 'selected' : '' }}>
-                                            {{ $city->name }}
-                                            @if($city->state)
-                                                ({{ $city->state->name }})
-                                            @endif
-                                        </option>
-                                    @endforeach
+                                        <option value="">Search City or State...</option>
 
-                                </select>
+                                        @foreach($cities as $city)
+                                            <option value="{{ $city->id }}"
+                                                {{ $city_id == $city->id ? 'selected' : '' }}>
+                                                {{ $city->name }}
+                                                @if($city->state)
+                                                    ({{ $city->state->name }})
+                                                @endif
+                                            </option>
+                                        @endforeach
 
-                                <label class="form-label">
-                                    City / State <span class="text-danger">*</span>
-                                </label>
+                                    </select>
 
+                                    <label class="form-label">
+                                        City / State <span class="text-danger">*</span>
+                                    </label>
+
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-4">
-                            <div wire:ignore
-                                wire:key="branch-update-container-{{ count($branchs) }}"
-                                class="mb-2 mt-2 form-floating form-floating-outline">
+                            <div class="col-4">
+                                <div wire:ignore
+                                    wire:key="branch-update-container-{{ count($branchs) }}"
+                                    class="mb-2 mt-2 form-floating form-floating-outline">
 
-                                <select id="branch_filter_update"
-                                    class="form-select border border-2 p-2">
+                                    <select id="branch_filter_update"
+                                        class="form-select border border-2 p-2">
 
-                                    <option value="">Select Branch</option>
+                                        <option value="">Select Branch</option>
 
-                                    @foreach($branchs as $item)
-                                        <option value="{{ $item->id }}"
-                                            {{ $branch == $item->id ? 'selected' : '' }}>
-                                            {{ $item->name }} | {{ $item->branch_code }}
-                                        </option>
-                                    @endforeach
+                                        @foreach($branchs as $item)
+                                            <option value="{{ $item->id }}"
+                                                {{ $branch == $item->id ? 'selected' : '' }}>
+                                                {{ $item->name }} | {{ $item->branch_code }}
+                                            </option>
+                                        @endforeach
 
-                                </select>
+                                    </select>
 
-                                <label class="form-label">
-                                    Branch <span class="text-danger">*</span>
-                                </label>
+                                    <label class="form-label">
+                                        Branch <span class="text-danger">*</span>
+                                    </label>
 
+                                </div>
+
+                                @error('branch')
+                                    <p class="text-danger inputerror">{{ $message }}</p>
+                                @enderror
                             </div>
-
-                            @error('branch')
-                                <p class="text-danger inputerror">{{ $message }}</p>
-                            @enderror
-                        </div>
+                        @endif
                         <div class="col-4">
                             <div class="mb-2 mt-2 form-floating form-floating-outline">
                             <select wire:model="model"

@@ -39,7 +39,7 @@ class MasterSubscription extends Component
     {
         return [
             'model' => 'required|exists:products,id',
-            'branch_id' => 'required|exists:branches,id',
+            // 'branch_id' => 'required|exists:branches,id',
             'subscription_type' => [
                 'required',
                 'string',
@@ -170,7 +170,7 @@ class MasterSubscription extends Component
         $this->validate();
 
         RentalPrice::create([
-            'branch_id' => $this->branch_id,
+            'branch_id' =>  $this->branch_id ?: current_branch(),
             'product_id' => $this->model,
             'subscription_type' => $this->subscription_type,
             'customer_type' => $this->customer_type,
@@ -301,25 +301,32 @@ class MasterSubscription extends Component
     {
         $query = RentalPrice::with(['product', 'branch.city.state']);
 
-            if ($this->asset) {
-                $query->where('product_id', $this->asset);
-            }
+        // Restrict records by logged-in admin branches
+        $query->whereIn('branch_id', get_branches());
 
-            if ($this->customerType) {
-                $query->where('customer_type', $this->customerType);
-            }
+        if ($this->asset) {
+            $query->where('product_id', $this->asset);
+        }
 
-            if ($this->filter_city_id) {
-                $query->whereHas('branch', function ($q) {
-                    $q->where('city_id', $this->filter_city_id);
-                });
-            }
+        if ($this->customerType) {
+            $query->where('customer_type', $this->customerType);
+        }
 
-            if ($this->filter_branch_id) {
-                $query->where('branch_id', $this->filter_branch_id);
-            }
-    
+        if ($this->filter_city_id) {
+            $query->whereHas('branch', function ($q) {
+                $q->where('city_id', $this->filter_city_id);
+            });
+        }
+
+        // Only super admin can use branch filter
+        if ($this->filter_branch_id && auth('admin')->user()->branch_id == 1) {
+            $query->where('branch_id', $this->filter_branch_id);
+        }
+
         $subscriptions = $query->get();
-        return view('livewire.product.master-subscription', ['subscriptions' => $subscriptions]);
+
+        return view('livewire.product.master-subscription', [
+            'subscriptions' => $subscriptions
+        ]);
     }
 }

@@ -122,20 +122,33 @@ class VehicleCreate extends Component
         }
     }
 
-    protected $rules = [
-        'branch' => 'required|exists:branches,id',
-        'model' => 'required|exists:products,id',
-        'vehicle_track_id' => 'required|string|unique:stocks,vehicle_track_id',
-        'friendly_name' => 'nullable|string|max:255',
-        'vehicle_number' => 'required|string|unique:stocks,vehicle_number',
-        'imei_number' => 'nullable|string|unique:stocks,imei_number',
-        'chassis_number' => 'required|string|unique:stocks,chassis_number',
-    ];
+    protected function rules()
+    {
+        $rules = [
+            'model' => 'required|exists:products,id',
+            'vehicle_track_id' => 'required|string|unique:stocks,vehicle_track_id',
+            'friendly_name' => 'nullable|string|max:255',
+            'vehicle_number' => 'required|string|unique:stocks,vehicle_number',
+            'imei_number' => 'nullable|string|unique:stocks,imei_number',
+            'chassis_number' => 'required|string|unique:stocks,chassis_number',
+        ];
+
+        if (auth('admin')->user()->branch_id == 1) {
+            $rules['branch'] = 'required|exists:branches,id';
+        }
+
+        return $rules;
+    }
     public function saveVehicle()
     {
         $validatedData = $this->validate();
-        Stock::create([
-            'branch_id' => $validatedData['branch'],
+
+        $branchId = auth('admin')->user()->branch_id == 1
+            ? $validatedData['branch']
+            : auth('admin')->user()->branch_id;
+            
+        $stock = Stock::create([
+            'branch_id' => $branchId,
             'product_id' => $validatedData['model'],
             'vehicle_number' => $validatedData['vehicle_number'],
             'vehicle_track_id' => $validatedData['vehicle_track_id'],
@@ -146,7 +159,7 @@ class VehicleCreate extends Component
 
         // Create Branch Log
         BranchLog::create([
-            'branch_id'    => $validatedData['branch'],
+            'branch_id'    => $branchId,
             'admin_id'     => Auth::guard('admin')->user()->id,
             'action'       => 'create',
             'module'       => 'Stock',

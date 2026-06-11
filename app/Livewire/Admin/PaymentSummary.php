@@ -20,16 +20,14 @@ class PaymentSummary extends Component
     public $branch;
     public $cities = [];
     public $branch_list = [];
-    public $branches = [];
-    public $user_type;
+    public $branches = [];  
 
     public function mount($model_id = null,$vehicle_id = null){
 
         $this->branches = get_branches() ?? [];
 
-        if (count($this->branches) === 1) {
-            $this->branch = $this->branches[0];
-        }
+        $this->branch = current_branch();
+
         if($model_id){
             $this->model =Product::find($model_id);
             if(!$this->model){
@@ -47,7 +45,7 @@ class PaymentSummary extends Component
         }
         
         $this->models = Product::where('status', 1)->orderBy('title', 'ASC')->get();
-        $this->branch_list = Branch::where('status',1)->orderBy('name', 'ASC')->get();
+        $this->branch_list = Branch::whereIn('id', get_branches())->where('status',1)->orderBy('name', 'ASC')->get();
     }
 
     public function FilterModel($value){
@@ -62,18 +60,14 @@ class PaymentSummary extends Component
         $this->branch = $value;
     }
 
-    public function FilterType($value)
-    {
-        $this->user_type = $value;
-    }
-
     public function resetPageField(){
         $this->reset(['vehicle_id','model_id','data','model','vehicle', 'start_date', 'end_date', 'branch']);
-        if (count($this->branches) === 1) {
-            $this->branch = $this->branches[0];
-        }
+        $this->branch = current_branch();
 
-        $this->branch_list = [];
+       $this->branch_list = Branch::whereIn('id', get_branches())
+        ->where('status',1)
+        ->orderBy('name', 'ASC')
+        ->get();
 
         $this->dispatch('chosen-updated');
     }
@@ -97,23 +91,14 @@ class PaymentSummary extends Component
                 $this->end_date . ' 23:59:59'
             ]);
         })
-       ->when($this->user_type, function ($query) {
-            $query->whereHas('paymentDetail.user', function ($q) {
-                $q->where('type', $this->user_type);
-            });
-        })
         ->when($this->vehicle_id, function ($query) {
             return $query->where('vehicle_id', $this->vehicle_id);
         })
         ->when($this->model_id, function ($query) {
             return $query->where('product_id', $this->model_id);
         })
-       ->when($this->branch, function ($query) {
-            $query->whereHas('stock', function ($q) {
-                $q->where('branch_id', $this->branch);
-            });
-        }, function ($query) {
-            $query->whereIn('branch_id', $this->branches);
+        ->when($this->branch, function ($query) {
+            $query->where('branch_id', $this->branch);
         })
         ->where('type', 'deposit')
         ->sum('amount');
@@ -125,21 +110,14 @@ class PaymentSummary extends Component
                 $this->end_date . ' 23:59:59'
             ]);
         })
-        ->when($this->user_type, function ($query) {
-            $query->whereHas('paymentDetail.user', function ($q) {
-                $q->where('type', $this->user_type);
-            });
-        })
         ->when($this->vehicle_id, function ($query) {
             return $query->where('vehicle_id', $this->vehicle_id);
         })
         ->when($this->model_id, function ($query) {
             return $query->where('product_id', $this->model_id);
         })
-       ->when($this->branch, function ($query) {
+        ->when($this->branch, function ($query) {
             $query->where('branch_id', $this->branch);
-        }, function ($query) {
-            $query->whereIn('branch_id', $this->branches);
         })
         ->where('type', 'rental')
         ->sum('amount');
@@ -153,15 +131,8 @@ class PaymentSummary extends Component
                     $this->end_date . ' 23:59:59'
                 ]);
             }
-            if ($this->user_type) {
-                $query->whereHas('paymentDetail.user', function ($q) {
-                    $q->where('type', $this->user_type);
-                });
-            }
             if ($this->branch) {
                 $query->where('branch_id', $this->branch);
-            } else {
-                $query->whereIn('branch_id', $this->branches);
             }
         })->when($this->model_id, function ($query) {
             return $query->where('id', $this->model_id);
@@ -170,26 +141,17 @@ class PaymentSummary extends Component
       $this->reset(['data']);
         foreach($results as $key=>$item){
        
-            $vehicles = $item->stock_item
-            ->when($this->branch, function ($query) {
-                $query->where('branch_id', $this->branch);
-            }, function ($query) {
-                $query->whereIn('branch_id', $this->branches);
-            })
+            $vehicles = $item->stock_item()
+              ->when($this->branch, function ($query) {
+                        $query->where('branch_id', $this->branch);
+                    })
             ->when($this->vehicle_id, function ($query) {
                 return $query->where('id', $this->vehicle_id);
             })->pluck('id')->toArray();
 
             $modelPayments = PaymentItem::where('product_id', $item->id)
-                ->when($this->user_type, function ($query) {
-                    $query->whereHas('paymentDetail.user', function ($q) {
-                        $q->where('type', $this->user_type);
-                    });
-                })
-                ->when($this->branch, function ($query) {
+                 ->when($this->branch, function ($query) {
                     $query->where('branch_id', $this->branch);
-                }, function ($query) {
-                    $query->whereIn('branch_id', $this->branches);
                 })
                 ->when($this->start_date && $this->end_date, function ($query) {
                     $query->whereBetween('created_at', [
@@ -212,15 +174,8 @@ class PaymentSummary extends Component
 
             foreach($vehicles as $k=>$vehicle){
                 $PaymentItem = PaymentItem::with('stock')
-                ->when($this->user_type, function ($query) {
-                    $query->whereHas('paymentDetail.user', function ($q) {
-                        $q->where('type', $this->user_type);
-                    });
-                })
-                ->when($this->branch, function ($query) {
+                 ->when($this->branch, function ($query) {
                     $query->where('branch_id', $this->branch);
-                }, function ($query) {
-                    $query->whereIn('branch_id', $this->branches);
                 })
                 ->when($this->start_date && $this->end_date, function ($query) {
                     return $query->whereBetween('created_at', [

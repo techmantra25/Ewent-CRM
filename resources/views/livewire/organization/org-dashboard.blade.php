@@ -76,6 +76,14 @@
     .side-modal-content {
         height: calc(100vh - 110px);
     }
+    .chosen-container-single .chosen-single {
+        height: 42px !important;
+        line-height: 42px !important;
+        padding: 0 .75rem !important;
+        border: 2px solid #d9dee3 !important;
+        border-radius: .375rem !important;
+        background: #fff !important;
+    }
    
   </style>
     <div class="col-lg-12 col-md-6 mb-md-0 mb-4">
@@ -1035,6 +1043,17 @@
                         <div class="card h-100 shadow-sm">
                             <div class="card-body">
                                 <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
+                                    <div style="max-width:230px;" wire:ignore>
+                                        <select id="invoice_branch_filter"
+                                                class="form-select border border-2 p-2 custom-input-sm">
+                                            <option value="">Select Branch</option>
+                                            @foreach($branch_list as $branch)
+                                                <option value="{{ $branch->id }}">
+                                                    {{ $branch->name }} | {{ $branch->branch_code }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <div style="max-width: 350px;" class="text-start text-uppercase">
                                         <input type="text" wire:model="search" class="form-control border border-2 p-2 custom-input-sm"
                                             placeholder="search here.." wire:keyup="FilterRider($event.target.value)">
@@ -1050,6 +1069,7 @@
                                             <tr class="invoice-head-item">
                                                 <th>#</th>
                                                 <th>Invoice No</th>
+                                                <th>Branch</th>
                                                 <th>Type</th>
                                                 <th>Billing Period</th>
                                                 <th>Status</th>
@@ -1064,6 +1084,7 @@
                                                 <tr style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#payment-invoice-{{ $invoice->id }}" aria-expanded="false" class="invoice-body-item">
                                                     <td>{{ $invoices->firstItem() + $index }}</td>
                                                     <td>{{ $invoice->invoice_number }}</td>
+                                                    <td>{{ $invoice->branch->name }}</td>
                                                     <td>{{ ucfirst($invoice->type) }}</td>
                                                     <td>
                                                         <i class="ri-calendar-line text-primary"></i>
@@ -1198,14 +1219,33 @@
                         <div class="card h-100 shadow-sm">
                             <div class="card-body">
                                 <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
-                                    <div style="max-width: 350px;" class="text-start text-uppercase">
-                                        <input type="text" wire:model="search" class="form-control border border-2 p-2 custom-input-sm"
-                                            placeholder="search here.." wire:keyup="FilterRider($event.target.value)">
+
+                                    <div style="max-width:230px;" wire:ignore>
+                                        <select id="payment_branch_filter"
+                                                class="form-select border border-2 p-2 custom-input-sm">
+                                            <option value="">Select Branch</option>
+                                            @foreach($branch_list as $branch)
+                                                <option value="{{ $branch->id }}">
+                                                    {{ $branch->name }} | {{ $branch->branch_code }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
-                                    <!-- Reset Button -->
-                                    <a href="javascript:void(0)" class="btn btn-danger text-white custom-input-sm" wire:click="resetPageField">
+
+                                    <div style="max-width:350px;" class="text-start text-uppercase">
+                                        <input type="text"
+                                            wire:model="search"
+                                            class="form-control border border-2 p-2 custom-input-sm"
+                                            placeholder="search here.."
+                                            wire:keyup="FilterRider($event.target.value)">
+                                    </div>
+
+                                    <a href="javascript:void(0)"
+                                    class="btn btn-danger text-white custom-input-sm"
+                                    wire:click="resetPageField">
                                         <i class="ri-restart-line"></i>
                                     </a>
+
                                 </div>
                                 <div class="table-responsive">
                                     <table class="table align-middle">
@@ -1213,6 +1253,7 @@
                                             <tr class="invoice-head-item">
                                                 <th>#</th>
                                                 <th>Organization</th>
+                                                <th>Branch</th>
                                                 <th>Invoice</th>
                                                 <th>Payment Method</th>
                                                 <th>Status</th>
@@ -1225,7 +1266,6 @@
                                             @forelse($payments as $index => $payment)
                                                 <tr>
                                                     <td>{{ $payments->firstItem() + $index }}</td>
-
                                                     <td>
                                                         @if($payment->organization)
                                                             <a href="{{ route('admin.customer.details', $payment->organization->id) }}" class="fw-medium text-truncate">
@@ -1236,7 +1276,7 @@
                                                             <span class="text-muted">N/A</span>
                                                         @endif
                                                     </td>
-
+                                                    <td>{{ $payment->branch->name }}</td>
                                                     <td>
                                                         @if($payment->invoice)
                                                             {{ $payment->invoice->invoice_number }}
@@ -1838,6 +1878,65 @@
         }, 1000);
     });
 
+</script>
+<script>
+
+var jq = $.noConflict();
+
+function initBranchFilters() {
+
+    if (jq('#invoice_branch_filter').data('chosen')) {
+        jq('#invoice_branch_filter').chosen('destroy');
+    }
+
+    jq('#invoice_branch_filter')
+        .chosen({
+            width: '100%',
+            search_contains: true
+        })
+        .off('change')
+        .on('change', function () {
+            @this.call('FilterInvoiceBranch', jq(this).val());
+        });
+
+    if (jq('#payment_branch_filter').data('chosen')) {
+        jq('#payment_branch_filter').chosen('destroy');
+    }
+
+    jq('#payment_branch_filter')
+        .chosen({
+            width: '100%',
+            search_contains: true
+        })
+        .off('change')
+        .on('change', function () {
+            @this.call('FilterPaymentBranch', jq(this).val());
+        });
+}
+
+window.addEventListener('reset-branch-filters', () => {
+
+    jq('#invoice_branch_filter')
+        .val('')
+        .trigger('chosen:updated');
+
+    jq('#payment_branch_filter')
+        .val('')
+        .trigger('chosen:updated');
+});
+
+document.addEventListener('livewire:init', function () {
+
+    initBranchFilters();
+
+    Livewire.hook('morph.updated', () => {
+
+        jq('#invoice_branch_filter').trigger('chosen:updated');
+        jq('#payment_branch_filter').trigger('chosen:updated');
+
+        initBranchFilters();
+    });
+});
 </script>
 @endsection
 
