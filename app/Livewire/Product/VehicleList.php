@@ -93,7 +93,9 @@ class VehicleList extends Component
      * Refresh button click handler to reset the search input and reload data.
      */
     public function reset_search(){
-        $this->reset(['search','model','overdue_days', 'city_id', 'branch', 'customer_type']);
+        $this->reset(['search','model','overdue_days', 'city_id', 'customer_type']);
+
+         $this->branch = current_branch();
         $this->branch_list = []; 
          $this->dispatch('reset-chosen-filters');
     }

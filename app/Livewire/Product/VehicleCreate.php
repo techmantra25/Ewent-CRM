@@ -143,14 +143,12 @@ class VehicleCreate extends Component
     {
         $validatedData = $this->validate();
 
-        // $admin = auth('admin')->user();
-
-        // $branchId = $admin->branch_id == 1
-        //     ? $validatedData['branch']
-        //     : $admin->branch_id;
+        $branchId = auth('admin')->user()->branch_id == 1
+            ? $validatedData['branch']
+            : auth('admin')->user()->branch_id;
             
-        Stock::create([
-            'branch_id' =>  $validatedData['branch'] ?: current_branch(),
+        $stock = Stock::create([
+            'branch_id' => $branchId,
             'product_id' => $validatedData['model'],
             'vehicle_number' => $validatedData['vehicle_number'],
             'vehicle_track_id' => $validatedData['vehicle_track_id'],

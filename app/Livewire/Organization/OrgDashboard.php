@@ -9,6 +9,7 @@ use App\Models\OrganizationPayment;
 use App\Models\OrganizationInvoiceItem;
 use App\Models\OrganizationInvoiceItemDetail;
 use App\Models\User;
+use App\Models\Branch;
 use App\Models\OrgInvoiceMerchantNumber;
 use Livewire\WithPagination;
 use App\Models\OrganizationProduct;
@@ -42,6 +43,9 @@ class OrgDashboard extends Component
     public $isRejectModal = false;
     public $field;
     public $id;
+    public $branch_list = [];
+    public $invoiceBranch = '';
+    public $paymentBranch = '';
 
     public function mount(){
 
@@ -60,6 +64,9 @@ class OrgDashboard extends Component
             ->first();
             $this->InvoicePaidAmount = OrganizationInvoice::where('organization_id', $this->organization->id)
             ->where('status', 'paid')->sum('amount');
+            $this->branch_list = Branch::where('status', 1)
+            ->orderBy('name')
+            ->get();
     }
     
     public function gotoPage($value, $pageName = 'page')
@@ -81,8 +88,20 @@ class OrgDashboard extends Component
         $this->search = $value;
         $this->resetPage();
     }
+    public function FilterInvoiceBranch($branchId)
+    {
+        $this->invoiceBranch = $branchId;
+        $this->resetPage();
+    }
+
+    public function FilterPaymentBranch($branchId)
+    {
+        $this->paymentBranch = $branchId;
+        $this->resetPage();
+    }
     public function resetPageField(){
-        $this->reset(['search']);
+        $this->reset(['search','invoiceBranch','paymentBranch']);
+        $this->dispatch('reset-branch-filters');
     }
     // Add this at the top of your component
 
@@ -469,6 +488,9 @@ class OrgDashboard extends Component
             'items.details' // load day-wise breakdown
         ])
         ->where('organization_id', $this->organization->id)
+        ->when($this->invoiceBranch, function ($query) {
+            $query->where('branch_id', $this->invoiceBranch);
+        })
         ->when($this->search, function ($query) {
             $searchTerm = '%' . $this->search . '%';
 
@@ -506,6 +528,9 @@ class OrgDashboard extends Component
 
         $payment_query = OrganizationPayment::with('organization')
             ->where('organization_id', $this->organization->id)
+            ->when($this->paymentBranch, function ($query) {
+                $query->where('branch_id', $this->paymentBranch);
+            })
             ->when($this->search, function ($query) {
                 $searchTerm = '%' . $this->search . '%';
                 $query->where(function ($q) use ($searchTerm) {
@@ -538,11 +563,16 @@ class OrgDashboard extends Component
             ->orderByDesc('id')->paginate(20, ['*'], 'payments');
             $payments = $payment_query;
 
+        $branch_list =  Branch::where('status', 1)
+            ->orderBy('name')
+            ->get();
+
         return view('livewire.organization.org-dashboard', [
             'riders' => $riders,
             'invoices' => $invoices,
             'deposit_invoices' => $deposit_invoices,
             'payments' => $payments,
+            'branch_list' => $branch_list,
         ]);
     }
 }
