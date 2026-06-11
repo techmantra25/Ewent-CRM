@@ -136,8 +136,6 @@
                                         @endforeach
                                     </select>
                                 </div>
-
-                                {{-- Search --}}
                                 <div>
                                     <input type="text"
                                         wire:model="search"
