@@ -55,8 +55,14 @@
             font-size: 12px;
         }
         .chosen-single{
-            width: 190px;
+            width: 150px;
+            height: 40px !important;
+            line-height: 40px !important;
+            background: #fff !important;
+            border: 2px solid #dee2e6 !important;
+            border-radius: 0.375rem !important;
         }
+       
     </style>
     <div class="col-lg-12 justify-content-left">
        <h5 class="mb-0">Rider Management</h5>
@@ -85,39 +91,74 @@
             <div class="col-12">
                 <div class="card mb-2 py-4 px-2">
                     <div class="row justify-content-end">
-                        <div class="col-lg-8 col-8 my-auto mb-2">
-                            <div class="d-flex align-items-center justify-content-end">
-                                <div wire:ignore>
-                                    {{-- <label for="selected_organization" class="form-label text-uppercase small">Select Riders</label> --}}
-                                    <select id="selected_organization" wire:model="selected_organization" class="form-select border border-2 p-2 custom-input-sm">
-                                        <option value="" selected hidden>Organization</option>
-                                        @foreach ($organizations as $org)
-                                            <option value="{{ $org['id'] }}">{{ $org['name'] }}</option>
+                        <div class="col-lg-12 my-auto mb-2">
+                            <div class="d-flex align-items-center justify-content-end flex-wrap gap-1">
+
+                                {{-- City Selector --}}
+                               <div wire:ignore>
+                                    <select id="filter_city" class="form-select border border-2 p-2 custom-input-sm">
+                                        <option value="">City / State</option>
+                                        @foreach($cities as $city)
+                                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                                {{ $city->name }}  ({{ $city->state->name ?? '' }})
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-lg-2">
-                                    <select
-                                        class="form-select border border-2 p-2 custom-input-sm" wire:model="rider_type" wire:change="FilterRiderType($event.target.value)">
-                                        <option value="" selected hidden>Rider Type</option>
-                                        <option value="B2C">B2C</option>
-                                        <option value="B2B">B2B</option>
+
+                                @if(auth('admin')->user()->branch_id == 1)
+                                    <div
+                                        wire:ignore 
+                                        wire:key="branch-dropdown-context-{{ $city_id }}">
+                                        <select id="filter_branch" class="form-select border border-2 p-2 custom-input-sm">
+                                            <option value="">Branch</option>
+                                            @foreach($branch_list as $item)
+                                                <option value="{{ $item->id }}" {{ $item->id == $branch ? 'selected' : '' }}>
+                                                    {{ $item->name }} | {{ $item->branch_code }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
+
+                                {{-- Organization --}}
+                                <div wire:ignore>
+                                    <select id="selected_organization"
+                                            wire:model="selected_organization"
+                                            class="form-select border border-2 p-2 custom-input-sm">
+                                        <option value="">Organization</option>
+
+                                        @foreach ($organizations as $org)
+                                            <option value="{{ $org['id'] }}">
+                                                {{ $org['name'] }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div>
-                                    <input type="text" wire:model="search"
-                                       class="form-control border border-2 p-2 custom-input-sm"
-                                       placeholder="Search here..">
+                                    <input type="text"
+                                        wire:model="search"
+                                        class="form-control border border-2 p-2 custom-input-sm"
+                                        placeholder="Search here..">
                                 </div>
-                                <button type="button" wire:click="btn_search"
-                                        class="btn btn-primary text-white mb-0 custom-input-sm ms-2">
+
+                                <button type="button"
+                                        wire:click="btn_search"
+                                        class="btn btn-primary text-white mb-0 custom-input-sm">
                                     <span class="material-icons">Search</span>
                                 </button>
+
+                                <button type="button" wire:click="exportAll"
+                                        class="btn btn-secondary text-white mb-0 custom-input-sm ms-2">
+                                    <span class="material-icons">Export</span>
+                                </button>
+
                                 <!-- Refresh Button -->
                                 <button type="button" wire:click="reset_search"
                                         class="btn btn-outline-danger waves-effect mb-0 custom-input-sm ms-2">
                                     <span class="material-icons">Refresh</span>
                                 </button>
+
                             </div>
                         </div>
                     </div>
@@ -266,6 +307,7 @@
                                                                 @endif
                                                             </a>
                                                             <small class="text-truncate">{{ $al_user->email }} | {{$al_user->country_code}} {{ $al_user->mobile }}</small>
+                                                            <small><strong>Branch :</strong>{{ $al_user->branch->name ?? 'N/A' }}</small>
                                                         <div>
                                                     </div>
                                                 </td>
@@ -370,6 +412,7 @@
                                                                 class="text-heading"><span class="fw-medium text-truncate">{{ ucwords($all_inact_user->name) }}</span>
                                                             </a>
                                                             <small class="text-truncate">{{ $all_inact_user->email }} | {{$all_inact_user->country_code}} {{ $all_inact_user->mobile }}</small>
+                                                            <small><strong>Branch :</strong>{{ $all_inact_user->branch->name ?? 'N/A' }}</small>
                                                         <div>
                                                     </div>
                                                 </td>
@@ -460,6 +503,7 @@
                                                                 @endif
                                                             </a>
                                                             <small class="text-truncate">{{ $aw_user->email }} </small>
+                                                            <small><strong>Branch :</strong>{{ $aw_user->branch->name ?? 'N/A' }}</small>
                                                             @if($aw_user->user_type === "B2B" && $aw_user->organization_details)
                                                                 <p class="badge rounded-pill badge-center bg-label-success">
                                                                     ORG: <span class="text-dark"><a href="{{route('admin.organization.dashboard',$aw_user->organization_details->id)}}"> {{ optional($aw_user->organization_details)->name ?? 'N/A' }} </a></span>
@@ -555,6 +599,7 @@
                                                                 @endif
                                                             </a>
                                                             <small class="text-truncate">{{ $rta_user->email }} | {{$rta_user->country_code}} {{ $rta_user->mobile }}</small>
+                                                            <small><strong>Branch :</strong>{{ $rta_user->branch->name ?? 'N/A' }}</small>
                                                             @if($rta_user->user_type === "B2B" && $rta_user->organization_details)
                                                                 <p class="badge rounded-pill badge-center bg-label-success">
                                                                     ORG: <span class="text-dark"><a href="{{route('admin.organization.dashboard',$rta_user->organization_details->id)}}"> {{ optional($rta_user->organization_details)->name ?? 'N/A' }} </a></span>
@@ -651,6 +696,7 @@
                                                                 @endif
                                                             </a>
                                                             <small class="text-truncate">{{ $ac_user->email }} | {{$ac_user->country_code}} {{ $ac_user->mobile }}</small>
+                                                            <small><strong>Branch :</strong>{{ $ac_user->branch->name ?? 'N/A' }}</small>
                                                             @if($ac_user->user_type === "B2B" && $ac_user->organization_details)
                                                                 <p class="badge rounded-pill badge-center bg-label-success">
                                                                     ORG: <span class="text-dark"><a href="{{route('admin.organization.dashboard',$ac_user->organization_details->id)}}"> {{ optional($ac_user->organization_details)->name ?? 'N/A' }} </a></span>
@@ -791,6 +837,7 @@
                                                                 @endif
                                                             </a>
                                                             <small class="text-truncate">{{ $inact_user->email }} </small>
+                                                            <small><strong>Branch :</strong>{{ $inact_user->branch->name ?? 'N/A' }}</small>
                                                             @if($inact_user->user_type === "B2B" && $inact_user->organization_details)
                                                                 <p class="badge rounded-pill badge-center bg-label-success">
                                                                     ORG: <span class="text-dark"><a href="{{route('admin.organization.dashboard',$inact_user->organization_details->id)}}"> {{ optional($inact_user->organization_details)->name ?? 'N/A' }} </a></span>
@@ -880,6 +927,7 @@
                                                             </a>
                                                             <small class="text-truncate">{{ $susp_user->email }} </small>
                                                             {{-- | {{$susp_user->country_code}} {{ $susp_user->mobile }} --}}
+                                                            <small><strong>Branch :</strong>{{ $susp_user->branch->name ?? 'N/A' }}</small>
                                                         <div>
                                                     </div>
                                                 <td class="align-middle text-start">
@@ -969,6 +1017,8 @@
                                                                 class="text-heading"><span class="fw-medium text-truncate">{{ ucwords($cr_user->name) }}</span>
                                                             </a>
                                                             <small class="text-truncate">{{$cr_user->country_code}} {{ $cr_user->mobile }}</small>
+                                                            <small><strong>Branch :</strong>{{ $cr_user->branch->name ?? 'N/A' }}</small>
+
                                                         <div>
                                                     </div>
                                                 </td>
@@ -1064,6 +1114,7 @@
                         </a>
                         <small class="text-truncate">{{ $selectedCustomer->email }} | {{$selectedCustomer->country_code}}
                         {{ $selectedCustomer->mobile }}</small>
+                        <small><strong>Branch :</strong>{{ $selectedCustomer->branch->name ?? 'N/A' }}</small>
                         <div>
                         </div>
                         <div class="d-flex align-items-center gap-2 position-absolute end-0 top-0 mt-6 me-5">
@@ -1768,8 +1819,6 @@
             });
         });
     </script>
-    <link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-    <script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
     <script>
         var jq = $.noConflict();
         console.log("Selected Organization:", jq);
@@ -1793,8 +1842,49 @@
         // Rebind after Livewire DOM updates
         window.addEventListener('bind-chosen', () => {
             setTimeout(() => {
-                initChosen();
-            }, 100);
+                initChosenFilters();
+            }, 300);
         });
-    </script>
+
+    function initFilters() {
+        // 1. Initialize City Filter safely if not already built
+        let cityEl = jq("#filter_city");
+        if (cityEl.length && !cityEl.data("chosen")) {
+            cityEl.chosen({ width: "100%", search_contains: true });
+            cityEl.off('change').on('change', function () {
+                @this.call('FilterCity', jq(this).val());
+            });
+        }
+
+        // 2. RE-INITIALIZE Branch Filter cleanly 
+        let branchEl = jq("#filter_branch");
+        if (branchEl.length) {
+            // Force destroy existing container so chosen recalculates option listings
+            if (branchEl.data("chosen")) {
+                branchEl.chosen("destroy");
+            }
+            
+            branchEl.chosen({ width: "100%", search_contains: true });
+            branchEl.off('change').on('change', function () {
+                @this.call('FilterBranch', jq(this).val());
+            });
+        }
+    }
+
+    document.addEventListener("livewire:init", function () {
+        // Initial build on load
+        initFilters();
+
+        // Automatically trigger re-initialization EVERY time Livewire mutates/renders the DOM
+        Livewire.hook('morph.updated', () => {
+            initFilters();
+        });
+
+        // Reset tracking listeners
+        window.addEventListener('reset-chosen-filters', () => {
+            jq("#filter_city").val('').trigger('chosen:updated');
+            jq("#filter_branch").val('').trigger('chosen:updated');
+        });
+    });
+</script>
 @endsection

@@ -12,7 +12,6 @@
       </div>
       <div class="col-lg-4 col-md-6 my-sm-auto ms-sm-auto me-sm-0 mx-auto mt-3">
         <div class="nav-wrapper position-relative end text-end">
-          <!-- Back Button -->
           <a class="btn btn-dark btn-sm" href="javascript:history.back();" role="button">
             <i class="ri-arrow-go-back-line ri-16px me-0 me-sm-2 align-baseline"></i>
             Back
@@ -39,12 +38,10 @@
     </div>
 
     <div class="row">
-      <!-- Left Card -->
       <div class="col-lg-9">
         <div class="card card-plain p-4">
           <div class="card-body p-3">
             <div class="row">
-              <!-- Product Title -->
               <div class="col-8">
                   <div class="form-floating form-floating-outline mb-3">
                     <input type="text" wire:model="name" class="form-control border border-2 p-2"
@@ -55,6 +52,7 @@
                   <p class="text-danger inputerror">{{ $message }}</p>
                   @enderror
               </div>
+              
               <div class="col-4">
                 <div class="mb-2 form-floating form-floating-outline">
                   <select wire:model="designation" wire:change="GetDesignation($event.target.value)"
@@ -71,7 +69,6 @@
                 @enderror
               </div>
 
-              <!-- Category Select -->
               <div class="col-6">
                 <div class="form-floating form-floating-outline mb-3 mt-2">
                     <input type="text" wire:model="email" class="form-control border border-2 p-2"
@@ -92,36 +89,51 @@
                   <p class="text-danger inputerror">{{ $message }}</p>
                   @enderror
               </div>
-              <div class="col-4" wire:ignore>
-                  <label class="form-label">
-                      Branch <span class="text-danger">*</span>
-                  </label>
 
-                  <select id="branch_select" class="form-select">
-                      <option value="">Select Branch</option>
-                      @foreach($branches as $branch)
-                          <option value="{{ $branch->id }}"
-                              {{ $branch->id == $branch_id ? 'selected' : '' }}>
-                              {{ $branch->name }}
-                          </option>
-                      @endforeach
-                  </select>
+              <div class="col-6 mt-2">
+                <div class="chosen-floating mb-3" wire:ignore>
+                    <select id="city_select" class="form-select">
+                        <option value=""></option>
+                        @foreach($cities as $city)
+                            <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                {{ $city->name }}
+                                @if($city->state)
+                                    ({{ $city->state->name }})
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+                    <label class="chosen-label">
+                        City / State <span class="text-danger">*</span>
+                    </label>
+                </div>
+            </div>
 
-                  @error('branch_id')
-                      <p class="text-danger inputerror">{{ $message }}</p>
-                  @enderror
-              </div>
+            <div class="col-6 mt-2">
+                <div class="chosen-floating mb-3" wire:key="branch-select-container-{{ $city_id }}">
+                    <select id="branch_select" class="form-select">
+                        <option value=""></option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ $branch->id == $branch_id ? 'selected' : '' }}>
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <label class="chosen-label">
+                        Branch <span class="text-danger">*</span>
+                    </label>
+                </div>
+            </div>
               
             </div>
           </div>
         </div>
       </div>
-      <!-- Right Card -->
+      
       <div class="col-lg-3">
         <div class="card card-plain mb-3">
           <div class="card-body p-3">
             <h6>Employee Image</h6>
-            <!-- Product Image -->
             <div class="mb-2 mt-2">
               <input type="file" wire:model="image" id="image" accept="image/*"
                 class="form-control border border-2 p-2 d-none" onchange="updateImage(event, 'image')">
@@ -135,7 +147,6 @@
             @enderror
           </div>
         </div>
-
       </div>
     </div>
   </form>
@@ -145,58 +156,106 @@
 </div>
 
 @section('page-script')
+<style>
+  .chosen-floating{
+    position: relative;
+}
+
+.chosen-floating .chosen-container{
+    width:100% !important;
+}
+
+.chosen-floating .chosen-container-single .chosen-single{
+    height:45px !important;
+    line-height:45px !important;
+    border:1px solid #d9dee3 !important;
+    border-radius:7px !important;
+    background:#fff !important;
+    padding-left:12px !important;
+}
+
+.chosen-floating .chosen-label{
+    position:absolute;
+    top:-10px;
+    left:12px;
+    background:#fff;
+    padding:0 5px;
+    font-size:.75rem;
+    color: #6c757d;
+    z-index:10;
+    pointer-events:none;
+}
+</style>
+
 <script>
-  
   function updateImage(event, name) {
     const fileInput = event.target;
     const file = fileInput.files[0];
     const imageElement = document.getElementById(`image-preview`);
 
-    // Check if a file was selected
     if (file) {
         const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        
-        // Check if the selected file type is valid
         if (validTypes.includes(file.type)) {
             const reader = new FileReader();
             reader.onload = function (e) {
                 if (imageElement) {
-                    imageElement.src = e.target.result; // Update the image source with the file's data URL
+                    imageElement.src = e.target.result;
                 }
             };
-            reader.readAsDataURL(file); // Read the file as a data URL for preview
+            reader.readAsDataURL(file);
         } else {
-            // Alert user about invalid file type
             alert('Invalid file type. Please select a valid image (JPEG, PNG, GIF, WEBP).');
-            fileInput.value = ''; // Reset the input field
+            fileInput.value = '';
             if (imageElement) {
-                // Reset the image to the default preview image
-                imageElement.src = '{{ asset('assets/img/profile-image.webp') }}';
+                imageElement.src = '{{ asset($employee->image) }}';
             }
         }
     }
-}
-  
-</script>
-<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-    <script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
-    <script>
-        var jq = $.noConflict();
-        console.log("Selected Branch:", jq);
-            jq("#branch_select").chosen({
-                width: "100%"
-            });
+  }
 
-            jq("#branch_select").off('change').on('change', function () {
-                const selected = jq(this).val();
-                console.log("Selected Branch:", selected);
-                @this.call('BranchUpdate', selected);
-            });
-        window.addEventListener('bind-chosen', () => {
-            setTimeout(() => {
-                initChosen();
-            }, 100);
-        });
+  var jq = $.noConflict();
+
+  function initCityDropdown() {
+      let citySelect = jq("#city_select");
+      
+      // Initialize if not already initialized
+      if (!citySelect.data("chosen")) {
+          citySelect.chosen({ width: "100%", search_contains: true });
+      }
+      
+      citySelect.off('change').on('change', function () {
+          let selectedCity = jq(this).val();
+          @this.set('city_id', selectedCity);
+      });
+  }
+
+  function initBranchDropdown() {
+      let branchSelect = jq("#branch_select");
+      
+      // Always clear out any dead Chosen instances lingering on re-rendered DOM elements
+      if (branchSelect.data("chosen")) {
+          branchSelect.chosen("destroy");
+      }
+
+      branchSelect.chosen({ width: "100%", search_contains: true });
+      branchSelect.trigger("chosen:updated");
+
+      branchSelect.off('change').on('change', function () {
+          let selectedBranch = jq(this).val();
+          @this.call('BranchUpdate', selectedBranch);
+      });
+  }
+
+  document.addEventListener("livewire:init", function () {
+      // First Load execution
+      initCityDropdown();
+      initBranchDropdown();
+
+      // Trigger re-initialization securely when Livewire morphs structural options
+      Livewire.hook('morph.updated', () => {
+          initCityDropdown();
+          initBranchDropdown();
+      });
+  });
 </script>
 @endsection
-

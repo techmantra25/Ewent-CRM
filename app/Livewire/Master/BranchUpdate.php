@@ -5,14 +5,11 @@ namespace App\Livewire\Master;
 use Livewire\Component;
 use App\Models\Branch;
 use App\Models\City;
-use App\Models\State;
 
 class BranchUpdate extends Component
 {
     public $branch_id;
     public $branch_name, $branch_code, $address, $city_id, $status;
-    public $state_id;
-    public $states = [];
     public $cities = [];
 
     public function mount($id)
@@ -27,27 +24,10 @@ class BranchUpdate extends Component
         $this->status      = $branch->status;
 
         // load states
-        $this->states = State::where('status', 1)
-            ->orderBy('name','ASC')
-            ->get();
-
-        // set state from selected city
-        $city = City::find($this->city_id);
-        $this->state_id = $city?->state_id;
-
-        // load cities based on state
-        $this->cities = City::where('state_id', $this->state_id)
-            ->orderBy('name','ASC')
-            ->get();
-    }
-
-    public function updatedStateId($value)
-    {
-        $this->city_id = null;
-
-        $this->cities = City::where('state_id', $value)
-            ->orderBy('name', 'ASC')
-            ->get();
+        $this->cities = City::with('state')
+        ->where('status', 1)
+        ->orderBy('name', 'ASC')
+        ->get();
     }
 
     public function update()

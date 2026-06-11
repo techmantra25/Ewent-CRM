@@ -17,6 +17,9 @@
 <!-- END: Theme JS-->
 <!-- Pricing Modal JS-->
 @stack('pricing-script')
+
+<link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
+
 <!-- END: Pricing Modal JS-->
 {{-- 
 <script type="text/javascript" src="{{asset('build/assets/jquery-CbdDuLi-.js')}}"></script>
@@ -39,7 +42,7 @@
 <script type="text/javascript" src="{{asset('build/assets/flatpickr-C_1WDX6v.js')}}"></script>
 <script type="text/javascript" src="{{asset('build/assets/tagify-D6IG1b0s.js')}}"></script>
 <script type="text/javascript" src="{{asset('build/assets/main-DRGn0ueN.js')}}"></script> --}}
-
+<script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
 <!-- BEGIN: Page JS-->
 @yield('page-script')
 <!-- END: Page JS-->

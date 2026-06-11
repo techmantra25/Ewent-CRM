@@ -18,6 +18,7 @@ class CityIndex extends Component
     public $modal_activity_class = 0;
     public $cities, $states;
     public $cityId, $name, $state_id, $status, $search;
+    public $filter_state_id = '';
 
     // Remove the validation rules from the property and move it to the method
     protected $rules = [
@@ -36,13 +37,26 @@ class CityIndex extends Component
     public function refresh()
     {
         $this->resetForm();
-        $this->cities = City::where('name', 'like', '%' . $this->search . '%')->get();
+
+        $this->loadCities();
     }
 
+    public function loadCities()
+    {
+        $this->cities = City::with('state')
+            ->when($this->search, function ($q) {
+                $q->where('name', 'like', '%' . $this->search . '%');
+            })
+            ->when($this->filter_state_id, function ($q) {
+                $q->where('state_id', $this->filter_state_id);
+            })
+            ->orderBy('name', 'ASC')
+            ->get();
+    }
     // Reset form inputs
     public function resetForm()
     {
-        $this->reset(['cityId', 'name', 'state_id', 'status','search']);
+        $this->reset(['cityId', 'name', 'state_id', 'status']);
     }
 
     // Create or Update City
@@ -116,9 +130,26 @@ class CityIndex extends Component
         session()->flash('message', 'City status updated successfully!');
         $this->refresh();
     }
+
+    public function changeState($stateId)
+    {
+        $this->filter_state_id = $stateId;
+
+        $this->loadCities();
+    }
+
     public function searchButtonClicked()
     {
-        $this->cities = City::where('name', 'like', '%' . $this->search . '%')->get();
+        $this->loadCities();
+    }
+
+    public function resetSearch()
+    {
+        $this->reset(['search', 'filter_state_id']);
+
+        $this->loadCities();
+
+        $this->dispatch('refreshChosen');
     }
 
     public function ModalImport($value)

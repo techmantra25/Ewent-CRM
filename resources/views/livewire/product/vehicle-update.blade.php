@@ -1,4 +1,9 @@
 <div>
+    <style>
+        .chosen-single{
+            height: 47px !important;
+        }
+    </style>
     <div class="row gx-4 mb-4">
         <div class="col-auto my-auto">
           <div class="h-100">
@@ -41,18 +46,58 @@
                     <div class="row">
                         <!-- Product Title -->
                         <div class="col-4">
-                            <div class="mb-2 mt-2 form-floating form-floating-outline">
-                                <select wire:model="branch"
+                            <div wire:ignore class="mb-2 mt-2 form-floating form-floating-outline">
+
+                                <select id="city_filter_update"
                                     class="form-select border border-2 p-2">
-                                    <option value="" selected hidden>Select branch</option>
-                                    @foreach($branchs as $item)
-                                    <option value="{{ $item->id }}">{{$item->name}}| {{$item->branch_code}}</option>
+
+                                    <option value="">Search City or State...</option>
+
+                                    @foreach($cities as $city)
+                                        <option value="{{ $city->id }}"
+                                            {{ $city_id == $city->id ? 'selected' : '' }}>
+                                            {{ $city->name }}
+                                            @if($city->state)
+                                                ({{ $city->state->name }})
+                                            @endif
+                                        </option>
                                     @endforeach
+
                                 </select>
-                                <label class="form-label">Branch <span class="text-danger">*</span></label>
+
+                                <label class="form-label">
+                                    City / State <span class="text-danger">*</span>
+                                </label>
+
                             </div>
+                        </div>
+                        <div class="col-4">
+                            <div wire:ignore
+                                wire:key="branch-update-container-{{ count($branchs) }}"
+                                class="mb-2 mt-2 form-floating form-floating-outline">
+
+                                <select id="branch_filter_update"
+                                    class="form-select border border-2 p-2">
+
+                                    <option value="">Select Branch</option>
+
+                                    @foreach($branchs as $item)
+                                        <option value="{{ $item->id }}"
+                                            {{ $branch == $item->id ? 'selected' : '' }}>
+                                            {{ $item->name }} | {{ $item->branch_code }}
+                                        </option>
+                                    @endforeach
+
+                                </select>
+
+                                <label class="form-label">
+                                    Branch <span class="text-danger">*</span>
+                                </label>
+
+                            </div>
+
                             @error('branch')
-                            <p class="text-danger inputerror">{{ $message }}</p>
+                                <p class="text-danger inputerror">{{ $message }}</p>
                             @enderror
                         </div>
                         <div class="col-4">
@@ -138,3 +183,96 @@
         <div class="loader"></div>
     </div>
 </div>
+@section('page-script')
+
+<script>
+var jq = $.noConflict();
+
+function initUpdateChosen() {
+
+    // City
+    if (jq("#city_filter_update").length) {
+
+        if (jq("#city_filter_update").data('chosen')) {
+            jq("#city_filter_update").chosen('destroy');
+        }
+
+        jq("#city_filter_update")
+            .chosen({
+                width: "100%",
+                search_contains: true
+            })
+            .off("change")
+            .on("change", function () {
+                @this.set('city_id', jq(this).val());
+            });
+    }
+
+    // Branch
+    if (jq("#branch_filter_update").length) {
+
+        if (jq("#branch_filter_update").data('chosen')) {
+            jq("#branch_filter_update").chosen('destroy');
+        }
+
+        jq("#branch_filter_update")
+            .chosen({
+                width: "100%",
+                search_contains: true
+            })
+            .off("change")
+            .on("change", function () {
+                @this.set('branch', jq(this).val());
+            });
+    }
+}
+
+document.addEventListener("livewire:init", function () {
+
+    initUpdateChosen();
+
+    Livewire.hook('request', ({ respond }) => {
+        respond(() => {
+
+            setTimeout(() => {
+
+                initUpdateChosen();
+
+                jq("#city_filter_update")
+                    .trigger("chosen:updated");
+
+                jq("#branch_filter_update")
+                    .trigger("chosen:updated");
+
+            }, 100);
+
+        });
+    });
+});
+
+window.addEventListener('vehicle-city-updated', () => {
+
+    setTimeout(() => {
+
+        if (jq("#branch_filter_update").data('chosen')) {
+            jq("#branch_filter_update").chosen('destroy');
+        }
+
+        jq("#branch_filter_update")
+            .chosen({
+                width: "100%",
+                search_contains: true
+            })
+            .off("change")
+            .on("change", function () {
+                @this.set('branch', jq(this).val());
+            });
+
+        jq("#branch_filter_update")
+            .trigger("chosen:updated");
+
+    }, 100);
+
+});
+</script>
+@endsection

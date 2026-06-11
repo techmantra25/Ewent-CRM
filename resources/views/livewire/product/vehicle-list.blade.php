@@ -43,72 +43,75 @@
             <div class="col-12">
                 <div class="card mb-2 py-4 px-2">
                     <div class="row justify-content-end">
-                        {{-- @if(auth('admin')->user()->branch_id==1)
-                            <div class="col-lg-3 col-6 my-auto mb-2">
-                                <select
-                                    class="form-select border border-2 p-2 custom-input-sm" wire:model="branch" wire:change="FilterBranch($event.target.value)">
-                                    <option value="" selected hidden>Select branch</option>
-                                    @foreach($branch_list as $item)
-                                    <option value="{{ $item->id }}">{{$item->name}}|{{ $item->branch_code }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        @endif --}}
-                        <div class="col-lg-2 col-6 my-auto mb-2">
-                            <select
-                                class="form-select border border-2 p-2 custom-input-sm" wire:model="rider_type" wire:change="FilterRiderType($event.target.value)">
-                                <option value="" selected hidden>Rider Type</option>
-                                <option value="B2C">B2C</option>
-                                <option value="B2B">B2B</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-2 col-6 my-auto mb-2">
-                            <select
-                                class="form-select border border-2 p-2 custom-input-sm" wire:model="model" wire:change="FilterModel($event.target.value)">
-                                <option value="" selected hidden>Select vehicle</option>
-                                @foreach($models as $model_item)
-                                <option value="{{ $model_item->id }}">{{ $model_item->title }}</option>
+                        
+                        <div class="col-lg-2 col-6 my-auto mb-2 list-chosen-wrapper" wire:ignore>
+                            <select id="vehicle_city_filter" class="form-select border border-2 p-2 custom-input-sm">
+                                <option value="">City / State</option>
+                                @foreach($cities as $city)
+                                    <option value="{{ $city->id }}" {{ $city->id == $city_id ? 'selected' : '' }}>
+                                         {{ $city->name }}  ({{ $city->state->name ?? '' }})
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
-                        @if($active_tab == 4)
-                        <div class="col-lg-2 col-4 my-auto mb-2">
-                            <select
-                                class="form-select border border-2 p-2 custom-input-sm"
-                                wire:model="overdue_days"
-                                wire:change="FilterOverdue($event.target.value)"
-                            >
-                                <option value="" hidden>Select overdue</option>
 
-                                {{-- 0 to 20 days --}}
-                                @for($i = 0; $i <= 20; $i++)
-                                    <option value="{{ $i }}">
-                                        {{ $i }} Day{{ $i != 1 ? 's' : '' }}
-                                    </option>
-                                @endfor
+                        @if(auth('admin')->user()->branch_id == 1)
+                            <div class="col-lg-2 col-6 my-auto mb-2 list-chosen-wrapper" 
+                                wire:ignore 
+                                wire:key="branch-dropdown-context-{{ $city_id }}">
+                                <select id="vehicle_branch_filter" class="form-select border border-2 p-2 custom-input-sm">
+                                    <option value="">Branch</option>
+                                    @foreach($branch_list as $item)
+                                        <option value="{{ $item->id }}" {{ $item->id == $branch ? 'selected' : '' }}>
+                                            {{ $item->name }} | {{ $item->branch_code }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
 
-                                {{-- More than 20 --}}
-                                <option value="20+">More than 20 Days</option>
-
+                        <div class="col-lg-2 col-6 my-auto mb-2">
+                            <select class="form-select border border-2 p-2 custom-input-sm" wire:model.live="model" wire:change="FilterModel($event.target.value)">
+                                <option value="" selected>Vehicle type</option>
+                                @foreach($models as $model_item)
+                                    <option value="{{ $model_item->id }}">{{ $model_item->category->title ?? 'N/A' }} | {{ $model_item->title }}</option>
+                                @endforeach
                             </select>
                         </div>
-                    @endif
-                        <div class="col-lg-6 col-6 my-auto mb-2">
+                        <div class="col-lg-2 col-6 my-auto mb-2">
+                            <select class="form-select border border-2 p-2 custom-input-sm"
+                                    wire:model.live="customer_type"
+                                    wire:change="FilterCustomerType($event.target.value)">
+                                <option value="">All Type</option>
+                                <option value="B2B">B2B</option>
+                                <option value="B2C">B2C</option>
+                            </select>
+                        </div>
+
+                        @if($active_tab == 4)
+                            <div class="col-lg-2 col-4 my-auto mb-2">
+                                <select class="form-select border border-2 p-2 custom-input-sm" wire:model.live="overdue_days" wire:change="FilterOverdue($event.target.value)">
+                                    <option value="">Overdue</option>
+                                    @for($i = 0; $i <= 20; $i++)
+                                        <option value="{{ $i }}">{{ $i }} Day{{ $i != 1 ? 's' : '' }}</option>
+                                    @endfor
+                                    <option value="20+">More than 20 Days</option>
+                                </select>
+                            </div>
+                        @endif
+
+                        <div class="col-lg-4 col-6 my-auto mb-2">
                             <div class="d-flex align-items-center justify-content-end">
-                                <input type="text" wire:model="search"
-                                       class="form-control border border-2 p-2 custom-input-sm"
-                                       placeholder="Search by Reg. No, lot IMEI, chassis number">
-                                <button type="button" wire:click="btn_search"
-                                        class="btn btn-success text-white mb-0 custom-input-sm ms-2">
+                                <input type="text" wire:model="search" class="form-control border border-2 p-2 custom-input-sm" placeholder="Reg. No, lot IMEI, chassis number">
+                                <button type="button" wire:click="btn_search" class="btn btn-success text-white mb-0 custom-input-sm ms-2">
                                     <span class="material-icons">search</span>
                                 </button>
-                                <!-- Refresh Button -->
-                                <button type="button" wire:click="reset_search"
-                                        class="btn btn-outline-danger waves-effect mb-0 custom-input-sm ms-2">
-                                    <span class="material-icons">refresh</span>
+                                <button type="button" wire:click="reset_search" class="btn btn-danger text-white mb-0 custom-input-sm ms-2">
+                                    <i class="ri-restart-line"></i>
                                 </button>
                             </div>
                         </div>
+
                     </div>
                 </div>
                 <div class="card mb-6">
@@ -214,6 +217,7 @@
                                                         </p>
                                                         <p class="m-0 text-sm text-success"><small>{{$all_item->assignedVehicle->user->country_code}} {{$all_item->assignedVehicle->user->mobile}}</small></p>
                                                         <p class="m-0 text-sm text-success"><small>{{$all_item->assignedVehicle->user->email}}</small></p>
+                                                        <p class="m-0"><small><strong>Branch :</strong>{{ $all_item->assignedVehicle->branch->name ?? 'N/A' }}</small></p>
 
                                                         @if($all_item->assignedVehicle->user && $all_item->assignedVehicle->user->user_type === "B2B")
                                                             <p class="badge rounded-pill badge-center bg-label-primary">
@@ -235,6 +239,8 @@
                                                         <p class="m-0"><strong>{{$all_item->overdueVehicle->user->name}}</strong></p>
                                                         <p class="m-0 text-sm text-danger"><small>{{$all_item->overdueVehicle->user->country_code}} {{$all_item->overdueVehicle->user->mobile}}</small></p>
                                                         <p class="m-0 text-sm text-danger"><small>{{$all_item->overdueVehicle->user->email}}</small></p>
+                                                        <p class="m-0"><small><strong>Branch :</strong>{{ $all_item->overdueVehicle->branch->name ?? 'N/A' }}</small></p>
+
                                                     <p class="text-sm m-0"><small>Start Date: {{ date('d M y h:i A', strtotime($all_item->overdueVehicle->start_date)) }}</small></p>
                                                         @if($all_item->overdueVehicle->user && $all_item->overdueVehicle->user->user_type === "B2C")
                                                             <p class="text-sm m-0"><small>End Date: {{ date('d M y h:i A', strtotime($all_item->overdueVehicle->end_date)) }}</small>
@@ -410,6 +416,7 @@
                                                         </p>
                                                         <p class="m-0 text-sm text-success"><small>{{$assigned_item->assignedVehicle->user->country_code}} {{$assigned_item->assignedVehicle->user->mobile}}</small></p>
                                                         <p class="m-0 text-sm text-success"><small>{{$assigned_item->assignedVehicle->user->email}}</small></p>
+                                                        <p class="m-0"><small><strong>Branch :</strong>{{ $assigned_item->assignedVehicle->branch->name ?? 'N/A' }}</small></p>
 
                                                         @if($assigned_item->assignedVehicle->user && $assigned_item->assignedVehicle->user->user_type === "B2B")
                                                             <p class="badge rounded-pill badge-center bg-label-primary">
@@ -491,6 +498,8 @@
                                                         <p class="m-0"><strong>{{$overdue_item->overdueVehicle->user->name}}</strong></p>
                                                         <p class="m-0 text-sm text-success"><small>{{$overdue_item->overdueVehicle->user->country_code}} {{$overdue_item->overdueVehicle->user->mobile}}</small></p>
                                                         <p class="m-0 text-sm text-success"><small>{{$overdue_item->overdueVehicle->user->email}}</small></p>
+                                                        <p class="m-0"><small><strong>Branch :</strong>{{ $overdue_item->branch->name ?? 'N/A' }}</small></p>
+
                                                     <p class="text-sm m-0"><small>Start Date: {{ date('d M y h:i A', strtotime($overdue_item->overdueVehicle->start_date)) }}</small></p>
                                                         @if($overdue_item->overdueVehicle->user && $overdue_item->overdueVehicle->user->user_type === "B2C")
                                                             <p class="text-sm m-0"><small>End Date: {{ date('d M y h:i A', strtotime($overdue_item->overdueVehicle->end_date)) }}</small>
@@ -556,6 +565,18 @@
     <!-- Side Modal (Drawer) -->
 </div>
 @section('page-script')
+<style>
+.list-chosen-wrapper .chosen-container-single .chosen-single {
+    height: 40px !important;
+    line-height: 40px !important;
+    background: #fff !important;
+    border: 2px solid #dee2e6 !important;
+    border-radius: 0.375rem !important;
+}
+.list-chosen-wrapper .chosen-container-single .chosen-single div b {
+    margin-top: 6px;
+}
+</style>
 <script>
     setTimeout(() => {
         const flashMessage = document.getElementById('modalflashMessage');
@@ -565,6 +586,45 @@
         const flashMessage = document.getElementById('flashMessage');
         if (flashMessage) flashMessage.remove();
     }, 3000); // Auto-hide flash message after 3 seconds
+</script>
+<script>
+    var jq = $.noConflict();
+
+    function initVehicleFilters() {
+        // Initialize State/City Filter
+        let cityEl = jq("#vehicle_city_filter");
+        if (cityEl.length && !cityEl.data("chosen")) {
+            cityEl.chosen({ width: "100%", search_contains: true });
+            cityEl.off('change').on('change', function () {
+                @this.call('FilterCity', jq(this).val());
+            });
+        }
+
+        // Initialize Branch Filter (Always clean rebuild since options change based on city selection)
+        let branchEl = jq("#vehicle_branch_filter");
+        if (branchEl.length) {
+            if (branchEl.data("chosen")) {
+                branchEl.chosen("destroy");
+            }
+            branchEl.chosen({ width: "100%", search_contains: true });
+            branchEl.off('change').on('change', function () {
+                @this.call('FilterBranch', jq(this).val());
+            });
+        }
+    }
+
+    document.addEventListener("livewire:init", function () {
+        initVehicleFilters();
+
+        // Refresh hooks following partial component DOM renders
+        Livewire.hook('morph.updated', () => {
+            initVehicleFilters();
+        });
+
+        window.addEventListener('reset-chosen-filters', () => {
+            jq("#vehicle_city_filter, #vehicle_branch_filter").val('').trigger('chosen:updated');
+        });
+    });
 </script>
 @endsection
 

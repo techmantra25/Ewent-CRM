@@ -5,6 +5,8 @@ namespace App\Livewire\Admin;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
+use App\Models\Branch;
+use App\Models\City;
 use App\Models\Order;
 use App\Models\Stock;
 use App\Models\Payment;
@@ -41,13 +43,35 @@ class RiderEngagement extends Component
     public $targetRiderId;
     public $targetOrderId;
     public $preview_front_image, $preview_back_image,$selected_organization;
+    public $branch;
+    public $branches = [];
+    public $branch_list = [];
+    public $city_id;
+    public $cities = [];
 
     /**
      * Search button click handler to reset pagination.
      */
     public function mount(){
-        $this->organizations = Organization::select('id', 'name')->orderBy('name', 'ASC')->get()->toArray();
+        $this->organizations = Organization::select('id', 'name')
+            ->orderBy('name', 'ASC')
+            ->get()
+            ->toArray();
+
+        $this->branches = get_branches() ?? [];
+
+        if (count($this->branches) === 1) {
+            $this->branch = $this->branches[0];
+        }
+
+        $this->cities = City::with('state')
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get();
+
+        $this->branch_list = [];
     }
+
     public function OrganizationUpdate($value){
         $this->selected_organization = $value;
         $this->resetPage();
@@ -55,6 +79,23 @@ class RiderEngagement extends Component
     public function btn_search()
     {
         $this->resetPage(); // Reset to the first page
+    }
+
+    public function FilterCity($value)
+    {
+        $this->city_id = $value;
+
+        $this->branch = null;
+
+        $this->branch_list = Branch::where('city_id', $value)
+            ->where('status', 1)
+            ->get();
+
+        $this->resetPage();
+    }
+    public function FilterBranch($value)
+    {
+        $this->branch = $value;
     }
     public function updateLog($status,$field,$document_type,$id){
         $user = User::find($id);
@@ -119,7 +160,15 @@ class RiderEngagement extends Component
     {
         $this->targetRiderId = $rider_id;
         $this->targetOrderId = $order_id;
-        $this->vehicles = Stock::whereDoesntHave('assignedVehicle')->whereDoesntHave('overdueVehicle')->where('product_id', $product_id)->orderBy('vehicle_number')->get();
+        $this->vehicles = Stock::whereDoesntHave('assignedVehicle')
+            ->whereDoesntHave('overdueVehicle')
+            ->where('product_id', $product_id)
+            ->when($this->branch, function ($query) {
+                $query->where('branch_id', $this->branch);
+            }, function ($query) {
+                $query->whereIn('branch_id', $this->branches);
+            })->orderBy('vehicle_number')->get();
+
         $this->isAssignedModal = true;
     }
     public function OpenExchangeForm($rider_id,$product_id,$order_id,$vehicle_number)
@@ -130,6 +179,11 @@ class RiderEngagement extends Component
         ->where('vehicle_number', '!=', $vehicle_number)
         ->whereDoesntHave('assignedVehicle')
         ->whereDoesntHave('overdueVehicle')
+        ->when($this->branch, function ($query) {
+                $query->where('branch_id', $this->branch);
+            }, function ($query) {
+                $query->whereIn('branch_id', $this->branches);
+            })
         ->orderBy('vehicle_number')
         ->get();
 
@@ -180,6 +234,7 @@ class RiderEngagement extends Component
                 $isB2C = $order->user_type === 'B2C';
                 $log = AsignedVehicle::create([
                     'user_id' => $this->targetRiderId,
+                    'branch_id' => $order->branch_id,
                     'order_id' => $this->targetOrderId,
                     'vehicle_id' => $this->vehicle_model,
                     'start_date' => $startDate,
@@ -254,6 +309,7 @@ class RiderEngagement extends Component
                 $old_vehicle = Stock::where('id',$assignRider->vehicle_id)->first();
                 DB::table('exchange_vehicles')->insert([
                     'user_id'      => $assignRider->user_id,
+                    'branch_id'    => $assignRider->branch_id,
                     'order_id'     => $assignRider->order_id,
                     'vehicle_id'   => $assignRider->vehicle_id,
                     'start_date'   => $assignRider->start_date,
@@ -414,8 +470,18 @@ class RiderEngagement extends Component
      * Refresh button click handler to reset the search input and reload data.
      */
     public function reset_search(){
-        $this->reset(['search','selected_organization','rider_type']); // Reset the search term
-        $this->resetPage();     // Reset pagination
+        $this->reset([
+            'search',
+            'selected_organization',
+            'city_id',
+            'branch'
+        ]);
+
+        $this->branch_list = [];
+
+        $this->resetPage();
+
+        $this->dispatch('reset-chosen-filters');
     }
     public function toggleStatus($id){
         $user = User::findOrFail($id);
@@ -460,6 +526,7 @@ class RiderEngagement extends Component
             DB::table('exchange_vehicles')->insert([
                 'status'       => "returned",
                 'user_id'      => $AsignedVehicle->user_id,
+                'branch_id'    => $AsignedVehicle->branch_id,
                 'order_id'     => $AsignedVehicle->order_id,
                 'vehicle_id'   => $AsignedVehicle->vehicle_id,
                 'start_date'   => $AsignedVehicle->start_date,
@@ -554,12 +621,29 @@ class RiderEngagement extends Component
         $this->page = $value;
     }
 
+    public function exportAll()
+    {
+        return Excel::download(
+                new RiderEngagementExport(
+                    $this->active_tab,        
+                    $this->search,     
+                    $this->selected_organization 
+                ),
+                'rider_engagement.xlsx'
+            );
+    }
+
     public function render()
     {
         $searchTerm = '%' . $this->search . '%';
         
         // Await users
         $await_users = User::whereHas('accessToken')
+            ->when($this->branch, function ($query) {
+                            $query->where('branch_id', $this->branch);
+                        }, function ($query) {
+                            $query->whereIn('branch_id', $this->branches);
+                        })
             ->when($this->search, function ($query) use ($searchTerm) {
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('name', 'like', $searchTerm)
@@ -587,12 +671,18 @@ class RiderEngagement extends Component
             ->paginate(20);
 
         // Ready to assign
-        $ready_to_assigns = User::when($this->search, function ($query) use ($searchTerm) {
+        $ready_to_assigns = User::when($this->branch, function ($query) {
+                        $query->where('branch_id', $this->branch);
+                    }, function ($query) {
+                        $query->whereIn('branch_id', $this->branches);
+                    })
+            ->when($this->search, function ($query) use ($searchTerm) {
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('name', 'like', $searchTerm)
                     ->orWhere('mobile', 'like', $searchTerm)
                     ->orWhere('email', 'like', $searchTerm)
                     ->orWhere('customer_id', 'like', $searchTerm)
+                    
                     ->orWhereHas('organization_details', function ($q3) use ($searchTerm) {
                         $q3->where('name', 'like', $searchTerm)
                             ->orWhere('organization_id', 'like', $searchTerm)
@@ -615,12 +705,18 @@ class RiderEngagement extends Component
         // Active users
         $active_users = User::where('is_verified', 'verified')
             ->whereHas('active_order')
+            ->when($this->branch, function ($query) {
+                        $query->where('branch_id', $this->branch);
+                    }, function ($query) {
+                        $query->whereIn('branch_id', $this->branches);
+                    })
             ->when($this->search, function ($query) use ($searchTerm) {
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('name', 'like', $searchTerm)
                     ->orWhere('mobile', 'like', $searchTerm)
                     ->orWhere('email', 'like', $searchTerm)
                     ->orWhere('customer_id', 'like', $searchTerm)
+                   
                     ->orWhereHas('active_vehicle.stock', function ($q2) use ($searchTerm) {
                         $q2->where('vehicle_number', 'like', $searchTerm)
                             ->orWhere('vehicle_track_id', 'like', $searchTerm)
@@ -655,8 +751,10 @@ class RiderEngagement extends Component
             ->when($this->selected_organization, function ($query){
                 $query->where('organization_id', $this->selected_organization);
             })
-            ->when($this->rider_type, function ($query){
-                $query->where('user_type', $this->rider_type);
+            ->when($this->branch, function ($query) {
+                $query->where('branch_id', $this->branch);
+            }, function ($query) {
+                $query->whereIn('branch_id', $this->branches);
             })
             ->when($this->search, function ($query) {
                 $searchTerm = '%' . $this->search . '%';
@@ -717,6 +815,11 @@ class RiderEngagement extends Component
         // Inactive rider
         $inactive_rider = User::with('doc_logs')
             ->whereDoesntHave('accessToken')
+            ->when($this->branch, function ($query) {
+                    $query->where('branch_id', $this->branch);
+                }, function ($query) {
+                    $query->whereIn('branch_id', $this->branches);
+                })
             ->when($this->search, function ($query) use ($searchTerm) {
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('name', 'like', $searchTerm)
@@ -737,6 +840,11 @@ class RiderEngagement extends Component
 
         // Suspended users
         $suspended_users = User::with('doc_logs')
+            ->when($this->branch, function ($query) {
+                $query->where('branch_id', $this->branch);
+                }, function ($query) {
+                    $query->whereIn('branch_id', $this->branches);
+                })
             ->when($this->search, function ($query) use ($searchTerm) {
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('name', 'like', $searchTerm)
@@ -756,6 +864,11 @@ class RiderEngagement extends Component
             ->paginate(20);
         $cancel_requested_users = User::where('is_verified', 'verified')
         ->whereHas('cancel_requested_order')
+        ->when($this->branch, function ($query) {
+                $query->where('branch_id', $this->branch);
+            }, function ($query) {
+                $query->whereIn('branch_id', $this->branches);
+            })
         ->when($this->search, function ($query) use ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('name', 'like', $searchTerm)
@@ -788,19 +901,5 @@ class RiderEngagement extends Component
             'cancel_requested_users' => $cancel_requested_users,
         ]);
     }
-    // public function exportAll()
-    // {
-    //     return Excel::download(
-    //             new RiderEngagementExport(
-    //                 $this->active_tab,        
-    //                 $this->search,     
-    //                 $this->selected_organization 
-    //             ),
-    //             'rider_engagement.xlsx'
-    //         );
-    // }
-
-    public function FilterRiderType($value){
-        $this->rider_type = $value;
-    }
+   
 }

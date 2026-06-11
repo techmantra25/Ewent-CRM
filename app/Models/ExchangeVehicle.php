@@ -10,7 +10,7 @@ class ExchangeVehicle extends Model
     use HasFactory;
     protected $table = "exchange_vehicles";
     protected $fillable = [
-        'user_id', 'order_id', 'vehicle_id', 'start_date', 'end_date', 'status', 'amount', 'deposit_amount', 'rental_amount', 'exchanged_at', 'exchanged_by',
+        'user_id', 'branch_id', 'order_id', 'vehicle_id', 'start_date', 'end_date', 'status', 'amount', 'deposit_amount', 'rental_amount', 'exchanged_at', 'exchanged_by',
     ];
     public function user(){
         return $this->belongsTo(User::class,'user_id','id');
@@ -23,5 +23,9 @@ class ExchangeVehicle extends Model
     }
     public function order(){
         return $this->belongsTo(Order::class,'order_id','id');
+    }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 }

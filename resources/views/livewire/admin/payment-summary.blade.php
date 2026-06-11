@@ -27,6 +27,27 @@
     .summary-card {
       min-height: 100px;
     }
+
+    .chosen-container {
+        min-width: 150px !important;
+    }
+
+    .chosen-container-single .chosen-single {
+        height: 40px !important;
+        line-height: 40px !important;
+        border: 2px solid #d2d6da !important;
+        border-radius: 0.5rem !important;
+        background: #fff !important;
+        box-shadow: none !important;
+    }
+
+    .chosen-container-single .chosen-single span {
+        font-size: 14px;
+    }
+
+    .chosen-container .chosen-drop {
+        border-radius: 0.5rem;
+    }
   </style>
 
   <!-- Summary Cards -->
@@ -113,13 +134,36 @@
         <div class="card my-4">
           <div class="card-header pb-0">
             <div class="row">
-                <div class="col-lg-2 col-2"></div>
-                
-                <div class="col-lg-10 col-10 my-auto text-end">
-                    <div class="d-flex align-items-center justify-content-end flex-wrap gap-2">
-                      <div style="max-width: 250px;
+                <div class="col-lg-12 col-12 my-auto">
+                    <div class="d-flex align-items-center justify-content-end flex-wrap gap-1">
+                      <div style="max-width: 230px; margin-bottom: 20px;"
+                          class="text-start"
+                          wire:ignore>
+                          <label class="form-label small mb-1">Branch</label>
+                          <select id="payment_branch_filter"
+                              class="form-select border border-2 p-2 custom-input-sm">
+                              <option value="">Select</option>
+
+                              @foreach($branch_list as $branch)
+                                  <option value="{{ $branch->id }}">
+                                      {{ $branch->name }} | {{ $branch->branch_code }}
+                                  </option>
+                              @endforeach
+                          </select>
+                      </div>
+                      <div style="max-width: 200px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
-                                 <label for="startDate" class="form-label small mb-1">Models</label>
+                                 <label class="form-label small mb-1">Type</label>
+                            <select
+                                class="form-select border border-2 p-2 custom-input-sm" wire:change="FilterType($event.target.value)">
+                                <option value="">Select Type</option>
+                                <option value="B2B">B2B</option>
+                                <option value="B2B">B2C</option>
+                            </select>
+                      </div>
+                      <div style="max-width: 180px;
+                            margin-bottom: 20px;" class="text-start text-uppercase">
+                                 <label class="form-label small mb-1">Models</label>
                             <select
                                 class="form-select border border-2 p-2 custom-input-sm" wire:model="model" wire:change="FilterModel($event.target.value)">
                                 <option value="" selected hidden>Select model</option>
@@ -129,13 +173,13 @@
                             </select>
                         </div>
                         <!-- Start Date -->
-                        <div style="max-width: 250px;
+                        <div style="max-width: 150px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
                             <label for="startDate" class="form-label small mb-1">Start Date</label>
                             <input type="date" id="startDate" wire:model="start_date" class="form-control border-2 p-2 custom-input-sm" wire:change="updateDate('start_date', $event.target.value)">
                         </div>
                             
-                        <div style="max-width: 250px;
+                        <div style="max-width: 150px;
                             margin-bottom: 20px;" class="text-start text-uppercase">
                             <label for="endDate" class="form-label small mb-1">End Date</label>
                             <input type="date" id="endDate" wire:model="end_date" class="form-control border-2 p-2 custom-input-sm" wire:change="updateDate('end_date', $event.target.value)">
@@ -269,3 +313,26 @@
     <div class="loader"></div>
   </div>
 </div>
+@section('page-script')
+<script>
+  var jq = $.noConflict();
+
+  function initPaymentFilters() {
+
+      jq('#payment_branch_filter').chosen({
+          width: '100%',
+          search_contains: true
+      }).off('change').on('change', function () {
+          @this.call('FilterBranch', jq(this).val());
+      });
+  }
+
+  document.addEventListener('livewire:init', function () {
+      initPaymentFilters();
+      Livewire.hook('morph.updated', () => {
+          jq('#payment_branch_filter').trigger('chosen:updated');
+          initPaymentFilters();
+      });
+  });
+</script>
+@endsection

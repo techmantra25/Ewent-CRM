@@ -45,19 +45,50 @@
                 <form wire:submit.prevent="saveVehicle">
                     <div class="row">
                         <!-- Product Title -->
+
                         <div class="col-4">
-                            <div class="mb-2 mt-2 form-floating form-floating-outline">
-                                <select wire:model="branch"
-                                    class="form-select border border-2 p-2">
-                                    <option value="" selected hidden>Select branch</option>
+                            <div wire:ignore class="mb-2 mt-2 form-floating form-floating-outline">
+                                <select id="city_filter_create" class="form-select border border-2 p-2">
+                                    <option value="">Search City or State...</option>
+
+                                    @foreach($cities as $city)
+                                        <option value="{{ $city->id }}"
+                                            {{ $city_id == $city->id ? 'selected' : '' }}>
+                                            {{ $city->name }}
+                                            @if($city->state)
+                                                ({{ $city->state->name }})
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <label class="form-label">City / State <span class="text-danger">*</span></label>
+                            </div>
+
+                            @error('city_id')
+                                <p class="text-danger inputerror">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="col-4">
+                            <div wire:ignore
+                                wire:key="branch-create-container-{{ count($branchs) }}"
+                                class="mb-2 mt-2 form-floating form-floating-outline">
+
+                                <select id="branch_filter_create" class="form-select border border-2 p-2">
+                                    <option value="">Select Branch</option>
+
                                     @foreach($branchs as $item)
-                                    <option value="{{ $item->id }}">{{$item->name}}| {{$item->branch_code}}</option>
+                                        <option value="{{ $item->id }}"
+                                            {{ $branch == $item->id ? 'selected' : '' }}>
+                                            {{ $item->name }} | {{ $item->branch_code }}
+                                        </option>
                                     @endforeach
                                 </select>
                                 <label class="form-label">Branch <span class="text-danger">*</span></label>
+
                             </div>
+
                             @error('branch')
-                            <p class="text-danger inputerror">{{ $message }}</p>
+                                <p class="text-danger inputerror">{{ $message }}</p>
                             @enderror
                         </div>
                         <div class="col-4">
@@ -152,33 +183,100 @@
     </div>
 </div>
 @section('page-script')
-    <link rel="stylesheet" href="{{ asset('assets/custom_css/component-chosen.css') }}">
-    <script src="{{ asset('assets/js/chosen.jquery.js') }}"></script>
     <script>
-        var jq = $.noConflict();
-        console.log("Choose Vehicle:", jq);
-        // function initChosen() {
-            // Re-initialize chosen
-            jq("#vehicle_number").chosen({
-                width: "100%"
+    var jq = $.noConflict();
+
+    function initVehicleChosen() {
+
+        // City
+        if (jq("#city_filter_create").length) {
+            if (jq("#city_filter_create").data('chosen')) {
+                jq("#city_filter_create").chosen('destroy');
+            }
+
+            jq("#city_filter_create")
+                .chosen({
+                    width: "100%",
+                    search_contains: true
+                })
+                .off("change")
+                .on("change", function () {
+                    @this.set('city_id', jq(this).val());
+                });
+        }
+
+        // Branch
+        if (jq("#branch_filter_create").length) {
+            if (jq("#branch_filter_create").data('chosen')) {
+                jq("#branch_filter_create").chosen('destroy');
+            }
+
+            jq("#branch_filter_create")
+                .chosen({
+                    width: "100%",
+                    search_contains: true
+                })
+                .off("change")
+                .on("change", function () {
+                    @this.set('branch', jq(this).val());
+                });
+        }
+
+        // Vehicle Number
+        if (jq("#vehicle_number").length) {
+            if (jq("#vehicle_number").data('chosen')) {
+                jq("#vehicle_number").chosen('destroy');
+            }
+
+            jq("#vehicle_number")
+                .chosen({
+                    width: "100%",
+                    search_contains: true
+                })
+                .off("change")
+                .on("change", function () {
+                    @this.call('selectVehicle', jq(this).val());
+                });
+        }
+    }
+
+    document.addEventListener("livewire:init", function () {
+
+        initVehicleChosen();
+
+        Livewire.hook('request', ({ respond }) => {
+            respond(() => {
+                setTimeout(() => {
+                    initVehicleChosen();
+
+                    jq("#city_filter_create").trigger("chosen:updated");
+                    jq("#branch_filter_create").trigger("chosen:updated");
+                    jq("#vehicle_number").trigger("chosen:updated");
+                }, 100);
             });
-
-            // Handle change event
-            jq("#vehicle_number").off('change').on('change', function () {
-                const selected = jq(this).val();
-                console.log("Selected Vehicle:", selected);
-        
-
-                // Call Livewire method
-                @this.call('selectVehicle', selected);
-            });
-        // }
-
-        // Rebind after Livewire DOM updates
-        window.addEventListener('bind-chosen', () => {
-            setTimeout(() => {
-                initChosen();
-            }, 100);
         });
-    </script>
+    });
+
+    window.addEventListener('vehicle-city-updated', () => {
+        setTimeout(() => {
+
+            if (jq("#branch_filter_create").data('chosen')) {
+                jq("#branch_filter_create").chosen('destroy');
+            }
+
+            jq("#branch_filter_create")
+                .chosen({
+                    width: "100%",
+                    search_contains: true
+                })
+                .off("change")
+                .on("change", function () {
+                    @this.set('branch', jq(this).val());
+                });
+
+            jq("#branch_filter_create").trigger("chosen:updated");
+
+        }, 100);
+    });
+</script>
 @endsection

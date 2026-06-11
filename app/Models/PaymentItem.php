@@ -10,11 +10,16 @@ class PaymentItem extends Model
     use HasFactory;
     protected $table = 'payment_items';
     protected $fillable = [
-            'payment_for', 'payment_id', 'product_id', 'vehicle_id', 'duration', 'type', 'amount'
+            'payment_for', 'payment_id', 'product_id', 'vehicle_id', 'branch_id', 'duration', 'type', 'amount'
     ];
 
     public function payment(){
         return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+
+    public function paymentDetail()
+    {
+        return $this->belongsTo(Payment::class, 'payment_id', 'id');
     }
     public function stock(){
         return $this->belongsTo(Stock::class, 'vehicle_id', 'id');
