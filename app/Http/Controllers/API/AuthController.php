@@ -168,7 +168,7 @@ class AuthController extends Controller
                 'message' => 'request data',
                 'data' => $request->all()
             ]);
-       // ✅ Add this line before validation
+       // Add this line before validation
         $userType = $request->input('user_type', 'B2C'); // Default to B2C
 
         // Custom validation rules
@@ -178,8 +178,9 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
             'address' => 'nullable|string|max:255',
+            'branch_id' => 'nullable|exists:branches,id',
 
-            // ✅ Add these new rules
+            // Add these new rules
             'user_type' => 'nullable|in:B2B,B2C',
             // 'organization_id' => [
             //     Rule::requiredIf(function () use ($userType) {
@@ -276,7 +277,8 @@ class AuthController extends Controller
                 'email'       => $request->email,
                 'password'    => Hash::make($request->password),
                 'address'     => $request->address,
-                'user_type'   => $userType, // ✅ Added here
+                'user_type'   => $userType, // Added here
+                'branch_id'   => $request->branch_id ?? 1,
             ];
 
             if ($userType === 'B2B' && $request->filled('organization_id')) {
@@ -637,6 +639,7 @@ class AuthController extends Controller
                 Rule::unique('users', 'mobile')->ignore($request->id, 'id'),
             ],
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'branch_id' => 'nullable|exists:branches,id',
         ]);
 
         // Check if validation fails
@@ -653,6 +656,7 @@ class AuthController extends Controller
         $user->address = $request->address;
         $user->email = $request->email;
         $user->mobile = $request->mobile;
+        $user->branch_id = $request->branch_id ?? $user->branch_id;
        // Handle image upload (if provided)
         if ($request->hasFile('image')) {
             $image = storeFileWithCustomName($request->file('image'), 'uploads/user');
@@ -1095,6 +1099,9 @@ class AuthController extends Controller
 
         // Retrieve the product by ID and ensure it's active (status = 1)
         $data = Product::where('id', $id)
+        ->whereHas('stock_item', function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id);
+            })
             ->where('status', 1)
             ->with([
                 'ProductImages:product_id,image', // Eager load product images
@@ -1138,6 +1145,9 @@ class AuthController extends Controller
             'sub_category_id',
             'status'
         )
+        ->whereHas('stock_item', function ($q) use ($user) {
+            $q->where('branch_id', $user->branch_id);
+        })
         ->where('id', '!=', $data->id) // Exclude the current product
         ->where('status', 1) // Ensure the product is active
         ->where('is_selling', 1) // Ensure the product is active
@@ -1183,6 +1193,9 @@ class AuthController extends Controller
 
         // Retrieve the product by ID and ensure it's active (status = 1)
         $data = Product::where('id', $id)
+            ->whereHas('stock_item', function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id);
+            })
             ->where('status', 1)
             ->when(
                 $user->user_type === 'B2B' && !empty($user->organization_id),
@@ -1237,6 +1250,9 @@ class AuthController extends Controller
             'sub_category_id',
             'status'
         )
+        ->whereHas('stock_item', function ($q) use ($user) {
+            $q->where('branch_id', $user->branch_id);
+        })
         ->when($user->user_type === 'B2B' && !empty($user->organization_id),
             function ($query) use ($user) {
                 $query->whereHas('organizations', function ($q) use ($user) {
@@ -1379,6 +1395,9 @@ class AuthController extends Controller
         ->select(
             'id', 'title', 'position', 'types', 'short_desc', 'image', 'status', 'is_driving_licence_required'
         )
+        ->whereHas('stock_item', function ($q) use ($user) {
+            $q->where('branch_id', $user->branch_id);
+        })
         ->when(
             $user->user_type === 'B2B' && !empty($user->organization_id),
             function ($query) use ($user) {
@@ -1697,6 +1716,7 @@ class AuthController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
+            'branch_id' => 'required|exists:branches,id',
             'product_id' => 'required|exists:products,id', // Ensure 'id' column exists
             'is_driving_licence_required' => 'required', // If it's a boolean
             // 'subscription_id' => 'required', // Ensure 'id' column exists
@@ -1793,6 +1813,7 @@ class AuthController extends Controller
                     $existing_order->update([
                         'user_id' => $user->id,
                         'user_type' => $user->user_type,
+                        'branch_id' => $user->branch_id,
                         'product_id' => (int)$request->product_id,
                         'deposit_amount' =>$user->user_type == "B2B"?0:$RentalPrice->deposit_amount,
                         'rental_amount' => $user->user_type == "B2B"?0:$RentalPrice->rental_amount,
@@ -1872,6 +1893,7 @@ class AuthController extends Controller
                 $order = Order::create([
                     'user_id' => $user->id,
                     'user_type' => $user->user_type,
+                    'branch_id' => $user->branch_id,
                     'order_type' => 'Rent',
                     'order_number' => generateOrderNumber(),
                     'product_id' => (int)$request->product_id,
@@ -1978,6 +2000,7 @@ class AuthController extends Controller
                             $payment = Payment::find($fetchResponse['payment_id']);
                             $payment->order_id = $order->id;
                             $payment->user_id = $order->user_id;
+                            $payment->branch_id = $order->branch_id;
                             $payment->order_type = 'new_subscription_'.$order_type;
                             $payment->payment_method = $captureResponse['data']['method'];
                             $payment->currency = $captureResponse['data']['currency'];
@@ -1999,6 +2022,7 @@ class AuthController extends Controller
                                 $payment_item = new PaymentItem;
                                 $payment_item->payment_id = $payment->id;
                                 $payment_item->product_id = $order->product_id;
+                                $payment_item->branch_id  = $order->branch_id;
                                 $payment_item->payment_for = 'new_subscription_'.$order_type;
                                 $payment_item->duration = $order->rent_duration;
                                 $payment_item->type = 'deposit';
@@ -2009,6 +2033,7 @@ class AuthController extends Controller
                                 $payment_item = new PaymentItem;
                                 $payment_item->payment_id = $payment->id;
                                 $payment_item->product_id = $order->product_id;
+                                $payment_item->branch_id = $order->branch_id;
                                 $payment_item->payment_for = 'new_subscription_'.$order_type;
                                 $payment_item->duration = $order->rent_duration;
                                 $payment_item->type = 'rental';
@@ -2108,6 +2133,7 @@ class AuthController extends Controller
                 }
                 $payment->order_id = $order->id;
                 $payment->user_id = $order->user_id;
+                $payment->branch_id = $order->branch_id;
                 $payment->order_type = 'new_subscription_'.$order_type;
                 $payment->payment_method = $paymentMode;
                 $payment->currency = "INR";
@@ -2124,6 +2150,7 @@ class AuthController extends Controller
                             'payment_id' => $payment->id,
                             'product_id' => $order->product_id,
                             'type'       => 'deposit',
+                            'branch_id'  => $order->branch_id,
                         ],
                         [
                             'payment_for' => 'new_subscription_' . $order_type,
@@ -2138,6 +2165,7 @@ class AuthController extends Controller
                             'payment_id' => $payment->id,
                             'product_id' => $order->product_id,
                             'type'       => 'rental',
+                            'branch_id'  => $order->branch_id,
                         ],
                         [
                             'payment_for' => 'new_subscription_' . $order_type,
@@ -2271,6 +2299,7 @@ class AuthController extends Controller
 
                 $payment->order_id = $order->id;
                 $payment->user_id = $order->user_id;
+                $payment->branch_id = $order->branch_id;
                 $payment->order_type = 'new_subscription_' . $order_type;
                 $payment->payment_method = $responseData['method'] ?? 'N/A';
                 $payment->currency = $responseData['currency'] ?? 'INR';
@@ -2407,6 +2436,7 @@ class AuthController extends Controller
                     
                     $payment->order_id = $order->id;
                     $payment->user_id = $order->user_id;
+                    $payment->branch_id = $order->branch_id;
                     $payment->order_type = 'renewal_subscription_'.$order_type;
                     $payment->payment_method = $paymentMode;
                     $payment->currency = "INR";
@@ -2430,6 +2460,7 @@ class AuthController extends Controller
                             [
                                 'payment_id' => $payment->id,
                                 'type' => 'rental',
+                                'branch_id' => $payment->branch_id,
                             ],
                             [
                                 'product_id' => $order->product_id,
@@ -2491,6 +2522,7 @@ class AuthController extends Controller
                         DB::table('exchange_vehicles')->insert([
                             'status'       => "renewal",
                             'user_id'      => $assignRider->user_id,
+                            'branch_id'    => $assignRider->branch_id,
                             'order_id'     => $assignRider->order_id,
                             'vehicle_id'   => $assignRider->vehicle_id,
                             'start_date'   => $assignRider->start_date,
@@ -2631,6 +2663,7 @@ class AuthController extends Controller
                             $payment = Payment::find($fetchResponse['payment_id']);
                             $payment->order_id = $order->id;
                             $payment->user_id = $order->user_id;
+                            $payment->branch_id = $order->branch_id;
                             $payment->order_type = 'renewal_subscription_'.$order_type;
                             $payment->payment_method = $captureResponse['data']['method'];
                             $payment->currency = $captureResponse['data']['currency'];
@@ -2653,6 +2686,7 @@ class AuthController extends Controller
                                 // Rental Amount
                                 $payment_item = new PaymentItem;
                                 $payment_item->payment_id = $payment->id;
+                                $payment_item->branch_id = $order->branch_id;
                                 $payment_item->product_id = $order->product_id;
                                 $payment_item->payment_for = 'renewal_subscription_'.$order_type;
                                 $payment_item->type = 'rental';
@@ -2681,6 +2715,7 @@ class AuthController extends Controller
                                 DB::table('exchange_vehicles')->insert([
                                     'status'       => "renewal",
                                     'user_id'      => $assignRider->user_id,
+                                    'branch_id'    => $assignRider->branch_id,
                                     'order_id'     => $assignRider->order_id,
                                     'vehicle_id'   => $assignRider->vehicle_id,
                                     'start_date'   => $assignRider->start_date,
@@ -2835,84 +2870,84 @@ class AuthController extends Controller
     }
 
     public function CurrentLocation(Request $request){
-    $user = $this->getAuthenticatedUser();
-    if ($user instanceof \Illuminate\Http\JsonResponse) {
-        return $user; // Return the response if the user is not authenticated
-    }
-
-    // Check if the user exists
-    if (!$user) {
-        return response()->json([
-            'status' => false,
-            'message' => 'User not found.',
-        ], 404); // 404 Not Found
-    }
-
-    $validator = Validator::make($request->all(), [
-        'latitude' => 'required|string|max:255',
-        'longitude' => 'required|string|max:255',
-    ]);
-
-    // Check if validation fails
-    if ($validator->fails()) {
-        return response()->json([
-            'status' => false,
-            'message' => $validator->errors()->first(),
-        ], 422);
-    }
-
-    try {
-        // 🔹 Log incoming location request
-        Log::info('CurrentLocation API called', [
-            'user_id'  => $user->id,
-            'latitude' => $request->latitude,
-            'longitude'=> $request->longitude,
-        ]);
-
-        $response = UserCurrentLocation($request->latitude,$request->longitude);
-        $address = null;
-        if (!empty($response['display_name'])) {
-            $address = $response['display_name'];
+        $user = $this->getAuthenticatedUser();
+        if ($user instanceof \Illuminate\Http\JsonResponse) {
+            return $user; // Return the response if the user is not authenticated
         }
 
-        DB::beginTransaction();
+        // Check if the user exists
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found.',
+            ], 404); // 404 Not Found
+        }
 
-        $new = new UserLocationLog;
-        $new->user_id = $user->id;
-        $new->address = $address;
-        $new->latitude = $request->latitude;
-        $new->longitude = $request->longitude;
-        $new->created_at = now();
-        $new->save();
-
-        DB::commit();
-
-        // 🔹 Log successful save
-        Log::info('User location saved successfully', [
-            'user_id' => $user->id,
-            'address' => $address,
+        $validator = Validator::make($request->all(), [
+            'latitude' => 'required|string|max:255',
+            'longitude' => 'required|string|max:255',
         ]);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Location retrieved and saved successfully.',
-        ], 200);
+        // Check if validation fails
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
 
-    } catch (\Exception $e) {
-        DB::rollBack();
+        try {
+            // Log incoming location request
+            Log::info('CurrentLocation API called', [
+                'user_id'  => $user->id,
+                'latitude' => $request->latitude,
+                'longitude'=> $request->longitude,
+            ]);
 
-        // 🔹 Log error
-        Log::error('Error saving user location', [
-            'user_id' => $user->id ?? null,
-            'error'   => $e->getMessage(),
-        ]);
+            $response = UserCurrentLocation($request->latitude,$request->longitude);
+            $address = null;
+            if (!empty($response['display_name'])) {
+                $address = $response['display_name'];
+            }
 
-        return response()->json([
-            'status' => false,
-            'message' => $e->getMessage(),
-        ], 500);
+            DB::beginTransaction();
+
+            $new = new UserLocationLog;
+            $new->user_id = $user->id;
+            $new->address = $address;
+            $new->latitude = $request->latitude;
+            $new->longitude = $request->longitude;
+            $new->created_at = now();
+            $new->save();
+
+            DB::commit();
+
+            // Log successful save
+            Log::info('User location saved successfully', [
+                'user_id' => $user->id,
+                'address' => $address,
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Location retrieved and saved successfully.',
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            // Log error
+            Log::error('Error saving user location', [
+                'user_id' => $user->id ?? null,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
 
     protected function EsignVerification($signer_name,$signer_email,$signer_city)
     {
@@ -3534,6 +3569,7 @@ class AuthController extends Controller
                 Payment::create([
                     'order_id' => $order_id,
                     'user_id' => $order->user_id,
+                    'branch_id' => $order->branch_id,
                     'payment_status' => 'pending',
                     'icici_merchantTxnNo' => $InitiateSaleResponse['merchantTxnNo'],
                     // 'payment_date' => now()->toDateTimeString(),

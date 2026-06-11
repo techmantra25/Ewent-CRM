@@ -53,6 +53,7 @@ class OrderController extends Controller
         // discount_amount
         $validator = Validator::make($request->all(),[
             'user_id' => 'required|exists:users,id',
+            'branch_id' => 'required|exists:branches,id',
             'order_type' => 'required|in:Rent,Sell',
             'order_items' => 'required|array',
             'order_items.*.product_id' => 'required|exists:products,id',
@@ -119,6 +120,7 @@ class OrderController extends Controller
 
                 $order = Order::create([
                     'user_id' => $request->user_id,
+                    'branch_id' => $request->branch_id,
                     'order_type' => $request->order_type,
                     'order_number' => generateOrderNumber(),
                     'total_price' => $totalPrice,
@@ -193,6 +195,7 @@ class OrderController extends Controller
                 // Create payment entry
                 Payment::create([
                     'order_id' => $order->id,
+                    'branch_id' => $order->branch_id,
                     'payment_method' => $request->payment_type, // e.g., 'credit_card', 'upi'
                     'payment_status' => $request->payment_type==="Wallet"?"completed":"pending",
                     'amount' => $finalPrice,
