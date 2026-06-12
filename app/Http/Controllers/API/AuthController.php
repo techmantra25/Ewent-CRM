@@ -656,7 +656,7 @@ class AuthController extends Controller
         $user->address = $request->address;
         $user->email = $request->email;
         $user->mobile = $request->mobile;
-        $user->branch_id = $request->branch_id ?? $user->branch_id;
+        $user->branch_id = $request->branch_id ?: ($user->branch_id ?: 1);
        // Handle image upload (if provided)
         if ($request->hasFile('image')) {
             $image = storeFileWithCustomName($request->file('image'), 'uploads/user');
@@ -1099,9 +1099,9 @@ class AuthController extends Controller
 
         // Retrieve the product by ID and ensure it's active (status = 1)
         $data = Product::where('id', $id)
-        ->whereHas('stock_item', function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id);
-            })
+        // ->whereHas('stock_item', function ($q) use ($user) {
+        //         $q->where('branch_id', $user->branch_id);
+        //     })
             ->where('status', 1)
             ->with([
                 'ProductImages:product_id,image', // Eager load product images
@@ -1145,9 +1145,9 @@ class AuthController extends Controller
             'sub_category_id',
             'status'
         )
-        ->whereHas('stock_item', function ($q) use ($user) {
-            $q->where('branch_id', $user->branch_id);
-        })
+        // ->whereHas('stock_item', function ($q) use ($user) {
+        //     $q->where('branch_id', $user->branch_id);
+        // })
         ->where('id', '!=', $data->id) // Exclude the current product
         ->where('status', 1) // Ensure the product is active
         ->where('is_selling', 1) // Ensure the product is active
@@ -1193,9 +1193,9 @@ class AuthController extends Controller
 
         // Retrieve the product by ID and ensure it's active (status = 1)
         $data = Product::where('id', $id)
-            ->whereHas('stock_item', function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id);
-            })
+            // ->whereHas('stock_item', function ($q) use ($user) {
+            //     $q->where('branch_id', $user->branch_id);
+            // })
             ->where('status', 1)
             ->when(
                 $user->user_type === 'B2B' && !empty($user->organization_id),
@@ -1250,9 +1250,9 @@ class AuthController extends Controller
             'sub_category_id',
             'status'
         )
-        ->whereHas('stock_item', function ($q) use ($user) {
-            $q->where('branch_id', $user->branch_id);
-        })
+        // ->whereHas('stock_item', function ($q) use ($user) {
+        //     $q->where('branch_id', $user->branch_id);
+        // })
         ->when($user->user_type === 'B2B' && !empty($user->organization_id),
             function ($query) use ($user) {
                 $query->whereHas('organizations', function ($q) use ($user) {
@@ -1313,6 +1313,12 @@ class AuthController extends Controller
 
     public function ProductFilter(Request $request)
     {
+
+        $user = $this->getAuthenticatedUser();
+        if ($user instanceof \Illuminate\Http\JsonResponse) {
+            return $user; // Return the response if the user is not authenticated
+        }
+
         $search = $request->input('filter');
         // If no filter value is provided, return empty array
         if (!$search) {
@@ -1335,6 +1341,9 @@ class AuthController extends Controller
                 'image',
                 'status'
             )
+            // ->whereHas('stock_item', function ($q) use ($user) {
+            //     $q->where('branch_id', $user->branch_id);
+            // })
             ->where('status', 1)
             ->where(function ($query) use ($search) {
                 $query->where('title', 'like', '%' . $search . '%')
@@ -1395,9 +1404,9 @@ class AuthController extends Controller
         ->select(
             'id', 'title', 'position', 'types', 'short_desc', 'image', 'status', 'is_driving_licence_required'
         )
-        ->whereHas('stock_item', function ($q) use ($user) {
-            $q->where('branch_id', $user->branch_id);
-        })
+        // ->whereHas('stock_item', function ($q) use ($user) {
+        //     $q->where('branch_id', $user->branch_id);
+        // })
         ->when(
             $user->user_type === 'B2B' && !empty($user->organization_id),
             function ($query) use ($user) {
@@ -1592,7 +1601,7 @@ class AuthController extends Controller
         if ($user instanceof \Illuminate\Http\JsonResponse) {
             return $user; // Return the response if the user is not authenticated
         }
-        $data = Order::with('product','vehicle','exchange_vehicle')->where('user_id', $user->id)->orderBy('id', 'DESC')->get();
+        $data = Order::with('product','vehicle','exchange_vehicle','branch')->where('user_id', $user->id)->orderBy('id', 'DESC')->get();
         if(count($data)==0){
             return response()->json(['status'=>false, 'message'=>'order not found!'], 404);
         }
@@ -1602,6 +1611,7 @@ class AuthController extends Controller
 
             $result[$key] = [
                 'order_number' => $item->order_number,
+                'branch' => $item->branch_id ? $item->branch->name : "N/A",
                 'model' => $item->product ? $item->product->title : "N/A",
                 'subscription_type' => $item->subscription ? ucwords($item->subscription->subscription_type) : "N/A",
                 'deposit_amount' => (float) number_format($item->deposit_amount, 2, '.', ''),
@@ -1652,6 +1662,7 @@ class AuthController extends Controller
             foreach($item->payments as $index=>$sub_item){
                 $result[$index] = [
                     'order_number' => $item->order_number,
+                    'branch' => $item->branch_id ? $item->branch->name : "N/A",
                     'model' => $item->product ? $item->product->title : "N/A",
                     'subscription_type' => $item->subscription ? ucwords($item->subscription->subscription_type) : "N/A",
                     'payment_for' => ucwords(str_replace('_', ' ', $sub_item->order_type)),
@@ -1716,7 +1727,6 @@ class AuthController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'branch_id' => 'required|exists:branches,id',
             'product_id' => 'required|exists:products,id', // Ensure 'id' column exists
             'is_driving_licence_required' => 'required', // If it's a boolean
             // 'subscription_id' => 'required', // Ensure 'id' column exists
@@ -1769,6 +1779,7 @@ class AuthController extends Controller
 
         $RentalPrice = RentalPrice::where('product_id', $request->product_id)
             ->where('subscription_type', $request->subscription_type)
+            ->where('branch_id', $user->branch_id)
             ->when(
                 $user->user_type === 'B2B' && !empty($user->organization_id),
                 //  B2B logic
@@ -1785,6 +1796,7 @@ class AuthController extends Controller
             )
             ->where('status', 1)
             ->first();
+            
         if(!$RentalPrice){
             return response()->json([
                 'status' => false,
@@ -1813,7 +1825,7 @@ class AuthController extends Controller
                     $existing_order->update([
                         'user_id' => $user->id,
                         'user_type' => $user->user_type,
-                        'branch_id' => $user->branch_id,
+                        'branch_id' => $user->branch_id ?? 1,
                         'product_id' => (int)$request->product_id,
                         'deposit_amount' =>$user->user_type == "B2B"?0:$RentalPrice->deposit_amount,
                         'rental_amount' => $user->user_type == "B2B"?0:$RentalPrice->rental_amount,
@@ -1893,7 +1905,7 @@ class AuthController extends Controller
                 $order = Order::create([
                     'user_id' => $user->id,
                     'user_type' => $user->user_type,
-                    'branch_id' => $user->branch_id,
+                    'branch_id' => $user->branch_id ?? 1,
                     'order_type' => 'Rent',
                     'order_number' => generateOrderNumber(),
                     'product_id' => (int)$request->product_id,
@@ -2000,7 +2012,7 @@ class AuthController extends Controller
                             $payment = Payment::find($fetchResponse['payment_id']);
                             $payment->order_id = $order->id;
                             $payment->user_id = $order->user_id;
-                            $payment->branch_id = $order->branch_id;
+                            $payment->branch_id = $order->branch_id ?? 1;
                             $payment->order_type = 'new_subscription_'.$order_type;
                             $payment->payment_method = $captureResponse['data']['method'];
                             $payment->currency = $captureResponse['data']['currency'];
@@ -2022,7 +2034,7 @@ class AuthController extends Controller
                                 $payment_item = new PaymentItem;
                                 $payment_item->payment_id = $payment->id;
                                 $payment_item->product_id = $order->product_id;
-                                $payment_item->branch_id  = $order->branch_id;
+                                $payment_item->branch_id  = $order->branch_id ?? 1;
                                 $payment_item->payment_for = 'new_subscription_'.$order_type;
                                 $payment_item->duration = $order->rent_duration;
                                 $payment_item->type = 'deposit';
@@ -2033,7 +2045,7 @@ class AuthController extends Controller
                                 $payment_item = new PaymentItem;
                                 $payment_item->payment_id = $payment->id;
                                 $payment_item->product_id = $order->product_id;
-                                $payment_item->branch_id = $order->branch_id;
+                                $payment_item->branch_id = $order->branch_id ?? 1;
                                 $payment_item->payment_for = 'new_subscription_'.$order_type;
                                 $payment_item->duration = $order->rent_duration;
                                 $payment_item->type = 'rental';
@@ -2133,7 +2145,7 @@ class AuthController extends Controller
                 }
                 $payment->order_id = $order->id;
                 $payment->user_id = $order->user_id;
-                $payment->branch_id = $order->branch_id;
+                $payment->branch_id = $order->branch_id ?? 1;
                 $payment->order_type = 'new_subscription_'.$order_type;
                 $payment->payment_method = $paymentMode;
                 $payment->currency = "INR";
@@ -2150,7 +2162,7 @@ class AuthController extends Controller
                             'payment_id' => $payment->id,
                             'product_id' => $order->product_id,
                             'type'       => 'deposit',
-                            'branch_id'  => $order->branch_id,
+                            'branch_id'  => $order->branch_id ?? 1,
                         ],
                         [
                             'payment_for' => 'new_subscription_' . $order_type,
@@ -2165,7 +2177,7 @@ class AuthController extends Controller
                             'payment_id' => $payment->id,
                             'product_id' => $order->product_id,
                             'type'       => 'rental',
-                            'branch_id'  => $order->branch_id,
+                            'branch_id'  => $order->branch_id ?? 1,
                         ],
                         [
                             'payment_for' => 'new_subscription_' . $order_type,
@@ -2299,7 +2311,7 @@ class AuthController extends Controller
 
                 $payment->order_id = $order->id;
                 $payment->user_id = $order->user_id;
-                $payment->branch_id = $order->branch_id;
+                $payment->branch_id = $order->branch_id ?? 1;
                 $payment->order_type = 'new_subscription_' . $order_type;
                 $payment->payment_method = $responseData['method'] ?? 'N/A';
                 $payment->currency = $responseData['currency'] ?? 'INR';
@@ -2436,7 +2448,7 @@ class AuthController extends Controller
                     
                     $payment->order_id = $order->id;
                     $payment->user_id = $order->user_id;
-                    $payment->branch_id = $order->branch_id;
+                    $payment->branch_id = $order->branch_id ?? 1;
                     $payment->order_type = 'renewal_subscription_'.$order_type;
                     $payment->payment_method = $paymentMode;
                     $payment->currency = "INR";
@@ -2460,7 +2472,7 @@ class AuthController extends Controller
                             [
                                 'payment_id' => $payment->id,
                                 'type' => 'rental',
-                                'branch_id' => $payment->branch_id,
+                                'branch_id' => $payment->branch_id ?? 1,
                             ],
                             [
                                 'product_id' => $order->product_id,
@@ -2522,7 +2534,7 @@ class AuthController extends Controller
                         DB::table('exchange_vehicles')->insert([
                             'status'       => "renewal",
                             'user_id'      => $assignRider->user_id,
-                            'branch_id'    => $assignRider->branch_id,
+                            'branch_id'    => $assignRider->branch_id ?? 1,
                             'order_id'     => $assignRider->order_id,
                             'vehicle_id'   => $assignRider->vehicle_id,
                             'start_date'   => $assignRider->start_date,
@@ -2663,7 +2675,7 @@ class AuthController extends Controller
                             $payment = Payment::find($fetchResponse['payment_id']);
                             $payment->order_id = $order->id;
                             $payment->user_id = $order->user_id;
-                            $payment->branch_id = $order->branch_id;
+                            $payment->branch_id = $order->branch_id ?? 1;
                             $payment->order_type = 'renewal_subscription_'.$order_type;
                             $payment->payment_method = $captureResponse['data']['method'];
                             $payment->currency = $captureResponse['data']['currency'];
@@ -2686,7 +2698,7 @@ class AuthController extends Controller
                                 // Rental Amount
                                 $payment_item = new PaymentItem;
                                 $payment_item->payment_id = $payment->id;
-                                $payment_item->branch_id = $order->branch_id;
+                                $payment_item->branch_id = $order->branch_id ?? 1;
                                 $payment_item->product_id = $order->product_id;
                                 $payment_item->payment_for = 'renewal_subscription_'.$order_type;
                                 $payment_item->type = 'rental';
@@ -2715,7 +2727,7 @@ class AuthController extends Controller
                                 DB::table('exchange_vehicles')->insert([
                                     'status'       => "renewal",
                                     'user_id'      => $assignRider->user_id,
-                                    'branch_id'    => $assignRider->branch_id,
+                                    'branch_id'    => $assignRider->branch_id ?? 1,
                                     'order_id'     => $assignRider->order_id,
                                     'vehicle_id'   => $assignRider->vehicle_id,
                                     'start_date'   => $assignRider->start_date,
@@ -2832,6 +2844,7 @@ class AuthController extends Controller
             // }
             $data= [
                 'id' => $order->id,
+                'branch_id' => $order->branch_id ?? 1,
                 'product_id'=>$order->product_id,
                 'is_driving_licence_required'=>$order->product->is_driving_licence_required,
                 'subscription_type'=>$order->subscription->subscription_type,
@@ -3569,7 +3582,7 @@ class AuthController extends Controller
                 Payment::create([
                     'order_id' => $order_id,
                     'user_id' => $order->user_id,
-                    'branch_id' => $order->branch_id,
+                    'branch_id' => $order->branch_id ?? 1,
                     'payment_status' => 'pending',
                     'icici_merchantTxnNo' => $InitiateSaleResponse['merchantTxnNo'],
                     // 'payment_date' => now()->toDateTimeString(),
@@ -3962,6 +3975,8 @@ class AuthController extends Controller
         $fields = [
             'users.name as rider_name',
             'users.mobile as rider_mobile',
+            'branches.name as rider_branch',
+
             'utc.email as rider_email',
             'utc.signer_city as rider_city',
             'utc.signer_state as rider_state',
@@ -4002,6 +4017,7 @@ class AuthController extends Controller
         $query = UserTermsConditions::select($fields)
             ->from('user_terms_conditions as utc')
             ->join('users', 'users.email', '=', 'utc.email')
+            ->leftJoin('branches', 'branches.id', '=', 'users.branch_id')
             ->joinSub($latestPaymentSub, 'lp', function($join) {
                 $join->on('lp.user_id', '=', 'users.id');
             })
@@ -4020,6 +4036,7 @@ class AuthController extends Controller
 
         $fields = [
             'users.name as rider_name',
+            'branches.name as rider_branch',
             'users.mobile as rider_mobile',
             'users.email as rider_email',
 
@@ -4036,6 +4053,7 @@ class AuthController extends Controller
         $query = Payment::select($fields)
             ->where('payment_status','completed')
             ->join('users', 'users.id', '=', 'payments.user_id')
+            ->leftJoin('branches', 'branches.id', '=', 'users.branch_id')
             ->orderByDesc('payments.created_at');
 
         if ($start_date && $end_date) {
@@ -4066,6 +4084,7 @@ class AuthController extends Controller
                 'payments.payment_date',
 
                 'orders.order_number',
+                'branches.name as branch_name',
 
                 DB::raw("
                     SUM(
@@ -4115,6 +4134,7 @@ class AuthController extends Controller
             ->join('payments', 'payments.user_id', '=', 'users.id')
             ->join('payment_items', 'payment_items.payment_id', '=', 'payments.id')
             ->join('orders', 'orders.user_id', '=', 'users.id')
+            ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
 
             ->leftJoin('assigned_vehicles', function ($join) {
                 $join->on('assigned_vehicles.order_id', '=', 'orders.id')
@@ -4142,6 +4162,7 @@ class AuthController extends Controller
                 'users.kyc_verified_at',
                 'payments.transaction_id', 
                 'payments.payment_date',
+                'branches.name',
                 'orders.order_number', 
                 'orders.created_at',
                 'orders.return_date',
@@ -4202,8 +4223,13 @@ class AuthController extends Controller
 
         //  Get all active vehicles (NO date filter here)
         $vehicles = DB::table('stocks')
-            // ->where('status', 1)
-            ->select('id', 'vehicle_number', 'chassis_number')
+            ->leftJoin('branches', 'branches.id', '=', 'stocks.branch_id')
+            ->select(
+                'stocks.id',
+                'stocks.vehicle_number',
+                'stocks.chassis_number',
+                'branches.name as branch_name'
+            )
             ->get()
             ->keyBy('id');
 
@@ -4232,6 +4258,7 @@ class AuthController extends Controller
             ->filter(fn ($a) => isset($vehicles[$a->vehicle_id]))
             ->map(fn ($a) => [
                 'vehicle_id'     => $a->vehicle_id,
+                'branch'         => $vehicles[$a->vehicle_id]->branch_name ?? null,
                 'vehicle_number' => $vehicles[$a->vehicle_id]->vehicle_number ?? null,
                 'chassis_number' => $vehicles[$a->vehicle_id]->chassis_number ?? null,
                 'rider_name'     => $a->user->name ?? null,
@@ -4253,7 +4280,7 @@ class AuthController extends Controller
         $end_date   = $request->end_date;
 
         $vehiclesQuery = DB::table('stocks')
-           ->whereIn('status', [1,0]);
+           ->whereIn('stocks.status', [1,0]);
 
         if ($start_date && $end_date) {
             $vehiclesQuery->whereBetween('created_at', [
@@ -4262,8 +4289,19 @@ class AuthController extends Controller
             ]);
         }
 
+        // $vehicles = $vehiclesQuery
+        //     ->select('id', 'vehicle_number', 'chassis_number')
+        //     ->get()
+        //     ->keyBy('id');
+
         $vehicles = $vehiclesQuery
-            ->select('id', 'vehicle_number', 'chassis_number')
+            ->leftJoin('branches', 'branches.id', '=', 'stocks.branch_id')
+            ->select(
+                'stocks.id',
+                'stocks.vehicle_number',
+                'stocks.chassis_number',
+                'branches.name as branch_name'
+            )
             ->get()
             ->keyBy('id');
 
@@ -4277,6 +4315,7 @@ class AuthController extends Controller
             ->values()
             ->map(fn ($v) => [
                 'vehicle_id'     => $v->id,
+                'branch'         => $v->branch_name,
                 'vehicle_number' => $v->vehicle_number,
                 'chassis_number' => $v->chassis_number,
             ]);
@@ -4306,6 +4345,7 @@ class AuthController extends Controller
         $data = $vehicles->map(function ($v) {
             return [
                 'vehicle_id'     => $v->id,
+                'branch'         => $v->branch->name,
                 'model_name'     => $v->product->title ?? null,
                 'vehicle_number' => $v->vehicle_number,
                 'chassis_number' => $v->chassis_number,
@@ -4324,12 +4364,14 @@ class AuthController extends Controller
         $assignedLogs = DB::table('assigned_vehicles as av')
             ->join('users as u', 'u.id', '=', 'av.user_id')
             ->join('orders as o', 'o.id', '=', 'av.order_id')
+            ->leftJoin('branches as b', 'b.id', '=', 'o.branch_id')
             ->select(
                 'av.vehicle_id',
                 'av.user_id',
                 'u.name as user_name',
                 'av.order_id',
                 'o.order_number',
+                'b.name as branch_name',
                 'av.status',
                 'av.assigned_at as action_date',
                 DB::raw("'assigned' as log_type")
@@ -4339,12 +4381,14 @@ class AuthController extends Controller
         $exchangeLogs = DB::table('exchange_vehicles as ev')
             ->join('users as u', 'u.id', '=', 'ev.user_id')
             ->join('orders as o', 'o.id', '=', 'ev.order_id')
+            ->join('branches as b', 'b.id', '=', 'o.branch_id')
             ->select(
                 'ev.vehicle_id',
                 'ev.user_id',
                 'u.name as user_name',
                 'ev.order_id',
                 'o.order_number',
+                'b.name as branch_name',
                 'ev.status',
                 'ev.exchanged_at as action_date',
                 DB::raw("'exchange' as log_type")
@@ -4367,6 +4411,7 @@ class AuthController extends Controller
                     'vehicle_number' => $vehicle->vehicle_number,
                     'chassis_number' => $vehicle->chassis_number,
                     'rider'          => $log->user_name,
+                    'branch'         => $log->branch_name ?? null,
                     'order_number'   => $log->order_number,
                     'status'         => $log->status,
                     'action_date'    => $log->action_date,
@@ -4394,9 +4439,10 @@ class AuthController extends Controller
             : Carbon::now()->endOfMonth();
 
         //  Vehicles (single / all)
-        $stocks = Stock::when($request->vehicle_number, function ($q) use ($request) {
-            $q->where('vehicle_number', $request->vehicle_number);
-        })->get();
+        $stocks = Stock::with('branch')
+            ->when($request->vehicle_number, function ($q) use ($request) {
+                $q->where('vehicle_number', $request->vehicle_number);
+            })->get();
 
         if ($stocks->isEmpty()) {
             return response()->json(['message' => 'No vehicles found'], 404);
@@ -4577,6 +4623,7 @@ class AuthController extends Controller
                     $finalData[] = [
                         'vehicle' => $stock->vehicle_number,
                         'chassis_number' => $stock->chassis_number,
+                        'branch' => $stock->branch->name,
                         'date' => $dateKey,
                         'rider' => $found['user']->name ?? '',
                         'rider_mobile' => $found['user']->mobile ?? '',
@@ -4590,6 +4637,7 @@ class AuthController extends Controller
                     $finalData[] = [
                         'vehicle' => $stock->vehicle_number,
                         'chassis_number' => $stock->chassis_number,
+                        'branch' => $stock->branch->name,
                         'date' => $dateKey,
                         'rider' => '',
                         'rider_mobile' => '',

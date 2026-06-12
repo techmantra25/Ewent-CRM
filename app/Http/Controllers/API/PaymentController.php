@@ -182,7 +182,7 @@ class PaymentController extends Controller
                 }
                 $payment->order_id = $order->id;
                 $payment->user_id = $order->user_id;
-                $payment->branch_id = $order->branch_id;
+                $payment->branch_id = $order->branch_id ?? 1;
                 $payment->order_type = 'new_subscription_'.$order_type;
                 $payment->payment_method = $paymentMode;
                 $payment->currency = "INR";
@@ -204,7 +204,7 @@ class PaymentController extends Controller
                             'payment_id' => $payment->id,
                             'product_id' => $order->product_id,
                             'type'       => 'deposit',
-                            'branch_id'  => $payment->branch_id,
+                            'branch_id'  => $payment->branch_id ?? 1,
                         ],
                         [
                             'payment_for' => 'new_subscription_' . $order_type,
@@ -219,7 +219,7 @@ class PaymentController extends Controller
                             'payment_id' => $payment->id,
                             'product_id' => $order->product_id,
                             'type'       => 'rental',
-                            'branch_id'  => $payment->branch_id,
+                            'branch_id'  => $payment->branch_id ?? 1,
                         ],
                         [
                             'payment_for' => 'new_subscription_' . $order_type,
@@ -305,7 +305,7 @@ class PaymentController extends Controller
                     
                     $payment->order_id = $order->id;
                     $payment->user_id = $order->user_id;
-                    $payment->branch_id = $order->branch_id;
+                    $payment->branch_id = $order->branch_id ?? 1;
                     $payment->order_type = 'renewal_subscription_'.$order_type;
                     $payment->payment_method = $paymentMode;
                     $payment->currency = "INR";
@@ -329,7 +329,7 @@ class PaymentController extends Controller
                             [
                                 'payment_id' => $payment->id,
                                 'type' => 'rental',
-                                'branch_id' => $payment->branch_id,
+                                'branch_id' => $payment->branch_id ?? 1,
                             ],
                             [
                                 'product_id' => $order->product_id,
@@ -370,7 +370,7 @@ class PaymentController extends Controller
                         DB::table('exchange_vehicles')->insert([
                             'status'       => "renewal",
                             'user_id'      => $assignRider->user_id,
-                            'branch_id'    => $assignRider->branch_id,
+                            'branch_id'    => $assignRider->branch_id ?? 1,
                             'order_id'     => $assignRider->order_id,
                             'vehicle_id'   => $assignRider->vehicle_id,
                             'start_date'   => $assignRider->start_date,

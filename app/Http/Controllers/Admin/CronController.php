@@ -269,7 +269,6 @@ class CronController extends Controller
         try {
             $timezone = env('APP_LOCAL_TIMEZONE', 'Asia/Kolkata'); // Default fallback
             $startTime = Carbon::now($timezone);
-
             $Asigned = AsignedVehicle::whereIn('status', ['overdue'])
                                 ->get();
             // foreach($Asigned as $ov){
