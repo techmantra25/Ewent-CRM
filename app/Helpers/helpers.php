@@ -855,7 +855,6 @@ if (!function_exists('createInvoiceForOrganization')) {
                     $total_amount +=$invoice_item->total_price;
                 }
                 
-
                 // ADDED: if total invoice amount is zero or less, remove the invoice and any leftover items/details
                 if ($total_amount <= 0) {
                     // delete any details for items linked to this invoice
